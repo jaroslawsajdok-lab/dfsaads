@@ -157,7 +157,7 @@ function VideoHero() {
           loop
           playsInline
           preload="metadata"
-          poster="/hero-poster.jpg"
+          poster="/hero-poster.png"
           data-testid="video-hero"
         >
           <source src="/hero-drone.mp4" type="video/mp4" />
