@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
   Calendar as CalendarIcon,
@@ -29,37 +30,46 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 type NewsItem = {
-  id: string;
+  id: number;
   date: string;
   title: string;
   excerpt: string;
-  href?: string;
+  href?: string | null;
 };
 
 type EventItem = {
-  id: string;
-  date: string; // YYYY-MM-DD
+  id: number;
+  date: string;
   time: string;
-  type: "Nabożeństwo" | "Spotkanie" | "Wydarzenie";
+  type: string;
   title: string;
   place: string;
   description: string;
 };
 
 type GroupItem = {
-  id: string;
+  id: number;
   name: string;
   lead: string;
-  when: string;
+  when_text: string;
   description: string;
 };
 
 type RecordingItem = {
-  id: string;
+  id: number;
   title: string;
   date: string;
   href: string;
 };
+
+type FaqItem = {
+  id: number;
+  question: string;
+  answer: string;
+  sort_order: number;
+};
+
+type ContactMap = Record<string, string>;
 
 const NAV = [
   { id: "onas", label: "O nas" },
@@ -417,138 +427,21 @@ function TopNav({ shown }: { shown: boolean }) {
   );
 }
 
+async function apiFetch<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
 export default function HomePage() {
   const stickyShown = useStickyNavTrigger();
 
-  const news = useMemo<NewsItem[]>(
-    () => [
-      {
-        id: "n1",
-        date: "2026-02-09",
-        title: "Nabożeństwo niedzielne — zapraszamy",
-        excerpt:
-          "Spotkajmy się w niedzielę na wspólnej modlitwie i rozmowie. Szczegóły w ogłoszeniach.",
-      },
-      {
-        id: "n2",
-        date: "2026-02-02",
-        title: "Plan spotkań grup w lutym",
-        excerpt:
-          "Zebraliśmy terminy spotkań dla grup parafialnych. Sprawdź kalendarz i dołącz.",
-      },
-      {
-        id: "n3",
-        date: "2026-01-25",
-        title: "Nowe nagrania na YouTube",
-        excerpt:
-          "Dodaliśmy kolejne kazania i materiały. Jeśli nie możesz być na miejscu — odsłuchaj online.",
-        href: "https://www.youtube.com/@parafiae-awisajawornik2251",
-      },
-    ],
-    [],
-  );
-
-  const events = useMemo<EventItem[]>(
-    () => [
-      {
-        id: "e1",
-        date: "2026-02-16",
-        time: "10:00",
-        type: "Nabożeństwo",
-        title: "Nabożeństwo",
-        place: "Kościół — Wisła Jawornik",
-        description: "Wspólne nabożeństwo. Po nabożeństwie kawa i rozmowy.",
-      },
-      {
-        id: "e2",
-        date: "2026-02-19",
-        time: "18:00",
-        type: "Spotkanie",
-        title: "Spotkanie biblijne",
-        place: "Sala parafialna",
-        description: "Czytanie i rozmowa. Możesz dołączyć w dowolnym momencie.",
-      },
-      {
-        id: "e3",
-        date: "2026-02-23",
-        time: "17:30",
-        type: "Wydarzenie",
-        title: "Spotkanie informacyjne",
-        place: "Dom parafialny",
-        description: "Aktualności organizacyjne i plany na najbliższy miesiąc.",
-      },
-    ],
-    [],
-  );
-
-  const groups = useMemo<GroupItem[]>(
-    () => [
-      {
-        id: "g1",
-        name: "Chór",
-        lead: "Prowadzący: do ustalenia",
-        when: "Środy 18:30",
-        description: "Wspólny śpiew, próby i oprawa muzyczna nabożeństw.",
-      },
-      {
-        id: "g2",
-        name: "Młodzież",
-        lead: "Prowadzący: do ustalenia",
-        when: "Piątki 19:00",
-        description: "Spotkania, rozmowy i inicjatywy młodzieżowe.",
-      },
-      {
-        id: "g3",
-        name: "Kobiety",
-        lead: "Prowadząca: do ustalenia",
-        when: "Co 2 tygodnie",
-        description: "Wzajemne wsparcie, rozmowy i wspólne działania.",
-      },
-    ],
-    [],
-  );
-
-  const recordings = useMemo<RecordingItem[]>(
-    () => [
-      {
-        id: "r1",
-        title: "Kazanie — Niedziela",
-        date: "2026-02-09",
-        href: "https://www.youtube.com/@parafiae-awisajawornik2251",
-      },
-      {
-        id: "r2",
-        title: "Rozważanie tygodnia",
-        date: "2026-02-02",
-        href: "https://www.youtube.com/@parafiae-awisajawornik2251",
-      },
-      {
-        id: "r3",
-        title: "Nabożeństwo — zapis",
-        date: "2026-01-25",
-        href: "https://www.youtube.com/@parafiae-awisajawornik2251",
-      },
-    ],
-    [],
-  );
-
-  const faq = useMemo(
-    () => [
-      {
-        q: "Gdzie znajduje się parafia?",
-        a: "Parafia znajduje się w Wiśle Jaworniku. Dokładny adres i mapa są w sekcji Kontakt.",
-      },
-      {
-        q: "Czy mogę dołączyć do grupy w trakcie?",
-        a: "Tak. W większości przypadków możesz dołączyć w dowolnym momencie — skontaktuj się z prowadzącymi.",
-      },
-      {
-        q: "Gdzie znajdę nagrania?",
-        a: "Nagrania publikujemy na YouTube. Link znajduje się w sekcji Nagrania.",
-      },
-    ],
-    [],
-  );
+  const { data: newsData = [] } = useQuery<NewsItem[]>({ queryKey: ["news"], queryFn: () => apiFetch("/api/news") });
+  const { data: eventsData = [] } = useQuery<EventItem[]>({ queryKey: ["events"], queryFn: () => apiFetch("/api/events") });
+  const { data: groupsData = [] } = useQuery<GroupItem[]>({ queryKey: ["groups"], queryFn: () => apiFetch("/api/groups") });
+  const { data: recordingsData = [] } = useQuery<RecordingItem[]>({ queryKey: ["recordings"], queryFn: () => apiFetch("/api/recordings") });
+  const { data: faqData = [] } = useQuery<FaqItem[]>({ queryKey: ["faq"], queryFn: () => apiFetch("/api/faq") });
+  const { data: contactData = {} } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
 
   return (
     <main className="min-h-screen" data-testid="page-home">
@@ -687,7 +580,7 @@ export default function HomePage() {
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {news.map((n) => (
+          {newsData.map((n) => (
             <Card
               key={n.id}
               className="group overflow-hidden rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur"
@@ -756,7 +649,7 @@ export default function HomePage() {
 
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-3">
-              {events.map((e) => (
+              {eventsData.map((e) => (
                 <Card
                   key={e.id}
                   className="rounded-2xl border bg-white/75 p-5 backdrop-blur"
@@ -840,7 +733,7 @@ export default function HomePage() {
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {groups.map((g) => (
+          {groupsData.map((g) => (
             <Card
               key={g.id}
               className="rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur"
@@ -853,7 +746,7 @@ export default function HomePage() {
                 </div>
                 <div className="rounded-xl bg-accent px-2 py-1 text-xs text-accent-foreground" data-testid={`badge-group-when-${g.id}`}
                 >
-                  {g.when}
+                  {g.when_text}
                 </div>
               </div>
               <p className="mt-3 text-sm leading-relaxed text-foreground/80" data-testid={`text-group-desc-${g.id}`}>
@@ -904,7 +797,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {recordings.map((r) => (
+            {recordingsData.map((r) => (
               <Card
                 key={r.id}
                 className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
@@ -982,10 +875,10 @@ export default function HomePage() {
 
           <div className="mt-8">
             <Accordion type="single" collapsible className="w-full" data-testid="accordion-faq">
-              {faq.map((item, idx) => (
-                <AccordionItem key={idx} value={`i-${idx}`} data-testid={`faq-item-${idx}`}>
-                  <AccordionTrigger data-testid={`button-faq-${idx}`}>{item.q}</AccordionTrigger>
-                  <AccordionContent data-testid={`text-faq-${idx}`}>{item.a}</AccordionContent>
+              {faqData.map((item, idx) => (
+                <AccordionItem key={item.id} value={`i-${item.id}`} data-testid={`faq-item-${idx}`}>
+                  <AccordionTrigger data-testid={`button-faq-${idx}`}>{item.question}</AccordionTrigger>
+                  <AccordionContent data-testid={`text-faq-${idx}`}>{item.answer}</AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
@@ -1044,7 +937,7 @@ export default function HomePage() {
                   <div>
                     <div className="text-sm font-medium" data-testid="text-contact-address-title">Adres</div>
                     <div className="text-sm text-muted-foreground" data-testid="text-contact-address">
-                      (uzupełnij w WordPress)
+                      {contactData.address || "(uzupełnij adres)"}
                     </div>
                   </div>
                 </div>
@@ -1054,7 +947,7 @@ export default function HomePage() {
                   <div>
                     <div className="text-sm font-medium" data-testid="text-contact-phone-title">Telefon</div>
                     <div className="text-sm text-muted-foreground" data-testid="text-contact-phone">
-                      (uzupełnij w WordPress)
+                      {contactData.phone || "(uzupełnij telefon)"}
                     </div>
                   </div>
                 </div>
@@ -1064,7 +957,7 @@ export default function HomePage() {
                   <div>
                     <div className="text-sm font-medium" data-testid="text-contact-mail-title">E-mail</div>
                     <div className="text-sm text-muted-foreground" data-testid="text-contact-mail">
-                      (uzupełnij w WordPress)
+                      {contactData.email || "(uzupełnij e-mail)"}
                     </div>
                   </div>
                 </div>
@@ -1076,7 +969,7 @@ export default function HomePage() {
                   <div>
                     <div className="text-sm font-medium" data-testid="text-contact-hours-title">Godziny</div>
                     <div className="text-sm text-muted-foreground" data-testid="text-contact-hours">
-                      (uzupełnij w WordPress)
+                      {contactData.hours || "(uzupełnij godziny)"}
                     </div>
                   </div>
                 </div>
