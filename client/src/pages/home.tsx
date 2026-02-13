@@ -93,12 +93,34 @@ function scrollToId(id: string) {
 
 function useStickyNavTrigger() {
   const [shown, setShown] = useState(false);
+
   useEffect(() => {
-    const onScroll = () => setShown(window.scrollY > 24);
-    onScroll();
+    let shownOnce = false;
+    const startedAt = performance.now();
+
+    const maybeShow = () => {
+      if (shownOnce) return;
+      const elapsed = performance.now() - startedAt;
+      const scrolled = window.scrollY > 24;
+      if (elapsed >= 3000 || scrolled) {
+        shownOnce = true;
+        setShown(true);
+      }
+    };
+
+    const onScroll = () => {
+      maybeShow();
+    };
+
+    const t = window.setInterval(maybeShow, 120);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
+
   return shown;
 }
 
@@ -273,17 +295,17 @@ function TopNav({ shown }: { shown: boolean }) {
   return (
     <div
       className={cx(
-        "fixed inset-x-0 top-0 z-50 mx-auto px-3 pt-3 transition-all duration-300",
-        shown ? "translate-y-0 opacity-100" : "-translate-y-3 opacity-0 pointer-events-none",
+        "fixed inset-x-0 top-0 z-50 mx-auto px-3 pt-3 transition-all duration-500",
+        shown ? "translate-y-0 opacity-100" : "-translate-y-6 opacity-0 pointer-events-none",
       )}
       data-testid="nav-wrap"
     >
       <div className="mx-auto max-w-6xl">
-        <div className="glass rounded-2xl px-3 py-2">
+        <div className="glass rounded-3xl px-3 py-2">
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-black/5"
+              className="flex items-center gap-3 rounded-2xl px-2 py-1.5 transition hover:bg-black/5"
               onClick={() => scrollToId("top")}
               data-testid="button-nav-home"
               aria-label="Wróć na górę"
@@ -291,17 +313,17 @@ function TopNav({ shown }: { shown: boolean }) {
               <img
                 src={logoPion}
                 alt="Logo parafii"
-                className="h-8 w-8 rounded-lg bg-white object-contain p-1"
+                className="h-12 w-12 rounded-2xl bg-white object-contain p-2 shadow-[0_10px_30px_-18px_hsl(224_70%_10%/.6)]"
                 loading="eager"
                 decoding="async"
                 data-testid="img-logo-nav"
               />
               <div className="hidden sm:block">
-                <div className="font-display text-sm leading-tight" data-testid="text-nav-title">
-                  Parafia EA
+                <div className="font-display text-base leading-tight tracking-[-0.01em]" data-testid="text-nav-title">
+                  Parafia Ewangelicka
                 </div>
                 <div className="text-xs text-muted-foreground" data-testid="text-nav-subtitle">
-                  Wisła Jawornik
+                  w Wiśle Jaworniku
                 </div>
               </div>
             </button>
@@ -497,12 +519,111 @@ export default function HomePage() {
       <TopNav shown={stickyShown} />
       <VideoHero />
 
+      {/* Video shrinks into a top strip after 3s/scroll */}
+      <div
+        className={cx(
+          "pointer-events-none fixed inset-x-0 top-0 z-40 transition-all duration-700",
+          stickyShown
+            ? "h-[20svh] opacity-100"
+            : "h-0 opacity-0",
+        )}
+        aria-hidden="true"
+        data-testid="video-topstrip"
+      >
+        <div className="relative h-full w-full overflow-hidden">
+          <video
+            className="h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/hero-poster.png"
+            data-testid="video-topstrip-video"
+          >
+            <source src="/hero-drone.mp4" type="video/mp4" />
+          </video>
+          <div className="hero-overlay absolute inset-0 opacity-80" />
+        </div>
+      </div>
+
       {/* Aktualności */}
       <section
         id="aktualnosci"
         className="mx-auto max-w-6xl px-5 py-16 sm:px-8"
         data-testid="section-aktualnosci"
       >
+        <div className="mb-8 grid gap-4 md:grid-cols-12" data-testid="hero-afterband">
+          <div className="md:col-span-7">
+            <div className="glass rounded-3xl p-5" data-testid="card-afterband">
+              <div className="flex items-center gap-3">
+                <img
+                  src={logoPion}
+                  alt="Logo parafii"
+                  className="h-16 w-16 rounded-2xl bg-white object-contain p-2"
+                  loading="lazy"
+                  decoding="async"
+                  data-testid="img-logo-afterband"
+                />
+                <div>
+                  <div className="font-display text-xl tracking-[-0.02em]" data-testid="text-afterband-title">
+                    Witaj w parafii
+                  </div>
+                  <div className="text-sm text-muted-foreground" data-testid="text-afterband-sub">
+                    Szybkie skróty do najważniejszych sekcji.
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => scrollToId("polecamy")}
+                  data-testid="button-jump-kalendarz"
+                >
+                  Kalendarz
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => scrollToId("nagrania")}
+                  data-testid="button-jump-nagrania"
+                >
+                  Nagrania
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => scrollToId("kontakt")}
+                  data-testid="button-jump-kontakt"
+                >
+                  Kontakt
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="md:col-span-5">
+            <div className="glass rounded-3xl p-5" data-testid="card-afterband-cta">
+              <div className="text-xs text-muted-foreground" data-testid="text-afterband-cta-kicker">
+                Wyróżnione
+              </div>
+              <div className="mt-2 font-display text-2xl tracking-[-0.02em]" data-testid="text-afterband-cta-title">
+                Remont Domu Gościnnego
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground" data-testid="text-afterband-cta-desc">
+                Zobacz informacje i aktualny status prac.
+              </p>
+              <Button
+                className="mt-4 w-full rounded-2xl"
+                onClick={() => window.open("https://osrodek.jawornik.eu", "_blank", "noopener,noreferrer")}
+                data-testid="button-afterband-remont"
+              >
+                Przejdź
+                <ChevronRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-news-title">

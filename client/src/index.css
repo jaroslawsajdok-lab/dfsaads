@@ -118,15 +118,13 @@
   }
 
   .glass {
-    background: linear-gradient(
-      180deg,
-      hsl(0 0% 100% / 0.72),
-      hsl(0 0% 100% / 0.56)
-    );
-    border: 1px solid hsl(220 20% 88% / 0.65);
+    background:
+      radial-gradient(800px 180px at 15% 15%, hsl(205 88% 55% / 0.12), transparent 60%),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.78), hsl(0 0% 100% / 0.55));
+    border: 1px solid hsl(220 20% 88% / 0.70);
     box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
   .glass-dark {
