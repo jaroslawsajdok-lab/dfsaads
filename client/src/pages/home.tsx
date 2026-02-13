@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 
 import logoPion from "@assets/Parafia_EA_Jawornik_logo_PION_kolor_1770990365264.jpg";
+
+const CROSS_MARK_SRC = "/cross-mark.png";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -302,8 +305,11 @@ function TopNav({ shown }: { shown: boolean }) {
     >
       <div className="mx-auto max-w-6xl">
         <div className="relative">
-          {/* Centerpiece logo */}
-          <div className="pointer-events-auto absolute left-1/2 top-0 z-10 -translate-x-1/2" data-testid="nav-logo-center">
+          {/* Cross centerpiece */}
+          <div
+            className="pointer-events-auto absolute left-1/2 top-0 z-10 -translate-x-1/2"
+            data-testid="nav-logo-center"
+          >
             <button
               type="button"
               onClick={() => scrollToId("top")}
@@ -311,23 +317,41 @@ function TopNav({ shown }: { shown: boolean }) {
               data-testid="button-nav-logo"
               aria-label="Wróć na górę"
             >
-              <div className="glass rounded-[28px] p-2 shadow-[0_18px_60px_-28px_hsl(224_70%_10%/.65)]">
+              <div className="glass rounded-[30px] p-2 shadow-[0_22px_70px_-34px_hsl(224_70%_10%/.70)]">
                 <img
-                  src={logoPion}
-                  alt="Logo parafii"
-                  className="h-[88px] w-[88px] rounded-[22px] bg-white object-contain p-3 transition-transform duration-500 group-hover:scale-[1.02]"
+                  src={CROSS_MARK_SRC}
+                  alt="Znak parafii"
+                  className="h-[120px] w-[120px] rounded-[24px] bg-white/90 object-contain p-4 transition-transform duration-500 group-hover:scale-[1.02]"
                   loading="eager"
                   decoding="async"
-                  data-testid="img-logo-nav"
+                  data-testid="img-cross-nav"
                 />
               </div>
             </button>
           </div>
 
-          {/* Navigation band “embedded into” the logo */}
-          <div className="glass rounded-[28px] px-3 py-2 pt-14" data-testid="nav-band">
-            <div className="flex items-center justify-between gap-3">
-              <div className="hidden sm:block px-2" data-testid="nav-brand-left">
+          {/* Nav band: menu embedded into the cross "arms" */}
+          <div className="glass rounded-[30px] px-3 py-3 pt-20" data-testid="nav-band">
+            <div className="relative flex items-center justify-between gap-3">
+              {/* Left "arm" */}
+              <div className="hidden md:flex flex-1 items-center justify-end" data-testid="nav-arm-left">
+                <div className="flex items-center gap-1 rounded-2xl bg-white/45 p-1 backdrop-blur" data-testid="nav-left-pills">
+                  {NAV.slice(0, 3).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => scrollToId(item.id)}
+                      className="rounded-xl px-3 py-2 text-sm text-foreground/85 transition hover:bg-black/5 hover:text-foreground"
+                      data-testid={`link-nav-left-${item.id}`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Center caption under cross */}
+              <div className="hidden sm:block text-center" data-testid="nav-brand-center">
                 <div className="font-display text-sm leading-tight tracking-[-0.01em]" data-testid="text-nav-title">
                   Parafia Ewangelicka
                 </div>
@@ -336,21 +360,24 @@ function TopNav({ shown }: { shown: boolean }) {
                 </div>
               </div>
 
-              <nav className="hidden flex-1 items-center justify-center gap-1 md:flex" aria-label="Nawigacja" data-testid="nav-main">
-                {NAV.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => scrollToId(item.id)}
-                    className="rounded-xl px-3 py-2 text-sm text-foreground/80 transition hover:bg-black/5 hover:text-foreground"
-                    data-testid={`link-nav-${item.id}`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
+              {/* Right "arm" */}
+              <div className="hidden md:flex flex-1 items-center justify-start" data-testid="nav-arm-right">
+                <div className="flex items-center gap-1 rounded-2xl bg-white/45 p-1 backdrop-blur" data-testid="nav-right-pills">
+                  {NAV.slice(3).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => scrollToId(item.id)}
+                      className="rounded-xl px-3 py-2 text-sm text-foreground/85 transition hover:bg-black/5 hover:text-foreground"
+                      data-testid={`link-nav-right-${item.id}`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-2 md:ml-0" data-testid="nav-cta">
                 <Button
                   size="sm"
                   className="rounded-2xl"
