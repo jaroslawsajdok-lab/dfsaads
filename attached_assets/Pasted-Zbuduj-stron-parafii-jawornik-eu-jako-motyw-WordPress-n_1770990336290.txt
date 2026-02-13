@@ -1,0 +1,133 @@
+Zbuduj stronę parafii jawornik.eu jako motyw WordPress (najlepiej child theme dla GeneratePress lub Astra), tak aby po wdrożeniu cała obsługa treści była w panelu WordPress.
+
+WYMAGANIA OGÓLNE
+
+Strona ma być klasyczna w układzie, ale z mocno nowoczesnymi elementami UI (glassmorphism menu, delikatne animacje, świetna typografia).
+
+Kod: PHP + HTML + CSS + minimalny JS (bez ciężkich frameworków).
+
+Wszystko responsywne, szybkie, dostępne (a11y).
+
+Zadbaj o Core Web Vitals (lazy load, optymalizacja wideo, brak wielkich bibliotek).
+
+NAJWAŻNIEJSZE: START = WIDEO Z DRONA (FULLSCREEN)
+
+Na stronie głównej na start pełnoekranowy background video (autoplay, loop, muted, playsinline).
+
+Jeśli autoplay zablokowany: pokaż poster (obraz) + przycisk “Odtwórz”.
+
+Na wideo: tytuł „Parafia Ewangelicka w Wiśle Jaworniku” + podtytuł + strzałka „Przewiń”.
+
+Menu (sticky) ma się pojawić po pierwszym scrollu (albo po chwili) i mieć efekt blur/translucent.
+
+WORDPRESS – EDYTOWALNOŚĆ (bez kodu)
+Użyj:
+
+Custom Post Types + Custom Fields (ACF) albo Gutenberg Blocks (preferowane).
+Treści mają być zarządzalne w WP:
+
+Aktualności – jako standardowe wpisy (posty) + opcjonalnie wyświetlanie feedu FB (fallback: ręczne wpisy).
+
+Kalendarz – jako CPT „Wydarzenia” z polami: data, godzina, typ, opis, miejsce. Widok: lista najbliższych + mini-kalendarz.
+
+Grupy w parafii – jako CPT „Grupy” (nazwa, opis, prowadzący, termin, ikona).
+
+Nagrania – sekcja z linkami YouTube (CPT „Nagrania” lub pole w ustawieniach strony).
+
+Galeria – CPT „Galerie” + galeria zdjęć (media library).
+
+FAQ – CPT „FAQ” (pytanie/odpowiedź).
+
+Dom Gościnny – edytowalny blok z linkiem do https://osrodek.jawornik.eu
+
+Kontakt – edytowalne pola: adres, tel, mail, godziny + mapa.
+
+NAWIGACJA (header)
+Menu górne (WP Menu):
+
+O nas
+
+Polecamy
+
+Nagrania
+
+Galeria
+
+FAQ
+
+Dom Gościnny
+
+Kontakt
+
+wyróżniony przycisk: „REMONT DOMU GOŚCINNEGO”
+
+STRUKTURA MOTYWU (minimum plików)
+
+style.css (nagłówek motywu + style)
+
+functions.php (enqueue, rejestracja CPT, shortcodes/bloki)
+
+front-page.php (strona główna)
+
+header.php / footer.php
+
+template-parts/ dla sekcji
+
+assets/ (css/js)
+Zrób też wersję, która działa jako child theme.
+
+SEKCJE NA FRONT-PAGE (one-page z anchorami)
+
+Hero video
+
+Aktualności (3–6 ostatnich)
+
+Kalendarz (najbliższe + filtrowanie)
+
+Grupy w parafii (kafelki)
+
+Nagrania (miniatury)
+
+Galeria (lightbox)
+
+FAQ (accordion)
+
+Dom Gościnny (opis + button)
+
+Kontakt (dane + mapa + formularz)
+
+FORMULARZ KONTAKTOWY
+
+Najlepiej integracja pod Contact Form 7 / WPForms (placeholder shortcode w sekcji).
+
+INSTRUKCJA WDROŻENIA
+Na końcu przygotuj instrukcję:
+
+jak spakować motyw do ZIP
+
+gdzie wrzucić pliki do /wp-content/themes/
+
+jak włączyć motyw / child theme
+
+jak dodać treści (wydarzenia, FAQ, galerie)
+
+jak podmienić wideo (Media Library + pole w ustawieniach strony)
+
+DANE / LINKI
+FB: https://www.facebook.com/wislajawornik
+
+YT: https://www.youtube.com/@parafiae-awisajawornik2251
+
+Dom gościnny: https://osrodek.jawornik.eu
+
+Co potrzebujesz przygotować (żeby WP to łyknął bez bólu)
+
+1 plik wideo mp4 (krótkie, ~10–20 s) + 1 poster jpg/webp
+
+logo (SVG/PNG)
+
+dane kontaktowe
+
+10 zdjęć na start (mogą być robocze)
+
+Jeśli chcesz, mogę też od razu dopisać do promptu wariant: „bez ACF, tylko Gutenberg + patterny” (wtedy
