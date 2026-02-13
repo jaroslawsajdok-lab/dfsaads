@@ -295,84 +295,93 @@ function TopNav({ shown }: { shown: boolean }) {
   return (
     <div
       className={cx(
-        "fixed inset-x-0 top-0 z-50 mx-auto px-3 pt-3 transition-all duration-500",
-        shown ? "translate-y-0 opacity-100" : "-translate-y-6 opacity-0 pointer-events-none",
+        "fixed inset-x-0 top-0 z-50 mx-auto px-3 pt-3 transition-all duration-700",
+        shown ? "translate-y-0 opacity-100" : "-translate-y-8 opacity-0 pointer-events-none",
       )}
       data-testid="nav-wrap"
     >
       <div className="mx-auto max-w-6xl">
-        <div className="glass rounded-3xl px-3 py-2">
-          <div className="flex items-center justify-between gap-3">
+        <div className="relative">
+          {/* Centerpiece logo */}
+          <div className="pointer-events-auto absolute left-1/2 top-0 z-10 -translate-x-1/2" data-testid="nav-logo-center">
             <button
               type="button"
-              className="flex items-center gap-3 rounded-2xl px-2 py-1.5 transition hover:bg-black/5"
               onClick={() => scrollToId("top")}
-              data-testid="button-nav-home"
+              className="group"
+              data-testid="button-nav-logo"
               aria-label="Wróć na górę"
             >
-              <img
-                src={logoPion}
-                alt="Logo parafii"
-                className="h-12 w-12 rounded-2xl bg-white object-contain p-2 shadow-[0_10px_30px_-18px_hsl(224_70%_10%/.6)]"
-                loading="eager"
-                decoding="async"
-                data-testid="img-logo-nav"
-              />
-              <div className="hidden sm:block">
-                <div className="font-display text-base leading-tight tracking-[-0.01em]" data-testid="text-nav-title">
+              <div className="glass rounded-[28px] p-2 shadow-[0_18px_60px_-28px_hsl(224_70%_10%/.65)]">
+                <img
+                  src={logoPion}
+                  alt="Logo parafii"
+                  className="h-[88px] w-[88px] rounded-[22px] bg-white object-contain p-3 transition-transform duration-500 group-hover:scale-[1.02]"
+                  loading="eager"
+                  decoding="async"
+                  data-testid="img-logo-nav"
+                />
+              </div>
+            </button>
+          </div>
+
+          {/* Navigation band “embedded into” the logo */}
+          <div className="glass rounded-[28px] px-3 py-2 pt-14" data-testid="nav-band">
+            <div className="flex items-center justify-between gap-3">
+              <div className="hidden sm:block px-2" data-testid="nav-brand-left">
+                <div className="font-display text-sm leading-tight tracking-[-0.01em]" data-testid="text-nav-title">
                   Parafia Ewangelicka
                 </div>
                 <div className="text-xs text-muted-foreground" data-testid="text-nav-subtitle">
                   w Wiśle Jaworniku
                 </div>
               </div>
-            </button>
 
-            <nav className="hidden items-center gap-1 md:flex" aria-label="Nawigacja" data-testid="nav-main">
-              {NAV.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => scrollToId(item.id)}
-                  className="rounded-xl px-3 py-2 text-sm text-foreground/80 transition hover:bg-black/5 hover:text-foreground"
-                  data-testid={`link-nav-${item.id}`}
+              <nav className="hidden flex-1 items-center justify-center gap-1 md:flex" aria-label="Nawigacja" data-testid="nav-main">
+                {NAV.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => scrollToId(item.id)}
+                    className="rounded-xl px-3 py-2 text-sm text-foreground/80 transition hover:bg-black/5 hover:text-foreground"
+                    data-testid={`link-nav-${item.id}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  className="rounded-2xl"
+                  onClick={() =>
+                    window.open(
+                      "https://osrodek.jawornik.eu",
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }
+                  data-testid="button-nav-remont"
                 >
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                className="rounded-xl"
-                onClick={() =>
-                  window.open(
-                    "https://osrodek.jawornik.eu",
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-                }
-                data-testid="button-nav-remont"
-              >
-                REMONT DOMU GOŚCINNEGO
-              </Button>
+                  REMONT DOMU GOŚCINNEGO
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <div className="mt-2 block md:hidden" data-testid="nav-mobile">
-            <div className="flex flex-wrap gap-1">
-              {NAV.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => scrollToId(item.id)}
-                  className="rounded-xl px-3 py-2 text-sm text-foreground/80 transition hover:bg-black/5 hover:text-foreground"
-                  data-testid={`link-nav-mobile-${item.id}`}
-                >
-                  {item.label}
-                </button>
-              ))}
+            <div className="mt-2 block md:hidden" data-testid="nav-mobile">
+              <div className="flex flex-wrap justify-center gap-1">
+                {NAV.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => scrollToId(item.id)}
+                    className="rounded-xl px-3 py-2 text-sm text-foreground/80 transition hover:bg-black/5 hover:text-foreground"
+                    data-testid={`link-nav-mobile-${item.id}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
