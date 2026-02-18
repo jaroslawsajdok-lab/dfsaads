@@ -314,11 +314,16 @@ function TopNav({ shown }: { shown: boolean }) {
       {/* White band above the grey bars */}
       <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop }} />
 
-      {/* Full-width grey menu bar layer */}
+      {/* Full-width grey menu bar — split into left & right to leave a gap around the logo */}
       <div
-        className="absolute inset-x-0 hidden md:block"
-        style={{ top: barTop, height: barH, background: "#b0b0b0" }}
-        data-testid="nav-bar-full"
+        className="absolute left-0 hidden md:block"
+        style={{ top: barTop, height: barH, background: "#b0b0b0", right: `calc(50% + ${crossW / 2 + 6}px)` }}
+        data-testid="nav-bar-left"
+      />
+      <div
+        className="absolute right-0 hidden md:block"
+        style={{ top: barTop, height: barH, background: "#b0b0b0", left: `calc(50% + ${crossW / 2 + 6}px)` }}
+        data-testid="nav-bar-right"
       />
 
       {/* Content layer with logo + menu items */}
@@ -349,35 +354,29 @@ function TopNav({ shown }: { shown: boolean }) {
           </div>
 
           {/* Gap left */}
-          <div className="hidden md:block shrink-0" style={{ width: 4 }} />
+          <div className="hidden md:block shrink-0" style={{ width: 6 }} />
 
-          {/* Cross logo — white outline separates it from the grey bar */}
+          {/* Cross logo */}
           <button
             type="button"
             onClick={() => scrollToId("top")}
-            className="group relative z-10 shrink-0"
+            className="group relative z-10 shrink-0 transition-transform duration-300 hover:scale-[1.03]"
             data-testid="button-nav-logo"
             aria-label="Wróć na górę"
-            style={{ padding: 4 }}
           >
-            <div
-              className="rounded-sm bg-white transition-transform duration-300 group-hover:scale-[1.03]"
-              style={{ padding: 3 }}
-            >
-              <img
-                src={PARISH_LOGO_SRC}
-                alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-                className="object-contain"
-                style={{ height: CROSS_H - 14, width: Math.round((CROSS_H - 14) * (325 / 515)) }}
-                loading="eager"
-                decoding="async"
-                data-testid="img-cross-nav"
-              />
-            </div>
+            <img
+              src={PARISH_LOGO_SRC}
+              alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
+              className="object-contain"
+              style={{ height: CROSS_H, width: crossW }}
+              loading="eager"
+              decoding="async"
+              data-testid="img-cross-nav"
+            />
           </button>
 
           {/* Gap right */}
-          <div className="hidden md:block shrink-0" style={{ width: 4 }} />
+          <div className="hidden md:block shrink-0" style={{ width: 6 }} />
 
           {/* Right menu items — sit on the full-width bar */}
           <div
