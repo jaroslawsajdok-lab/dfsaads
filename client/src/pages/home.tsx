@@ -308,19 +308,13 @@ function TopNav({ shown }: { shown: boolean }) {
       )}
       data-testid="nav-wrap"
     >
-      {/* White band above the grey bar */}
-      <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop }} />
-
-      {/* White fill behind the logo area so video doesn't show through */}
-      <div
-        className="absolute top-0 bg-white"
-        style={{ left: 0, width: logoAreaW + 6, height: barTop + barH + 4 }}
-      />
+      {/* White background behind entire menu area (above + behind + below grey bar) */}
+      <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop + barH + 4 }} />
 
       {/* Full-width grey bar — starts after the logo area */}
       <div
         className="absolute right-0 hidden md:block"
-        style={{ top: barTop, height: barH, background: "#b0b0b0", left: logoAreaW + 6 }}
+        style={{ top: barTop, height: barH, background: "#b0b0b0", left: logoAreaW + 3 }}
         data-testid="nav-bar-full"
       />
 
@@ -329,7 +323,7 @@ function TopNav({ shown }: { shown: boolean }) {
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
         className="absolute left-0 top-0 z-10 cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
-        style={{ width: crossW, height: CROSS_H, marginLeft: 6 }}
+        style={{ width: crossW, height: CROSS_H, marginLeft: 3 }}
         data-testid="button-nav-logo"
         aria-label="Menu"
       >
@@ -346,7 +340,7 @@ function TopNav({ shown }: { shown: boolean }) {
       {/* Desktop: menu items inside the grey bar */}
       <div
         className="absolute hidden md:flex items-center gap-8 px-10"
-        style={{ top: barTop, height: barH, left: logoAreaW + 6, right: 0 }}
+        style={{ top: barTop, height: barH, left: logoAreaW + 3, right: 0 }}
         data-testid="nav-desktop-items"
       >
         {NAV_ITEMS.map((item) => (
@@ -375,7 +369,7 @@ function TopNav({ shown }: { shown: boolean }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
             className="absolute z-50 rounded-b-xl bg-white shadow-lg"
-            style={{ top: barTop + barH, left: 6, width: Math.max(crossW, 220) }}
+            style={{ top: barTop + barH, left: 3, width: Math.max(crossW, 220) }}
             data-testid="nav-dropdown"
           >
             <div className="flex flex-col py-2">
