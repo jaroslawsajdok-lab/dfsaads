@@ -16,7 +16,7 @@ import {
 
 import logoPion from "@assets/Parafia_EA_Jawornik_logo_PION_kolor_1770990365264.jpg";
 
-const CROSS_MARK_SRC = "/cross-mark.png";
+const PARISH_LOGO_SRC = "/parish-logo.svg";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -329,9 +329,9 @@ function TopNav({ shown }: { shown: boolean }) {
             >
               <div className="glass rounded-[30px] p-2 shadow-[0_22px_70px_-34px_hsl(224_70%_10%/.70)]">
                 <img
-                  src={CROSS_MARK_SRC}
-                  alt="Znak parafii"
-                  className="h-[120px] w-[120px] rounded-[24px] bg-white/90 object-contain p-4 transition-transform duration-500 group-hover:scale-[1.02]"
+                  src={PARISH_LOGO_SRC}
+                  alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
+                  className="h-[120px] w-[120px] rounded-[24px] bg-white/90 object-contain p-3 transition-transform duration-500 group-hover:scale-[1.02]"
                   loading="eager"
                   decoding="async"
                   data-testid="img-cross-nav"
