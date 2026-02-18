@@ -287,21 +287,22 @@ function VideoHero() {
   );
 }
 
-const NAV_LEFT = [
-  { id: "onas", label: "O nas" },
-  { id: "polecamy", label: "Polecamy" },
-] as const;
-
-const NAV_RIGHT = [
+const NAV_ITEMS = [
+  { id: "aktualnosci", label: "Aktualności" },
+  { id: "kalendarz", label: "Kalendarz" },
+  { id: "grupy", label: "Grupy" },
   { id: "nagrania", label: "Nagrania" },
   { id: "galeria", label: "Galeria" },
   { id: "faq", label: "FAQ" },
+  { id: "kontakt", label: "Kontakt" },
 ] as const;
 
 function TopNav({ shown }: { shown: boolean }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const barH = Math.round(CROSS_H * 0.27);
   const barTop = Math.round(CROSS_H * 0.175);
   const crossW = Math.round(CROSS_H * (325 / 515));
+  const logoAreaW = crossW + 12;
 
   return (
     <nav
@@ -311,114 +312,96 @@ function TopNav({ shown }: { shown: boolean }) {
       )}
       data-testid="nav-wrap"
     >
-      {/* White band above the grey bars */}
+      {/* White band above the grey bar */}
       <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop }} />
 
-      {/* Full-width grey menu bar — split into left & right to leave a gap around the logo */}
-      <div
-        className="absolute left-0 hidden md:block"
-        style={{ top: barTop, height: barH, background: "#b0b0b0", right: `calc(50% + ${crossW / 2 + 6}px)` }}
-        data-testid="nav-bar-left"
-      />
+      {/* Full-width grey bar — starts after the logo area */}
       <div
         className="absolute right-0 hidden md:block"
-        style={{ top: barTop, height: barH, background: "#b0b0b0", left: `calc(50% + ${crossW / 2 + 6}px)` }}
-        data-testid="nav-bar-right"
+        style={{ top: barTop, height: barH, background: "#b0b0b0", left: logoAreaW + 6 }}
+        data-testid="nav-bar-full"
       />
 
-      {/* Content layer with logo + menu items */}
-      <div className="relative mx-auto max-w-6xl px-4">
-        <div className="relative flex items-start justify-center" style={{ height: CROSS_H }}>
-          {/* Left menu items — sit on the full-width bar */}
-          <div
-            className="hidden md:flex items-center justify-end flex-1"
-            style={{ marginTop: barTop, height: barH }}
-            data-testid="nav-arm-left"
-          >
-            <div
-              className="flex items-center gap-8 px-10 h-full"
-              data-testid="nav-left-bar"
-            >
-              {NAV_LEFT.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => scrollToId(item.id)}
-                  className="text-[15px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
-                  data-testid={`link-nav-left-${item.id}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Logo — left side, overlaps hero below */}
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        className="absolute left-0 top-0 z-10 cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+        style={{ width: crossW, height: CROSS_H, marginLeft: 6 }}
+        data-testid="button-nav-logo"
+        aria-label="Menu"
+      >
+        <img
+          src={PARISH_LOGO_SRC}
+          alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
+          className="h-full w-full object-contain"
+          loading="eager"
+          decoding="async"
+          data-testid="img-cross-nav"
+        />
+      </button>
 
-          {/* Gap left */}
-          <div className="hidden md:block shrink-0" style={{ width: 6 }} />
-
-          {/* Cross logo */}
+      {/* Desktop: menu items inside the grey bar */}
+      <div
+        className="absolute hidden md:flex items-center gap-8 px-10"
+        style={{ top: barTop, height: barH, left: logoAreaW + 6, right: 0 }}
+        data-testid="nav-desktop-items"
+      >
+        {NAV_ITEMS.map((item) => (
           <button
+            key={item.id}
             type="button"
-            onClick={() => scrollToId("top")}
-            className="group relative z-10 shrink-0 transition-transform duration-300 hover:scale-[1.03]"
-            data-testid="button-nav-logo"
-            aria-label="Wróć na górę"
+            onClick={() => scrollToId(item.id)}
+            className="text-[15px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
+            data-testid={`link-nav-${item.id}`}
           >
-            <img
-              src={PARISH_LOGO_SRC}
-              alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-              className="object-contain"
-              style={{ height: CROSS_H, width: crossW }}
-              loading="eager"
-              decoding="async"
-              data-testid="img-cross-nav"
-            />
+            {item.label}
           </button>
+        ))}
+      </div>
 
-          {/* Gap right */}
-          <div className="hidden md:block shrink-0" style={{ width: 6 }} />
-
-          {/* Right menu items — sit on the full-width bar */}
+      {/* Dropdown menu — appears below the logo on click */}
+      {menuOpen && (
+        <>
           <div
-            className="hidden md:flex items-center justify-start flex-1"
-            style={{ marginTop: barTop, height: barH }}
-            data-testid="nav-arm-right"
+            className="fixed inset-0 z-40"
+            onClick={() => setMenuOpen(false)}
+            data-testid="nav-dropdown-backdrop"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute z-50 rounded-b-xl bg-white shadow-lg"
+            style={{ top: barTop + barH, left: 6, width: Math.max(crossW, 220) }}
+            data-testid="nav-dropdown"
           >
-            <div
-              className="flex items-center gap-8 px-10 h-full"
-              data-testid="nav-right-bar"
-            >
-              {NAV_RIGHT.map((item) => (
+            <div className="flex flex-col py-2">
+              {NAV_ITEMS.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => scrollToId(item.id)}
-                  className="text-[15px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
-                  data-testid={`link-nav-right-${item.id}`}
+                  onClick={() => { scrollToId(item.id); setMenuOpen(false); }}
+                  className="px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  data-testid={`link-dropdown-${item.id}`}
                 >
                   {item.label}
                 </button>
               ))}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </>
+      )}
 
-        {/* Mobile nav */}
-        <div className="block md:hidden" data-testid="nav-mobile">
-          <div className="flex flex-wrap justify-center gap-1 rounded-2xl bg-white/90 px-2 py-2 backdrop-blur-sm mx-4">
-            {[...NAV_LEFT, ...NAV_RIGHT].map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => scrollToId(item.id)}
-                className="px-3 py-1.5 text-[13px] font-semibold tracking-widest text-gray-600 uppercase transition-colors hover:text-gray-900"
-                data-testid={`link-nav-mobile-${item.id}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Mobile: hamburger-style — same dropdown triggered by logo tap */}
+      <div
+        className="absolute right-4 flex md:hidden items-center"
+        style={{ top: barTop, height: barH }}
+        data-testid="nav-mobile-hint"
+      >
+        <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
+          Menu
+        </span>
       </div>
     </nav>
   );
