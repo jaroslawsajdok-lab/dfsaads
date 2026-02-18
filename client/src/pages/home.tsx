@@ -299,9 +299,9 @@ const NAV_ITEMS = [
 
 function TopNav({ shown }: { shown: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const barH = Math.round(CROSS_H * 0.27);
-  const barTop = Math.round(CROSS_H * 0.175);
-  const crossW = Math.round(CROSS_H * (325 / 515));
+  const barH = Math.round(CROSS_H * 0.267);
+  const barTop = Math.round(CROSS_H * 0.170);
+  const crossW = Math.round(CROSS_H * (305 / 495));
   const logoAreaW = crossW + 12;
 
   return (
