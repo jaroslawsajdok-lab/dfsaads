@@ -410,44 +410,35 @@ declare global {
 }
 
 function FacebookEmbed() {
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(500);
 
   useEffect(() => {
-    if (window.FB) {
-      window.FB.XFBML.parse(ref.current!);
-    } else {
-      const id = setInterval(() => {
-        if (window.FB) {
-          window.FB.XFBML.parse(ref.current!);
-          clearInterval(id);
-        }
-      }, 500);
-      return () => clearInterval(id);
+    function measure() {
+      if (containerRef.current) {
+        setWidth(containerRef.current.offsetWidth);
+      }
     }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
   }, []);
 
+  const src =
+    `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent("https://www.facebook.com/wislajawornik")}` +
+    `&tabs=timeline&width=${width}&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&locale=pl_PL`;
+
   return (
-    <div ref={ref} className="mt-8 flex justify-center" data-testid="facebook-embed">
-      <div
-        className="fb-page"
-        data-href="https://www.facebook.com/wislajawornik"
-        data-tabs="timeline"
-        data-width="500"
-        data-height="700"
-        data-small-header="false"
-        data-adapt-container-width="true"
-        data-hide-cover="false"
-        data-show-facepile="true"
-      >
-        <blockquote
-          cite="https://www.facebook.com/wislajawornik"
-          className="fb-xfbml-parse-ignore"
-        >
-          <a href="https://www.facebook.com/wislajawornik">
-            Parafia Ewangelicka w Wiśle Jaworniku
-          </a>
-        </blockquote>
-      </div>
+    <div ref={containerRef} className="mt-8 w-full" data-testid="facebook-embed">
+      <iframe
+        src={src}
+        width="100%"
+        height="700"
+        style={{ border: "none", overflow: "hidden" }}
+        allowFullScreen
+        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+        title="Facebook – Parafia Ewangelicka w Wiśle Jaworniku"
+      />
     </div>
   );
 }
