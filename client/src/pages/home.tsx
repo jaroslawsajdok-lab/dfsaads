@@ -29,14 +29,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-type NewsItem = {
-  id: number;
-  date: string;
-  title: string;
-  excerpt: string;
-  href?: string | null;
-};
-
 type EventItem = {
   id: number;
   date: string;
@@ -413,10 +405,56 @@ async function apiFetch<T>(url: string): Promise<T> {
   return res.json();
 }
 
+declare global {
+  interface Window { FB?: { XFBML: { parse: (el?: HTMLElement) => void } } }
+}
+
+function FacebookEmbed() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (window.FB) {
+      window.FB.XFBML.parse(ref.current!);
+    } else {
+      const id = setInterval(() => {
+        if (window.FB) {
+          window.FB.XFBML.parse(ref.current!);
+          clearInterval(id);
+        }
+      }, 500);
+      return () => clearInterval(id);
+    }
+  }, []);
+
+  return (
+    <div ref={ref} className="mt-8 flex justify-center" data-testid="facebook-embed">
+      <div
+        className="fb-page"
+        data-href="https://www.facebook.com/wislajawornik"
+        data-tabs="timeline"
+        data-width="500"
+        data-height="700"
+        data-small-header="false"
+        data-adapt-container-width="true"
+        data-hide-cover="false"
+        data-show-facepile="true"
+      >
+        <blockquote
+          cite="https://www.facebook.com/wislajawornik"
+          className="fb-xfbml-parse-ignore"
+        >
+          <a href="https://www.facebook.com/wislajawornik">
+            Parafia Ewangelicka w Wiśle Jaworniku
+          </a>
+        </blockquote>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const stickyShown = useStickyNavTrigger();
 
-  const { data: newsData = [] } = useQuery<NewsItem[]>({ queryKey: ["news"], queryFn: () => apiFetch("/api/news") });
   const { data: eventsData = [] } = useQuery<EventItem[]>({ queryKey: ["events"], queryFn: () => apiFetch("/api/events") });
   const { data: groupsData = [] } = useQuery<GroupItem[]>({ queryKey: ["groups"], queryFn: () => apiFetch("/api/groups") });
   const { data: recordingsData = [] } = useQuery<RecordingItem[]>({ queryKey: ["recordings"], queryFn: () => apiFetch("/api/recordings") });
@@ -531,50 +569,7 @@ export default function HomePage() {
           </Button>
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {newsData.map((n) => (
-            <Card
-              key={n.id}
-              className="group overflow-hidden rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur"
-              data-testid={`card-news-${n.id}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-xs text-muted-foreground" data-testid={`text-news-date-${n.id}`}>
-                    {formatDatePL(n.date)}
-                  </div>
-                  <div
-                    className="mt-2 font-display text-xl leading-tight tracking-[-0.02em]"
-                    data-testid={`text-news-headline-${n.id}`}
-                  >
-                    {n.title}
-                  </div>
-                </div>
-                <div className="rounded-xl bg-accent px-2 py-1 text-xs text-accent-foreground" data-testid={`badge-news-${n.id}`}>
-                  NOWE
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-foreground/80" data-testid={`text-news-excerpt-${n.id}`}>
-                {n.excerpt}
-              </p>
-              <div className="mt-4">
-                <Button
-                  variant="ghost"
-                  className="-ml-2 rounded-xl"
-                  onClick={() =>
-                    n.href
-                      ? window.open(n.href, "_blank", "noopener,noreferrer")
-                      : scrollToId("kontakt")
-                  }
-                  data-testid={`button-news-open-${n.id}`}
-                >
-                  Czytaj
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <FacebookEmbed />
       </section>
 
       {/* Kalendarz */}
