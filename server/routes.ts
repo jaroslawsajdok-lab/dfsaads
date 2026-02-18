@@ -9,19 +9,64 @@ import {
 } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
-const FB_PAGE_ID = "wislajawornik";
+const FB_PAGE_SLUG = process.env.FB_PAGE_SLUG || "wislajawornik";
 const FB_CACHE_TTL = 5 * 60 * 1000;
 let fbCache: { data: any; ts: number } | null = null;
+let resolvedPageToken: { pageId: string; token: string; slug: string } | null = null;
+
+async function resolvePageToken(): Promise<{ pageId: string; token: string; slug: string } | null> {
+  if (resolvedPageToken) return resolvedPageToken;
+
+  const userToken = process.env.FACEBOOK_PAGE_TOKEN;
+  if (!userToken) return null;
+
+  try {
+    const accountsRes = await fetch(
+      `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,link&access_token=${userToken}`
+    );
+    if (!accountsRes.ok) {
+      console.error("FB /me/accounts error:", accountsRes.status, await accountsRes.text());
+      return null;
+    }
+    const accountsJson = await accountsRes.json();
+    const pages = accountsJson.data || [];
+    if (pages.length === 0) {
+      console.error("FB: No pages found for this token");
+      return null;
+    }
+
+    console.log(`FB: Found ${pages.length} page(s): ${pages.map((p: any) => `"${p.name}" (${p.id})`).join(", ")}`);
+
+    const page = pages.length === 1
+      ? pages[0]
+      : pages.find((p: any) =>
+          p.name?.toLowerCase().includes(FB_PAGE_SLUG.toLowerCase()) ||
+          p.link?.includes(FB_PAGE_SLUG) ||
+          p.id === FB_PAGE_SLUG
+        ) || pages[0];
+
+    const slug = page.link
+      ? new URL(page.link).pathname.replace(/\//g, "")
+      : FB_PAGE_SLUG;
+
+    console.log(`FB: Using page "${page.name}" (ID: ${page.id}, slug: ${slug})`);
+    resolvedPageToken = { pageId: page.id, token: page.access_token, slug };
+    return resolvedPageToken;
+  } catch (err) {
+    console.error("FB resolvePageToken error:", err);
+    return null;
+  }
+}
 
 async function fetchFacebookPosts() {
   if (fbCache && Date.now() - fbCache.ts < FB_CACHE_TTL) return fbCache.data;
 
-  const token = process.env.FACEBOOK_PAGE_TOKEN;
-  if (!token) return [];
+  const pageInfo = await resolvePageToken();
+  if (!pageInfo) return [];
 
   try {
     const fields = "message,full_picture,created_time,permalink_url,attachments{media,subattachments,media_type,url,title},reactions.summary(true).limit(0),shares,comments.summary(true).limit(0)";
-    const url = `https://graph.facebook.com/v21.0/${FB_PAGE_ID}/posts?fields=${encodeURIComponent(fields)}&limit=10&access_token=${token}`;
+    const url = `https://graph.facebook.com/v21.0/${pageInfo.pageId}/posts?fields=${encodeURIComponent(fields)}&limit=10&access_token=${pageInfo.token}`;
     const res = await fetch(url);
     if (!res.ok) {
       console.error("Facebook API error:", res.status, await res.text());
@@ -137,11 +182,12 @@ export async function registerRoutes(
 
   app.get("/api/facebook-posts", async (_req, res) => {
     if (!process.env.FACEBOOK_PAGE_TOKEN) {
-      res.json({ error: "no_token", posts: [] });
+      res.json({ error: "no_token", posts: [], pageSlug: FB_PAGE_SLUG });
       return;
     }
     const posts = await fetchFacebookPosts();
-    res.json({ error: null, posts });
+    const slug = resolvedPageToken?.slug || FB_PAGE_SLUG;
+    res.json({ error: null, posts, pageSlug: slug });
   });
 
   return httpServer;

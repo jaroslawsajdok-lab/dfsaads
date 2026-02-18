@@ -540,12 +540,12 @@ function FbPostCard({ post }: { post: FbPost }) {
   );
 }
 
-type FbApiResponse = { error: string | null; posts: FbPost[] };
+type FbApiResponse = { error: string | null; posts: FbPost[]; pageSlug?: string };
 
 const FB_PLUGIN_W = 500;
 const FB_PLUGIN_H = 800;
 
-function FacebookIframeEmbed() {
+function FacebookIframeEmbed({ pageSlug = "wislajawornik" }: { pageSlug?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
@@ -561,7 +561,7 @@ function FacebookIframeEmbed() {
   }, []);
 
   const src =
-    `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent("https://www.facebook.com/wislajawornik")}` +
+    `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(`https://www.facebook.com/${pageSlug}`)}` +
     `&tabs=timeline&width=${FB_PLUGIN_W}&height=${FB_PLUGIN_H}&small_header=false&adapt_container_width=false&hide_cover=false&show_facepile=true&locale=pl_PL`;
 
   return (
@@ -597,6 +597,7 @@ function FacebookFeed() {
   });
 
   const posts = data?.posts ?? [];
+  const pageSlug = data?.pageSlug || "wislajawornik";
   const hasNativeFeed = posts.length > 0;
 
   if (isLoading) {
@@ -617,7 +618,7 @@ function FacebookFeed() {
     );
   }
 
-  return <FacebookIframeEmbed />;
+  return <FacebookIframeEmbed pageSlug={pageSlug} />;
 }
 
 export default function HomePage() {
