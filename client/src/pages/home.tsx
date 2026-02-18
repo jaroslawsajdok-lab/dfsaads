@@ -313,15 +313,20 @@ function TopNav({ shown }: { shown: boolean }) {
         "fixed inset-x-0 top-0 z-50 transition-all duration-700",
         shown ? "translate-y-0 opacity-100" : "-translate-y-8 opacity-0 pointer-events-none",
       )}
+      style={{ pointerEvents: shown ? "auto" : "none" }}
       data-testid="nav-wrap"
     >
-      <div className="bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-center px-4 py-3">
-          {/* Left menu bar */}
-          <div className="hidden md:flex items-center justify-end" data-testid="nav-arm-left">
+      <div className="relative mx-auto max-w-6xl px-4">
+        <div className="relative flex items-start justify-center" style={{ height: 220 }}>
+          {/* Left menu bar — aligned to cross arms */}
+          <div
+            className="hidden md:flex items-center justify-end flex-1"
+            style={{ marginTop: 82, height: 56 }}
+            data-testid="nav-arm-left"
+          >
             <div
-              className="flex items-center gap-6 px-6"
-              style={{ height: 36, background: "#b0b0b0" }}
+              className="flex items-center gap-8 px-8 h-full"
+              style={{ background: "#b0b0b0" }}
               data-testid="nav-left-bar"
             >
               {NAV_LEFT.map((item) => (
@@ -329,7 +334,7 @@ function TopNav({ shown }: { shown: boolean }) {
                   key={item.id}
                   type="button"
                   onClick={() => scrollToId(item.id)}
-                  className="text-[13px] font-medium tracking-wide text-white uppercase transition-opacity hover:opacity-70"
+                  className="text-sm font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
                   data-testid={`link-nav-left-${item.id}`}
                 >
                   {item.label}
@@ -339,9 +344,9 @@ function TopNav({ shown }: { shown: boolean }) {
           </div>
 
           {/* Gap left */}
-          <div className="hidden md:block w-[4px] shrink-0" />
+          <div className="hidden md:block shrink-0" style={{ width: 4 }} />
 
-          {/* Cross logo — centered, no frame */}
+          {/* Cross logo — large, overlapping hero */}
           <button
             type="button"
             onClick={() => scrollToId("top")}
@@ -352,7 +357,8 @@ function TopNav({ shown }: { shown: boolean }) {
             <img
               src={PARISH_LOGO_SRC}
               alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-              className="h-[72px] w-[72px] object-contain transition-transform duration-300 group-hover:scale-[1.04]"
+              className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+              style={{ height: 220, width: 220 }}
               loading="eager"
               decoding="async"
               data-testid="img-cross-nav"
@@ -360,13 +366,17 @@ function TopNav({ shown }: { shown: boolean }) {
           </button>
 
           {/* Gap right */}
-          <div className="hidden md:block w-[4px] shrink-0" />
+          <div className="hidden md:block shrink-0" style={{ width: 4 }} />
 
-          {/* Right menu bar */}
-          <div className="hidden md:flex items-center justify-start" data-testid="nav-arm-right">
+          {/* Right menu bar — aligned to cross arms */}
+          <div
+            className="hidden md:flex items-center justify-start flex-1"
+            style={{ marginTop: 82, height: 56 }}
+            data-testid="nav-arm-right"
+          >
             <div
-              className="flex items-center gap-6 px-6"
-              style={{ height: 36, background: "#b0b0b0" }}
+              className="flex items-center gap-8 px-8 h-full"
+              style={{ background: "#b0b0b0" }}
               data-testid="nav-right-bar"
             >
               {NAV_RIGHT.map((item) => (
@@ -374,7 +384,7 @@ function TopNav({ shown }: { shown: boolean }) {
                   key={item.id}
                   type="button"
                   onClick={() => scrollToId(item.id)}
-                  className="text-[13px] font-medium tracking-wide text-white uppercase transition-opacity hover:opacity-70"
+                  className="text-sm font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
                   data-testid={`link-nav-right-${item.id}`}
                 >
                   {item.label}
@@ -385,14 +395,14 @@ function TopNav({ shown }: { shown: boolean }) {
         </div>
 
         {/* Mobile nav */}
-        <div className="block md:hidden border-t border-gray-100 px-4 pb-2" data-testid="nav-mobile">
-          <div className="flex flex-wrap justify-center gap-1 pt-1">
+        <div className="block md:hidden px-2 pb-2" data-testid="nav-mobile">
+          <div className="flex flex-wrap justify-center gap-1">
             {[...NAV_LEFT, ...NAV_RIGHT].map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => scrollToId(item.id)}
-                className="px-3 py-1.5 text-[13px] font-medium tracking-wide text-gray-600 uppercase transition-colors hover:text-gray-900"
+                className="px-3 py-1.5 text-[13px] font-semibold tracking-widest text-gray-600 uppercase transition-colors hover:text-gray-900"
                 data-testid={`link-nav-mobile-${item.id}`}
               >
                 {item.label}
