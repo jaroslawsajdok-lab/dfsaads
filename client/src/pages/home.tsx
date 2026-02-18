@@ -7,10 +7,14 @@ import {
   Calendar as CalendarIcon,
   ChevronRight,
   Facebook,
+  Heart,
   Mail,
   MapPin,
+  MessageCircle,
   Phone,
   Play,
+  Share2,
+  ThumbsUp,
   Youtube,
 } from "lucide-react";
 
@@ -405,56 +409,184 @@ async function apiFetch<T>(url: string): Promise<T> {
   return res.json();
 }
 
-declare global {
-  interface Window { FB?: { XFBML: { parse: (el?: HTMLElement) => void } } }
+type FbPost = {
+  id: string;
+  message: string;
+  images: string[];
+  created_time: string;
+  permalink_url: string;
+  reactions_count: number;
+  shares_count: number;
+  comments_count: number;
+};
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} min temu`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} ${hrs === 1 ? "godzinę" : hrs < 5 ? "godziny" : "godzin"} temu`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days} ${days === 1 ? "dzień" : "dni"} temu`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks} ${weeks === 1 ? "tydzień" : weeks < 5 ? "tygodnie" : "tygodni"} temu`;
+  const months = Math.floor(days / 30);
+  return `${months} ${months === 1 ? "miesiąc" : months < 5 ? "miesiące" : "miesięcy"} temu`;
 }
 
-const FB_PLUGIN_W = 500;
-const FB_PLUGIN_H = 700;
+const MAX_MSG_LEN = 280;
 
-function FacebookEmbed() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    function measure() {
-      if (containerRef.current) {
-        const containerW = containerRef.current.offsetWidth;
-        setScale(containerW / FB_PLUGIN_W);
-      }
-    }
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
-
-  const src =
-    `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent("https://www.facebook.com/wislajawornik")}` +
-    `&tabs=timeline&width=${FB_PLUGIN_W}&height=${FB_PLUGIN_H}&small_header=false&adapt_container_width=false&hide_cover=false&show_facepile=true&locale=pl_PL`;
-
-  const scaledH = FB_PLUGIN_H * scale;
+function FbPostCard({ post }: { post: FbPost }) {
+  const [expanded, setExpanded] = useState(false);
+  const needsTruncate = post.message.length > MAX_MSG_LEN;
+  const displayMsg = expanded || !needsTruncate
+    ? post.message
+    : post.message.slice(0, MAX_MSG_LEN) + "…";
+  const maxPreview = 3;
+  const extraCount = post.images.length - maxPreview;
 
   return (
-    <div
-      ref={containerRef}
-      className="mt-8 w-full overflow-hidden"
-      style={{ height: scaledH }}
-      data-testid="facebook-embed"
+    <article
+      className="rounded-2xl border bg-white p-5"
+      data-testid={`fb-post-${post.id}`}
     >
-      <iframe
-        src={src}
-        width={FB_PLUGIN_W}
-        height={FB_PLUGIN_H}
-        style={{
-          border: "none",
-          overflow: "hidden",
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
-        }}
-        allowFullScreen
-        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-        title="Facebook – Parafia Ewangelicka w Wiśle Jaworniku"
-      />
+      <div className="mb-3 flex items-center gap-3">
+        <img
+          src={PARISH_LOGO_SRC}
+          alt=""
+          className="h-10 w-10 rounded-full object-contain"
+        />
+        <div>
+          <a
+            href={post.permalink_url}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-[#1877F2] hover:underline"
+            data-testid={`fb-post-link-${post.id}`}
+          >
+            Parafia Ewangelicka w Wiśle Jaworniku
+          </a>
+          <div className="text-xs text-muted-foreground">{timeAgo(post.created_time)}</div>
+        </div>
+      </div>
+
+      {post.message && (
+        <div className="mb-3 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
+          {displayMsg}
+          {needsTruncate && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="ml-1 font-semibold text-[#1877F2] hover:underline"
+              data-testid={`fb-post-toggle-${post.id}`}
+            >
+              {expanded ? "Zobacz mniej" : "Zobacz więcej"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {post.images.length > 0 && (
+        <a
+          href={post.permalink_url}
+          target="_blank"
+          rel="noreferrer"
+          className="mb-3 block"
+        >
+          {post.images.length === 1 ? (
+            <img
+              src={post.images[0]}
+              alt=""
+              className="w-full rounded-xl object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="grid grid-cols-3 gap-1 overflow-hidden rounded-xl">
+              {post.images.slice(0, maxPreview).map((src, i) => (
+                <div key={i} className="relative aspect-square">
+                  <img
+                    src={src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                  {i === maxPreview - 1 && extraCount > 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-2xl font-bold text-white">
+                      +{extraCount}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </a>
+      )}
+
+      <div className="flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1" data-testid={`fb-post-reactions-${post.id}`}>
+          <ThumbsUp className="h-3.5 w-3.5 text-[#1877F2]" />
+          <Heart className="h-3.5 w-3.5 text-red-500" />
+          {post.reactions_count}
+        </span>
+        <span className="flex items-center gap-1" data-testid={`fb-post-shares-${post.id}`}>
+          <Share2 className="h-3.5 w-3.5" />
+          Udostępnienia: {post.shares_count}
+        </span>
+        <span className="flex items-center gap-1" data-testid={`fb-post-comments-${post.id}`}>
+          <MessageCircle className="h-3.5 w-3.5" />
+          Komentarze: {post.comments_count}
+        </span>
+      </div>
+    </article>
+  );
+}
+
+type FbApiResponse = { error: string | null; posts: FbPost[] };
+
+function FacebookFeed() {
+  const { data, isLoading } = useQuery<FbApiResponse>({
+    queryKey: ["facebook-posts"],
+    queryFn: () => apiFetch("/api/facebook-posts"),
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  const posts = data?.posts ?? [];
+  const configError = data?.error === "no_token";
+
+  if (isLoading) {
+    return (
+      <div className="mt-8 flex justify-center py-12 text-muted-foreground" data-testid="facebook-loading">
+        Ładowanie postów z Facebooka…
+      </div>
+    );
+  }
+
+  if (configError || posts.length === 0) {
+    return (
+      <div className="mt-8 rounded-2xl border bg-white p-8 text-center" data-testid="facebook-empty">
+        <Facebook className="mx-auto mb-3 h-10 w-10 text-[#1877F2]" />
+        <p className="mb-2 font-display text-lg">Posty z Facebooka</p>
+        <p className="text-sm text-muted-foreground">
+          {configError
+            ? "Brak tokenu Facebook — skonfiguruj FACEBOOK_PAGE_TOKEN, aby wyświetlić posty."
+            : "Brak postów do wyświetlenia."}
+        </p>
+        <a
+          href="https://www.facebook.com/wislajawornik"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-block text-sm font-semibold text-[#1877F2] hover:underline"
+        >
+          Zobacz nasze posty na Facebooku →
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8 space-y-4" data-testid="facebook-feed">
+      {posts.map((p) => (
+        <FbPostCard key={p.id} post={p} />
+      ))}
     </div>
   );
 }
@@ -576,7 +708,7 @@ export default function HomePage() {
           </Button>
         </div>
 
-        <FacebookEmbed />
+        <FacebookFeed />
       </section>
 
       {/* Kalendarz */}

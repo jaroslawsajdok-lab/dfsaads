@@ -9,6 +9,59 @@ import {
 } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
+const FB_PAGE_ID = "wislajawornik";
+const FB_CACHE_TTL = 5 * 60 * 1000;
+let fbCache: { data: any; ts: number } | null = null;
+
+async function fetchFacebookPosts() {
+  if (fbCache && Date.now() - fbCache.ts < FB_CACHE_TTL) return fbCache.data;
+
+  const token = process.env.FACEBOOK_PAGE_TOKEN;
+  if (!token) return [];
+
+  try {
+    const fields = "message,full_picture,created_time,permalink_url,attachments{media,subattachments,media_type,url,title},reactions.summary(true).limit(0),shares,comments.summary(true).limit(0)";
+    const url = `https://graph.facebook.com/v21.0/${FB_PAGE_ID}/posts?fields=${encodeURIComponent(fields)}&limit=10&access_token=${token}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error("Facebook API error:", res.status, await res.text());
+      return fbCache?.data ?? [];
+    }
+    const json = await res.json();
+    const posts = (json.data || []).map((p: any) => {
+      const images: string[] = [];
+      if (p.attachments?.data) {
+        for (const att of p.attachments.data) {
+          if (att.subattachments?.data) {
+            for (const sub of att.subattachments.data) {
+              if (sub.media?.image?.src) images.push(sub.media.image.src);
+            }
+          } else if (att.media?.image?.src) {
+            images.push(att.media.image.src);
+          }
+        }
+      }
+      if (images.length === 0 && p.full_picture) images.push(p.full_picture);
+
+      return {
+        id: p.id,
+        message: p.message || "",
+        images,
+        created_time: p.created_time,
+        permalink_url: p.permalink_url,
+        reactions_count: p.reactions?.summary?.total_count ?? 0,
+        shares_count: p.shares?.count ?? 0,
+        comments_count: p.comments?.summary?.total_count ?? 0,
+      };
+    });
+    fbCache = { data: posts, ts: Date.now() };
+    return posts;
+  } catch (err) {
+    console.error("Facebook fetch error:", err);
+    return fbCache?.data ?? [];
+  }
+}
+
 async function seedIfEmpty() {
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(news);
   if (count > 0) return;
@@ -80,6 +133,15 @@ export async function registerRoutes(
   app.get("/api/galleries", async (_req, res) => {
     const data = await storage.getGalleries();
     res.json(data);
+  });
+
+  app.get("/api/facebook-posts", async (_req, res) => {
+    if (!process.env.FACEBOOK_PAGE_TOKEN) {
+      res.json({ error: "no_token", posts: [] });
+      return;
+    }
+    const posts = await fetchFacebookPosts();
+    res.json({ error: null, posts });
   });
 
   return httpServer;
