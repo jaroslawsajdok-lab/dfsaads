@@ -311,9 +311,20 @@ function TopNav({ shown }: { shown: boolean }) {
       )}
       data-testid="nav-wrap"
     >
+      {/* White band above the grey bars */}
+      <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop }} />
+
+      {/* Full-width grey menu bar layer */}
+      <div
+        className="absolute inset-x-0 hidden md:block"
+        style={{ top: barTop, height: barH, background: "#b0b0b0" }}
+        data-testid="nav-bar-full"
+      />
+
+      {/* Content layer with logo + menu items */}
       <div className="relative mx-auto max-w-6xl px-4">
         <div className="relative flex items-start justify-center" style={{ height: CROSS_H }}>
-          {/* Left menu bar */}
+          {/* Left menu items — sit on the full-width bar */}
           <div
             className="hidden md:flex items-center justify-end flex-1"
             style={{ marginTop: barTop, height: barH }}
@@ -321,7 +332,6 @@ function TopNav({ shown }: { shown: boolean }) {
           >
             <div
               className="flex items-center gap-8 px-10 h-full"
-              style={{ background: "#b0b0b0" }}
               data-testid="nav-left-bar"
             >
               {NAV_LEFT.map((item) => (
@@ -363,7 +373,7 @@ function TopNav({ shown }: { shown: boolean }) {
           {/* Gap right */}
           <div className="hidden md:block shrink-0" style={{ width: 4 }} />
 
-          {/* Right menu bar */}
+          {/* Right menu items — sit on the full-width bar */}
           <div
             className="hidden md:flex items-center justify-start flex-1"
             style={{ marginTop: barTop, height: barH }}
@@ -371,7 +381,6 @@ function TopNav({ shown }: { shown: boolean }) {
           >
             <div
               className="flex items-center gap-8 px-10 h-full"
-              style={{ background: "#b0b0b0" }}
               data-testid="nav-right-bar"
             >
               {NAV_RIGHT.map((item) => (
