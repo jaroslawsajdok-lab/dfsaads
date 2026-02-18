@@ -559,7 +559,7 @@ function FacebookFeed() {
 
   if (hasNativeFeed) {
     return (
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="facebook-feed">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="facebook-feed">
         {posts.map((p) => (
           <FbPostCard key={p.id} post={p} />
         ))}
