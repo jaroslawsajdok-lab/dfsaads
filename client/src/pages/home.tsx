@@ -409,14 +409,18 @@ declare global {
   interface Window { FB?: { XFBML: { parse: (el?: HTMLElement) => void } } }
 }
 
+const FB_PLUGIN_W = 500;
+const FB_PLUGIN_H = 700;
+
 function FacebookEmbed() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(500);
+  const [scale, setScale] = useState(1);
 
   useEffect(() => {
     function measure() {
       if (containerRef.current) {
-        setWidth(containerRef.current.offsetWidth);
+        const containerW = containerRef.current.offsetWidth;
+        setScale(containerW / FB_PLUGIN_W);
       }
     }
     measure();
@@ -426,15 +430,27 @@ function FacebookEmbed() {
 
   const src =
     `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent("https://www.facebook.com/wislajawornik")}` +
-    `&tabs=timeline&width=${width}&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&locale=pl_PL`;
+    `&tabs=timeline&width=${FB_PLUGIN_W}&height=${FB_PLUGIN_H}&small_header=false&adapt_container_width=false&hide_cover=false&show_facepile=true&locale=pl_PL`;
+
+  const scaledH = FB_PLUGIN_H * scale;
 
   return (
-    <div ref={containerRef} className="mt-8 w-full" data-testid="facebook-embed">
+    <div
+      ref={containerRef}
+      className="mt-8 w-full overflow-hidden"
+      style={{ height: scaledH }}
+      data-testid="facebook-embed"
+    >
       <iframe
         src={src}
-        width="100%"
-        height="700"
-        style={{ border: "none", overflow: "hidden" }}
+        width={FB_PLUGIN_W}
+        height={FB_PLUGIN_H}
+        style={{
+          border: "none",
+          overflow: "hidden",
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+        }}
         allowFullScreen
         allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
         title="Facebook – Parafia Ewangelicka w Wiśle Jaworniku"
