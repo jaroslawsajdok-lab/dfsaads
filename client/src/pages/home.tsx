@@ -16,7 +16,7 @@ import {
 
 
 const PARISH_LOGO_SRC = "/parish-cross.png";
-const CROSS_H = 600;
+const CROSS_H = 450;
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -352,7 +352,7 @@ function TopNav({ shown }: { shown: boolean }) {
             key={item.id}
             type="button"
             onClick={() => scrollToId(item.id)}
-            className="text-[17px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
+            className="text-[16px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
             data-testid={`link-nav-${item.id}`}
           >
             {item.label}
