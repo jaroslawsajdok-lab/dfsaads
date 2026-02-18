@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, db } from "./storage";
 import {
@@ -8,6 +8,19 @@ import {
   news, events, groups, recordings, faq, contactInfo, galleries,
 } from "@shared/schema";
 import { sql } from "drizzle-orm";
+import bcrypt from "bcryptjs";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import crypto from "crypto";
+
+declare module "express-session" {
+  interface SessionData {
+    isAdmin?: boolean;
+  }
+}
 
 const BNCD_API_KEY = process.env.BNCD_API_KEY || "";
 const VERSE_CACHE_TTL = 60 * 60 * 1000;
@@ -190,56 +203,303 @@ async function seedIfEmpty() {
   await storage.upsertContactInfo({ key: "phone", value: "(uzupełnij numer)" });
   await storage.upsertContactInfo({ key: "email", value: "(uzupełnij e-mail)" });
   await storage.upsertContactInfo({ key: "hours", value: "(uzupełnij godziny)" });
+
+  const existingHash = await storage.getAdminSetting("admin_password_hash");
+  if (!existingHash) {
+    const defaultHash = await bcrypt.hash("admin123", 10);
+    await storage.setAdminSetting("admin_password_hash", defaultHash);
+  }
+}
+
+const uploadsDir = path.resolve("client/public/uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const uploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const name = crypto.randomBytes(12).toString("hex") + ext;
+    cb(null, name);
+  },
+});
+const upload = multer({ storage: uploadStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.session?.isAdmin) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
 }
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  const PgSession = connectPgSimple(session);
+  app.use(
+    session({
+      store: new PgSession({ conString: process.env.DATABASE_URL, createTableIfMissing: true }),
+      secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
+      resave: false,
+      saveUninitialized: false,
+      cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "lax" },
+    })
+  );
+
   await seedIfEmpty();
 
+  // ── Auth ──
+  app.post("/api/admin/login", async (req, res) => {
+    const { password } = req.body;
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({ message: "Password required" });
+    }
+
+    let hash = await storage.getAdminSetting("admin_password_hash");
+    if (!hash) {
+      hash = await bcrypt.hash(password, 10);
+      await storage.setAdminSetting("admin_password_hash", hash);
+    }
+
+    const match = await bcrypt.compare(password, hash);
+    if (!match) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    req.session.isAdmin = true;
+    res.json({ ok: true });
+  });
+
+  app.get("/api/admin/session", (req, res) => {
+    res.json({ authenticated: !!req.session?.isAdmin });
+  });
+
+  app.post("/api/admin/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ ok: true });
+    });
+  });
+
+  // ── Manual verse ──
+  app.get("/api/admin/manual-verse", async (_req, res) => {
+    const text = await storage.getAdminSetting("manual_verse_text");
+    const source = await storage.getAdminSetting("manual_verse_source");
+    res.json({ text: text || null, source: source || null });
+  });
+
+  app.put("/api/admin/manual-verse", requireAdmin, async (req, res) => {
+    const { text, source } = req.body;
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ message: "text required" });
+    }
+    await storage.setAdminSetting("manual_verse_text", text);
+    await storage.setAdminSetting("manual_verse_source", source || "");
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/admin/manual-verse", requireAdmin, async (_req, res) => {
+    await storage.setAdminSetting("manual_verse_text", "");
+    await storage.setAdminSetting("manual_verse_source", "");
+    res.json({ ok: true });
+  });
+
+  // ── Upload ──
+  app.post("/api/upload", requireAdmin, upload.single("file"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    res.json({ url: `/uploads/${req.file.filename}` });
+  });
+
+  // ── News ──
   app.get("/api/news", async (_req, res) => {
-    const data = await storage.getNews();
-    res.json(data);
+    res.json(await storage.getNews());
+  });
+  app.post("/api/news", requireAdmin, async (req, res) => {
+    const parsed = insertNewsSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    res.json(await storage.createNews(parsed.data));
+  });
+  app.put("/api/news/:id", requireAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = insertNewsSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const updated = await storage.updateNews(id, parsed.data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+  app.delete("/api/news/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deleteNews(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
   });
 
+  // ── Events ──
   app.get("/api/events", async (_req, res) => {
-    const data = await storage.getEvents();
-    res.json(data);
+    res.json(await storage.getEvents());
+  });
+  app.post("/api/events", requireAdmin, async (req, res) => {
+    const parsed = insertEventSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    res.json(await storage.createEvent(parsed.data));
+  });
+  app.put("/api/events/:id", requireAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = insertEventSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const updated = await storage.updateEvent(id, parsed.data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+  app.delete("/api/events/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deleteEvent(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
   });
 
+  // ── Groups ──
   app.get("/api/groups", async (_req, res) => {
-    const data = await storage.getGroups();
-    res.json(data);
+    res.json(await storage.getGroups());
+  });
+  app.post("/api/groups", requireAdmin, async (req, res) => {
+    const parsed = insertGroupSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    res.json(await storage.createGroup(parsed.data));
+  });
+  app.put("/api/groups/:id", requireAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = insertGroupSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const updated = await storage.updateGroup(id, parsed.data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+  app.delete("/api/groups/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deleteGroup(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
   });
 
+  // ── Recordings ──
   app.get("/api/recordings", async (_req, res) => {
-    const data = await storage.getRecordings();
-    res.json(data);
+    res.json(await storage.getRecordings());
+  });
+  app.post("/api/recordings", requireAdmin, async (req, res) => {
+    const parsed = insertRecordingSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    res.json(await storage.createRecording(parsed.data));
+  });
+  app.put("/api/recordings/:id", requireAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = insertRecordingSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const updated = await storage.updateRecording(id, parsed.data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+  app.delete("/api/recordings/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deleteRecording(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
   });
 
+  // ── FAQ ──
   app.get("/api/faq", async (_req, res) => {
-    const data = await storage.getFaq();
-    res.json(data);
+    res.json(await storage.getFaq());
+  });
+  app.post("/api/faq", requireAdmin, async (req, res) => {
+    const parsed = insertFaqSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    res.json(await storage.createFaq(parsed.data));
+  });
+  app.put("/api/faq/:id", requireAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = insertFaqSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const updated = await storage.updateFaq(id, parsed.data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+  app.delete("/api/faq/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deleteFaq(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
   });
 
+  // ── Contact ──
   app.get("/api/contact", async (_req, res) => {
     const data = await storage.getContactInfo();
     const map: Record<string, string> = {};
     for (const row of data) map[row.key] = row.value;
     res.json(map);
   });
-
-  app.get("/api/galleries", async (_req, res) => {
-    const data = await storage.getGalleries();
-    res.json(data);
+  app.post("/api/contact", requireAdmin, async (req, res) => {
+    const parsed = insertContactInfoSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    res.json(await storage.upsertContactInfo(parsed.data));
+  });
+  app.put("/api/contact/:key", requireAdmin, async (req, res) => {
+    const { value } = req.body;
+    if (!value || typeof value !== "string") {
+      return res.status(400).json({ message: "value required" });
+    }
+    const result = await storage.upsertContactInfo({ key: req.params.key as string, value });
+    res.json(result);
+  });
+  app.delete("/api/contact/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deleteContactInfo(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
   });
 
+  // ── Galleries ──
+  app.get("/api/galleries", async (_req, res) => {
+    res.json(await storage.getGalleries());
+  });
+  app.post("/api/galleries", requireAdmin, async (req, res) => {
+    const parsed = insertGallerySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    res.json(await storage.createGallery(parsed.data));
+  });
+  app.put("/api/galleries/:id", requireAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = insertGallerySchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const updated = await storage.updateGallery(id, parsed.data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+  app.delete("/api/galleries/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deleteGallery(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // ── Weekly verse (with manual override) ──
   app.get("/api/weekly-verse", async (_req, res) => {
+    const manualText = await storage.getAdminSetting("manual_verse_text");
+    if (manualText) {
+      const manualSource = await storage.getAdminSetting("manual_verse_source");
+      return res.json({
+        verse: {
+          week_text: manualText,
+          week_source: manualSource || "",
+          month_text: null, month_source: null,
+          year_text: null, year_source: null,
+          first_text: null, first_source: null,
+          second_text: null, second_source: null,
+          name: "Ręczny wpis", date: "",
+          manual: true,
+        },
+      });
+    }
     const verse = await fetchWeeklyVerse();
     res.json({ verse });
   });
 
+  // ── Facebook ──
   app.get("/api/facebook-posts", async (_req, res) => {
     if (!process.env.FACEBOOK_PAGE_TOKEN) {
       res.json({ error: "no_token", posts: [], pageSlug: FB_PAGE_SLUG });

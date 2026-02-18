@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/lib/auth";
+import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowDown,
   Calendar as CalendarIcon,
@@ -16,6 +18,14 @@ import {
   Share2,
   ThumbsUp,
   Youtube,
+  Pencil,
+  Trash2,
+  Plus,
+  Save,
+  X,
+  LogIn,
+  LogOut,
+  Settings,
 } from "lucide-react";
 
 
@@ -33,6 +43,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { BookOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type WeeklyVerseData = {
   week_text: string | null;
@@ -153,7 +165,6 @@ function VideoHero() {
       }
     };
 
-    // small delay to let the browser settle
     const t = window.setTimeout(attempt, 120);
     return () => window.clearTimeout(t);
   }, []);
@@ -177,7 +188,6 @@ function VideoHero() {
       aria-label="Sekcja startowa"
       data-testid="section-hero"
     >
-      {/* Background media */}
       <div className="absolute inset-0">
         <video
           ref={videoRef}
@@ -195,7 +205,6 @@ function VideoHero() {
         <div className="hero-overlay absolute inset-0" />
       </div>
 
-      {/* Content — pushed down to clear the cross logo overlay */}
       <div className="relative mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 pb-10 sm:px-8" style={{ paddingTop: CROSS_H * 0.5 }}>
         <motion.div
           initial={{ opacity: 0, y: 14 }}
@@ -293,7 +302,7 @@ function VideoHero() {
 
 const NAV_ITEMS = [
   { id: "aktualnosci", label: "Aktualności" },
-  { id: "kalendarz", label: "Kalendarz" },
+  { id: "polecamy", label: "Kalendarz" },
   { id: "grupy", label: "Grupy" },
   { id: "nagrania", label: "Nagrania" },
   { id: "galeria", label: "Galeria" },
@@ -301,113 +310,230 @@ const NAV_ITEMS = [
   { id: "kontakt", label: "Kontakt" },
 ] as const;
 
+function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { login } = useAuth();
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    const ok = await login(password);
+    if (ok) { onOpenChange(false); setPassword(""); }
+    else setError("Nieprawidłowe hasło");
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" data-testid="dialog-login-backdrop" onClick={() => onOpenChange(false)}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()} data-testid="dialog-login">
+        <h3 className="font-display text-xl" data-testid="text-login-title">Panel administracyjny</h3>
+        <p className="mt-1 text-sm text-muted-foreground" data-testid="text-login-subtitle">Zaloguj się, aby edytować treści.</p>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <Input
+            type="password"
+            placeholder="Hasło"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+            data-testid="input-login-password"
+          />
+          {error && <p className="text-sm text-red-500" data-testid="text-login-error">{error}</p>}
+          <div className="flex gap-2">
+            <Button type="submit" className="flex-1 rounded-xl" data-testid="button-login-submit">
+              <LogIn className="mr-2 h-4 w-4" />
+              Zaloguj
+            </Button>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)} data-testid="button-login-cancel">
+              Anuluj
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function TopNav({ shown }: { shown: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const { isAdmin, isEditMode, setEditMode, logout } = useAuth();
   const barH = Math.round(CROSS_H * 0.2752);
   const barTop = Math.round(CROSS_H * 0.1632);
   const crossW = Math.round(CROSS_H * (53.97 / 87.72));
   const logoAreaW = crossW + 12;
 
   return (
-    <nav
-      className={cx(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-700",
-        shown ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none",
-      )}
-      data-testid="nav-wrap"
-    >
-      {/* White background behind entire menu area (above + behind + below grey bar) */}
-      <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop + barH + 4 }} />
-
-      {/* Full-width grey bar — starts after the logo area */}
-      <div
-        className="absolute right-0 hidden md:block"
-        style={{ top: barTop, height: barH, background: "#b0b0b0", left: logoAreaW + 3 }}
-        data-testid="nav-bar-full"
-      />
-
-      {/* Logo — left side, overlaps hero below */}
-      <button
-        type="button"
-        onClick={() => setMenuOpen((v) => !v)}
-        className="absolute left-0 top-0 z-10 cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
-        style={{ width: crossW, height: CROSS_H, marginLeft: 3 }}
-        data-testid="button-nav-logo"
-        aria-label="Menu"
+    <>
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
+      <nav
+        className={cx(
+          "fixed inset-x-0 top-0 z-50 transition-all duration-700",
+          shown ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none",
+        )}
+        data-testid="nav-wrap"
       >
-        <img
-          src={PARISH_LOGO_SRC}
-          alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-          className="h-full w-full object-contain"
-          loading="eager"
-          decoding="async"
-          data-testid="img-cross-nav"
+        <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop + barH + 4 }} />
+
+        <div
+          className="absolute right-0 hidden md:block"
+          style={{ top: barTop, height: barH, background: "#b0b0b0", left: logoAreaW + 3 }}
+          data-testid="nav-bar-full"
         />
-      </button>
 
-      {/* Desktop: menu items inside the grey bar */}
-      <div
-        className="absolute hidden md:flex items-center gap-8 px-10"
-        style={{ top: barTop, height: barH, left: logoAreaW + 3, right: 0 }}
-        data-testid="nav-desktop-items"
-      >
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => scrollToId(item.id)}
-            className="text-[16px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
-            data-testid={`link-nav-${item.id}`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Dropdown menu — appears below the logo on click */}
-      {menuOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setMenuOpen(false)}
-            data-testid="nav-dropdown-backdrop"
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          className="absolute left-0 top-0 z-10 cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+          style={{ width: crossW, height: CROSS_H, marginLeft: 3 }}
+          data-testid="button-nav-logo"
+          aria-label="Menu"
+        >
+          <img
+            src={PARISH_LOGO_SRC}
+            alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
+            className="h-full w-full object-contain"
+            loading="eager"
+            decoding="async"
+            data-testid="img-cross-nav"
           />
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute z-50 rounded-b-xl bg-white shadow-lg"
-            style={{ top: barTop + barH, left: 3, width: Math.max(crossW, 220) }}
-            data-testid="nav-dropdown"
-          >
-            <div className="flex flex-col py-2">
-              {NAV_ITEMS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => { scrollToId(item.id); setMenuOpen(false); }}
-                  className="px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
-                  data-testid={`link-dropdown-${item.id}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        </>
-      )}
+        </button>
 
-      {/* Mobile: hamburger-style — same dropdown triggered by logo tap */}
-      <div
-        className="absolute right-4 flex md:hidden items-center"
-        style={{ top: barTop, height: barH }}
-        data-testid="nav-mobile-hint"
-      >
-        <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
-          Menu
-        </span>
-      </div>
-    </nav>
+        <div
+          className="absolute hidden md:flex items-center gap-8 px-10"
+          style={{ top: barTop, height: barH, left: logoAreaW + 3, right: 0 }}
+          data-testid="nav-desktop-items"
+        >
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => scrollToId(item.id)}
+              className="text-[16px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
+              data-testid={`link-nav-${item.id}`}
+            >
+              {item.label}
+            </button>
+          ))}
+
+          <div className="ml-auto flex items-center gap-2">
+            {!isAdmin && (
+              <button
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/20 hover:text-white"
+                data-testid="button-nav-login"
+                aria-label="Zaloguj się"
+              >
+                <LogIn className="h-4 w-4" />
+              </button>
+            )}
+            {isAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditMode(!isEditMode)}
+                  className={cx(
+                    "rounded-lg px-2 py-1 text-xs font-semibold tracking-wide uppercase transition",
+                    isEditMode ? "bg-yellow-400 text-yellow-900" : "bg-white/20 text-white hover:bg-white/30",
+                  )}
+                  data-testid="button-nav-editmode"
+                >
+                  <Settings className="mr-1 inline h-3 w-3" />
+                  {isEditMode ? "Edycja ON" : "Edycja OFF"}
+                </button>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/20 hover:text-white"
+                  data-testid="button-nav-logout"
+                  aria-label="Wyloguj"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {menuOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setMenuOpen(false)}
+              data-testid="nav-dropdown-backdrop"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute z-50 rounded-b-xl bg-white shadow-lg"
+              style={{ top: barTop + barH, left: 3, width: Math.max(crossW, 220) }}
+              data-testid="nav-dropdown"
+            >
+              <div className="flex flex-col py-2">
+                {NAV_ITEMS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => { scrollToId(item.id); setMenuOpen(false); }}
+                    className="px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    data-testid={`link-dropdown-${item.id}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                <Separator className="my-1" />
+                {!isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setLoginOpen(true); }}
+                    className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    data-testid="link-dropdown-login"
+                  >
+                    <LogIn className="h-3.5 w-3.5" />
+                    Zaloguj
+                  </button>
+                )}
+                {isAdmin && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { setEditMode(!isEditMode); setMenuOpen(false); }}
+                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-500 transition-colors hover:bg-gray-100"
+                      data-testid="link-dropdown-editmode"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      {isEditMode ? "Wyłącz edycję" : "Włącz edycję"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { logout(); setMenuOpen(false); }}
+                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-400 transition-colors hover:bg-gray-100"
+                      data-testid="link-dropdown-logout"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Wyloguj
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        <div
+          className="absolute right-4 flex md:hidden items-center"
+          style={{ top: barTop, height: barH }}
+          data-testid="nav-mobile-hint"
+        >
+          <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
+            Menu
+          </span>
+        </div>
+      </nav>
+    </>
   );
 }
 
@@ -607,6 +733,220 @@ function WeeklyVerseBanner() {
   );
 }
 
+function EditableText({
+  value, field, entityType, entityId, queryKey, multiline = false
+}: {
+  value: string; field: string; entityType: string; entityId: number; queryKey: string; multiline?: boolean;
+}) {
+  const { isEditMode } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value);
+  const qc = useQueryClient();
+
+  useEffect(() => { setText(value); }, [value]);
+
+  const mutation = useMutation({
+    mutationFn: async (newVal: string) => {
+      await apiRequest("PUT", `/api/${entityType}/${entityId}`, { [field]: newVal });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [queryKey] });
+      setEditing(false);
+    },
+  });
+
+  if (!isEditMode) return <>{value}</>;
+
+  if (editing) {
+    return (
+      <span className="inline-flex items-center gap-1" data-testid={`editable-${entityType}-${field}-${entityId}`}>
+        {multiline ? (
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="min-h-[60px] text-sm"
+            autoFocus
+            data-testid={`input-edit-${entityType}-${field}-${entityId}`}
+          />
+        ) : (
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="h-7 text-sm"
+            autoFocus
+            data-testid={`input-edit-${entityType}-${field}-${entityId}`}
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => mutation.mutate(text)}
+          className="rounded p-1 text-green-600 hover:bg-green-50"
+          data-testid={`button-save-${entityType}-${field}-${entityId}`}
+        >
+          <Save className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => { setText(value); setEditing(false); }}
+          className="rounded p-1 text-red-500 hover:bg-red-50"
+          data-testid={`button-cancel-${entityType}-${field}-${entityId}`}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="group/edit inline cursor-pointer border-b border-dashed border-transparent hover:border-yellow-400"
+      onClick={() => setEditing(true)}
+      data-testid={`editable-trigger-${entityType}-${field}-${entityId}`}
+    >
+      {value}
+      <Pencil className="ml-1 inline h-3 w-3 text-yellow-500 opacity-0 group-hover/edit:opacity-100 transition" />
+    </span>
+  );
+}
+
+function AdminItemActions({ entityType, entityId, queryKey }: { entityType: string; entityId: number; queryKey: string }) {
+  const { isEditMode } = useAuth();
+  const qc = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/${entityType}/${entityId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [queryKey] });
+    },
+  });
+
+  if (!isEditMode) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (window.confirm("Czy na pewno chcesz usunąć ten element?")) {
+          deleteMutation.mutate();
+        }
+      }}
+      className="rounded-lg p-1.5 text-red-400 transition hover:bg-red-50 hover:text-red-600"
+      data-testid={`button-delete-${entityType}-${entityId}`}
+      aria-label="Usuń"
+    >
+      <Trash2 className="h-4 w-4" />
+    </button>
+  );
+}
+
+function AdminAddButton({ entityType, queryKey, defaultValues, fields }: {
+  entityType: string; queryKey: string; defaultValues: Record<string, string>; fields: { key: string; label: string; multiline?: boolean }[];
+}) {
+  const { isEditMode } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [formData, setFormData] = useState(defaultValues);
+  const qc = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (data: Record<string, string>) => {
+      await apiRequest("POST", `/api/${entityType}`, data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [queryKey] });
+      setOpen(false);
+      setFormData(defaultValues);
+    },
+  });
+
+  if (!isEditMode) return null;
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-xl border-dashed border-yellow-400 text-yellow-600 hover:bg-yellow-50"
+        onClick={() => setOpen(true)}
+        data-testid={`button-add-${entityType}`}
+      >
+        <Plus className="mr-1 h-4 w-4" />
+        Dodaj
+      </Button>
+
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setOpen(false)} data-testid={`dialog-add-${entityType}-backdrop`}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()} data-testid={`dialog-add-${entityType}`}>
+            <h3 className="font-display text-lg" data-testid={`text-add-${entityType}-title`}>Dodaj nowy element</h3>
+            <form
+              onSubmit={(e) => { e.preventDefault(); mutation.mutate(formData); }}
+              className="mt-4 space-y-3"
+            >
+              {fields.map((f) => (
+                <div key={f.key}>
+                  <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+                  {f.multiline ? (
+                    <Textarea
+                      value={formData[f.key] || ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      className="mt-1"
+                      data-testid={`input-add-${entityType}-${f.key}`}
+                    />
+                  ) : (
+                    <Input
+                      value={formData[f.key] || ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      className="mt-1"
+                      data-testid={`input-add-${entityType}-${f.key}`}
+                    />
+                  )}
+                </div>
+              ))}
+              <div className="flex gap-2 pt-2">
+                <Button type="submit" className="flex-1 rounded-xl" data-testid={`button-submit-add-${entityType}`}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Zapisz
+                </Button>
+                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)} data-testid={`button-cancel-add-${entityType}`}>
+                  Anuluj
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function AdminFloatingBar() {
+  const { isAdmin, isEditMode, setEditMode } = useAuth();
+  if (!isAdmin || !isEditMode) return null;
+
+  return (
+    <div className="fixed bottom-4 left-1/2 z-[90] -translate-x-1/2 rounded-2xl border bg-white/95 px-5 py-3 shadow-xl backdrop-blur" data-testid="admin-floating-bar">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
+          <span className="text-sm font-semibold text-yellow-700" data-testid="text-editmode-label">Tryb edycji aktywny</span>
+        </div>
+        <Separator orientation="vertical" className="h-5" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          onClick={() => setEditMode(false)}
+          data-testid="button-exit-editmode"
+        >
+          <X className="mr-1 h-4 w-4" />
+          Zakończ edycję
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const stickyShown = useStickyNavTrigger();
 
@@ -615,6 +955,7 @@ export default function HomePage() {
   const { data: recordingsData = [] } = useQuery<RecordingItem[]>({ queryKey: ["recordings"], queryFn: () => apiFetch("/api/recordings") });
   const { data: faqData = [] } = useQuery<FaqItem[]>({ queryKey: ["faq"], queryFn: () => apiFetch("/api/faq") });
   const { data: contactData = {} } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
+  const { isEditMode } = useAuth();
 
   return (
     <main className="min-h-screen" data-testid="page-home">
@@ -734,7 +1075,7 @@ export default function HomePage() {
         className="bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]"
         data-testid="section-kalendarz"
       >
-        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+        <div id="kalendarz" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
           <div className="flex items-start justify-between gap-6">
             <div>
               <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-calendar-title">
@@ -752,44 +1093,62 @@ export default function HomePage() {
 
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-3">
-              {eventsData.map((e) => (
+              {isEditMode && (
+                <AdminAddButton
+                  entityType="events"
+                  queryKey="events"
+                  defaultValues={{ date: "", time: "", type: "", title: "", place: "", description: "" }}
+                  fields={[
+                    { key: "date", label: "Data (RRRR-MM-DD)" },
+                    { key: "time", label: "Godzina" },
+                    { key: "type", label: "Typ" },
+                    { key: "title", label: "Tytuł" },
+                    { key: "place", label: "Miejsce" },
+                    { key: "description", label: "Opis", multiline: true },
+                  ]}
+                />
+              )}
+              {eventsData.slice(0, 3).map((e) => (
                 <Card
                   key={e.id}
                   className="rounded-2xl border bg-white/75 p-5 backdrop-blur"
                   data-testid={`row-event-${e.id}`}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`text-event-meta-${e.id}`}>
                         <span className="rounded-lg bg-secondary px-2 py-1" data-testid={`badge-event-date-${e.id}`}>
-                          {formatDatePL(e.date)}
+                          <EditableText value={formatDatePL(e.date)} field="date" entityType="events" entityId={e.id} queryKey="events" />
                         </span>
                         <span className="rounded-lg bg-secondary px-2 py-1" data-testid={`badge-event-time-${e.id}`}>
-                          {e.time}
+                          <EditableText value={e.time} field="time" entityType="events" entityId={e.id} queryKey="events" />
                         </span>
                         <Badge variant="secondary" data-testid={`badge-event-type-${e.id}`}>
-                          {e.type}
+                          <EditableText value={e.type} field="type" entityType="events" entityId={e.id} queryKey="events" />
                         </Badge>
                       </div>
                       <div className="mt-2 font-display text-xl" data-testid={`text-event-title-${e.id}`}>
-                        {e.title}
+                        <EditableText value={e.title} field="title" entityType="events" entityId={e.id} queryKey="events" />
                       </div>
                       <div className="mt-1 text-sm text-foreground/80" data-testid={`text-event-place-${e.id}`}>
-                        {e.place}
+                        <EditableText value={e.place} field="place" entityType="events" entityId={e.id} queryKey="events" />
                       </div>
                       <p className="mt-3 text-sm leading-relaxed text-muted-foreground" data-testid={`text-event-desc-${e.id}`}>
-                        {e.description}
+                        <EditableText value={e.description} field="description" entityType="events" entityId={e.id} queryKey="events" multiline />
                       </p>
                     </div>
-                    <Button
-                      variant="secondary"
-                      className="rounded-xl"
-                      onClick={() => scrollToId("kontakt")}
-                      data-testid={`button-event-details-${e.id}`}
-                    >
-                      Szczegóły
-                      <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <AdminItemActions entityType="events" entityId={e.id} queryKey="events" />
+                      <Button
+                        variant="secondary"
+                        className="rounded-xl"
+                        onClick={() => scrollToId("kontakt")}
+                        data-testid={`button-event-details-${e.id}`}
+                      >
+                        Szczegóły
+                        <ChevronRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -821,22 +1180,48 @@ export default function HomePage() {
               </div>
             </Card>
           </div>
+
+          {eventsData.length > 3 && (
+            <div className="mt-6 text-center">
+              <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-events">
+                <Link href="/kalendarz">
+                  Więcej wydarzeń
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
       {/* Grupy */}
-      <section id="onas" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-grupy">
-        <div>
-          <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-groups-title">
-            Grupy w parafii
-          </h2>
-          <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-groups-subtitle">
-            Dołącz do wspólnoty — znajdź przestrzeń dla siebie.
-          </p>
+      <section id="grupy" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-grupy">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-groups-title">
+              Grupy w parafii
+            </h2>
+            <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-groups-subtitle">
+              Dołącz do wspólnoty — znajdź przestrzeń dla siebie.
+            </p>
+          </div>
+          {isEditMode && (
+            <AdminAddButton
+              entityType="groups"
+              queryKey="groups"
+              defaultValues={{ name: "", lead: "", when_text: "", description: "" }}
+              fields={[
+                { key: "name", label: "Nazwa grupy" },
+                { key: "lead", label: "Prowadzący" },
+                { key: "when_text", label: "Kiedy" },
+                { key: "description", label: "Opis", multiline: true },
+              ]}
+            />
+          )}
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {groupsData.map((g) => (
+          {groupsData.slice(0, 3).map((g) => (
             <Card
               key={g.id}
               className="rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur"
@@ -844,16 +1229,22 @@ export default function HomePage() {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="font-display text-xl" data-testid={`text-group-name-${g.id}`}>{g.name}</div>
-                  <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-group-lead-${g.id}`}>{g.lead}</div>
+                  <div className="font-display text-xl" data-testid={`text-group-name-${g.id}`}>
+                    <EditableText value={g.name} field="name" entityType="groups" entityId={g.id} queryKey="groups" />
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-group-lead-${g.id}`}>
+                    <EditableText value={g.lead} field="lead" entityType="groups" entityId={g.id} queryKey="groups" />
+                  </div>
                 </div>
-                <div className="rounded-xl bg-accent px-2 py-1 text-xs text-accent-foreground" data-testid={`badge-group-when-${g.id}`}
-                >
-                  {g.when_text}
+                <div className="flex items-center gap-1">
+                  <AdminItemActions entityType="groups" entityId={g.id} queryKey="groups" />
+                  <div className="rounded-xl bg-accent px-2 py-1 text-xs text-accent-foreground" data-testid={`badge-group-when-${g.id}`}>
+                    <EditableText value={g.when_text} field="when_text" entityType="groups" entityId={g.id} queryKey="groups" />
+                  </div>
                 </div>
               </div>
               <p className="mt-3 text-sm leading-relaxed text-foreground/80" data-testid={`text-group-desc-${g.id}`}>
-                {g.description}
+                <EditableText value={g.description} field="description" entityType="groups" entityId={g.id} queryKey="groups" multiline />
               </p>
               <div className="mt-4">
                 <Button
@@ -868,6 +1259,17 @@ export default function HomePage() {
             </Card>
           ))}
         </div>
+
+        {groupsData.length > 3 && (
+          <div className="mt-6 text-center">
+            <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-groups">
+              <Link href="/grupy">
+                Więcej grup
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        )}
       </section>
 
       {/* Nagrania */}
@@ -882,25 +1284,39 @@ export default function HomePage() {
                 Kazania i materiały wideo z YouTube.
               </p>
             </div>
-            <Button
-              variant="secondary"
-              className="rounded-xl"
-              asChild
-              data-testid="button-recordings-youtube"
-            >
-              <a
-                href="https://www.youtube.com/@parafiae-awisajawornik2251"
-                target="_blank"
-                rel="noreferrer"
+            <div className="flex items-center gap-2">
+              {isEditMode && (
+                <AdminAddButton
+                  entityType="recordings"
+                  queryKey="recordings"
+                  defaultValues={{ title: "", date: "", href: "" }}
+                  fields={[
+                    { key: "title", label: "Tytuł" },
+                    { key: "date", label: "Data (RRRR-MM-DD)" },
+                    { key: "href", label: "Link YouTube" },
+                  ]}
+                />
+              )}
+              <Button
+                variant="secondary"
+                className="rounded-xl"
+                asChild
+                data-testid="button-recordings-youtube"
               >
-                <Youtube className="mr-2 h-4 w-4" />
-                YouTube
-              </a>
-            </Button>
+                <a
+                  href="https://www.youtube.com/@parafiae-awisajawornik2251"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Youtube className="mr-2 h-4 w-4" />
+                  YouTube
+                </a>
+              </Button>
+            </div>
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {recordingsData.map((r) => (
+            {recordingsData.slice(0, 3).map((r) => (
               <Card
                 key={r.id}
                 className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
@@ -908,14 +1324,17 @@ export default function HomePage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-muted-foreground" data-testid={`text-recording-date-${r.id}`}>
-                    {formatDatePL(r.date)}
+                    <EditableText value={formatDatePL(r.date)} field="date" entityType="recordings" entityId={r.id} queryKey="recordings" />
                   </div>
-                  <div className="rounded-full bg-accent p-2 text-accent-foreground transition group-hover:scale-[1.04]" data-testid={`icon-recording-${r.id}`}>
-                    <Play className="h-4 w-4" />
+                  <div className="flex items-center gap-1">
+                    <AdminItemActions entityType="recordings" entityId={r.id} queryKey="recordings" />
+                    <div className="rounded-full bg-accent p-2 text-accent-foreground transition group-hover:scale-[1.04]" data-testid={`icon-recording-${r.id}`}>
+                      <Play className="h-4 w-4" />
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3 font-display text-xl" data-testid={`text-recording-title-${r.id}`}>
-                  {r.title}
+                  <EditableText value={r.title} field="title" entityType="recordings" entityId={r.id} queryKey="recordings" />
                 </div>
                 <Button
                   variant="ghost"
@@ -929,6 +1348,17 @@ export default function HomePage() {
               </Card>
             ))}
           </div>
+
+          {recordingsData.length > 3 && (
+            <div className="mt-6 text-center">
+              <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-recordings">
+                <Link href="/nagrania">
+                  Więcej nagrań
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -944,7 +1374,7 @@ export default function HomePage() {
         </div>
 
         <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <button
               key={i}
               type="button"
@@ -962,30 +1392,71 @@ export default function HomePage() {
             </button>
           ))}
         </div>
+
+        <div className="mt-6 text-center">
+          <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-gallery">
+            <Link href="/galeria">
+              Więcej zdjęć
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </section>
 
       {/* FAQ */}
       <section id="faq" className="bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]" data-testid="section-faq">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-          <div>
-            <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-faq-title">
-              FAQ
-            </h2>
-            <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-faq-subtitle">
-              Najczęstsze pytania — krótkie odpowiedzi.
-            </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-faq-title">
+                FAQ
+              </h2>
+              <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-faq-subtitle">
+                Najczęstsze pytania — krótkie odpowiedzi.
+              </p>
+            </div>
+            {isEditMode && (
+              <AdminAddButton
+                entityType="faq"
+                queryKey="faq"
+                defaultValues={{ question: "", answer: "", sort_order: "0" }}
+                fields={[
+                  { key: "question", label: "Pytanie" },
+                  { key: "answer", label: "Odpowiedź", multiline: true },
+                  { key: "sort_order", label: "Kolejność" },
+                ]}
+              />
+            )}
           </div>
 
           <div className="mt-8">
             <Accordion type="single" collapsible className="w-full" data-testid="accordion-faq">
-              {faqData.map((item, idx) => (
+              {faqData.slice(0, 3).map((item, idx) => (
                 <AccordionItem key={item.id} value={`i-${item.id}`} data-testid={`faq-item-${idx}`}>
-                  <AccordionTrigger data-testid={`button-faq-${idx}`}>{item.question}</AccordionTrigger>
-                  <AccordionContent data-testid={`text-faq-${idx}`}>{item.answer}</AccordionContent>
+                  <div className="flex items-center">
+                    <AccordionTrigger className="flex-1" data-testid={`button-faq-${idx}`}>
+                      <EditableText value={item.question} field="question" entityType="faq" entityId={item.id} queryKey="faq" />
+                    </AccordionTrigger>
+                    <AdminItemActions entityType="faq" entityId={item.id} queryKey="faq" />
+                  </div>
+                  <AccordionContent data-testid={`text-faq-${idx}`}>
+                    <EditableText value={item.answer} field="answer" entityType="faq" entityId={item.id} queryKey="faq" multiline />
+                  </AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
           </div>
+
+          {faqData.length > 3 && (
+            <div className="mt-6 text-center">
+              <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-faq">
+                <Link href="/faq">
+                  Więcej pytań
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1180,6 +1651,8 @@ export default function HomePage() {
           </footer>
         </div>
       </section>
+
+      <AdminFloatingBar />
     </main>
   );
 }

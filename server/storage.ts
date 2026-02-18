@@ -2,7 +2,7 @@ import { eq, asc, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
-  news, events, groups, recordings, faq, contactInfo, galleries,
+  news, events, groups, recordings, faq, contactInfo, galleries, adminSettings,
   type News, type InsertNews,
   type Event, type InsertEvent,
   type Group, type InsertGroup,
@@ -18,18 +18,33 @@ export const db = drizzle(pool);
 export interface IStorage {
   getNews(): Promise<News[]>;
   createNews(item: InsertNews): Promise<News>;
+  updateNews(id: number, item: Partial<InsertNews>): Promise<News | null>;
+  deleteNews(id: number): Promise<boolean>;
   getEvents(): Promise<Event[]>;
   createEvent(item: InsertEvent): Promise<Event>;
+  updateEvent(id: number, item: Partial<InsertEvent>): Promise<Event | null>;
+  deleteEvent(id: number): Promise<boolean>;
   getGroups(): Promise<Group[]>;
   createGroup(item: InsertGroup): Promise<Group>;
+  updateGroup(id: number, item: Partial<InsertGroup>): Promise<Group | null>;
+  deleteGroup(id: number): Promise<boolean>;
   getRecordings(): Promise<Recording[]>;
   createRecording(item: InsertRecording): Promise<Recording>;
+  updateRecording(id: number, item: Partial<InsertRecording>): Promise<Recording | null>;
+  deleteRecording(id: number): Promise<boolean>;
   getFaq(): Promise<Faq[]>;
   createFaq(item: InsertFaq): Promise<Faq>;
+  updateFaq(id: number, item: Partial<InsertFaq>): Promise<Faq | null>;
+  deleteFaq(id: number): Promise<boolean>;
   getContactInfo(): Promise<ContactInfo[]>;
   upsertContactInfo(item: InsertContactInfo): Promise<ContactInfo>;
+  deleteContactInfo(id: number): Promise<boolean>;
   getGalleries(): Promise<Gallery[]>;
   createGallery(item: InsertGallery): Promise<Gallery>;
+  updateGallery(id: number, item: Partial<InsertGallery>): Promise<Gallery | null>;
+  deleteGallery(id: number): Promise<boolean>;
+  getAdminSetting(key: string): Promise<string | null>;
+  setAdminSetting(key: string, value: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -40,6 +55,14 @@ export class DatabaseStorage implements IStorage {
     const [row] = await db.insert(news).values(item).returning();
     return row;
   }
+  async updateNews(id: number, item: Partial<InsertNews>) {
+    const [row] = await db.update(news).set(item).where(eq(news.id, id)).returning();
+    return row ?? null;
+  }
+  async deleteNews(id: number) {
+    const result = await db.delete(news).where(eq(news.id, id)).returning();
+    return result.length > 0;
+  }
 
   async getEvents() {
     return db.select().from(events).orderBy(asc(events.date), asc(events.time));
@@ -47,6 +70,14 @@ export class DatabaseStorage implements IStorage {
   async createEvent(item: InsertEvent) {
     const [row] = await db.insert(events).values(item).returning();
     return row;
+  }
+  async updateEvent(id: number, item: Partial<InsertEvent>) {
+    const [row] = await db.update(events).set(item).where(eq(events.id, id)).returning();
+    return row ?? null;
+  }
+  async deleteEvent(id: number) {
+    const result = await db.delete(events).where(eq(events.id, id)).returning();
+    return result.length > 0;
   }
 
   async getGroups() {
@@ -56,6 +87,14 @@ export class DatabaseStorage implements IStorage {
     const [row] = await db.insert(groups).values(item).returning();
     return row;
   }
+  async updateGroup(id: number, item: Partial<InsertGroup>) {
+    const [row] = await db.update(groups).set(item).where(eq(groups.id, id)).returning();
+    return row ?? null;
+  }
+  async deleteGroup(id: number) {
+    const result = await db.delete(groups).where(eq(groups.id, id)).returning();
+    return result.length > 0;
+  }
 
   async getRecordings() {
     return db.select().from(recordings).orderBy(desc(recordings.date));
@@ -64,6 +103,14 @@ export class DatabaseStorage implements IStorage {
     const [row] = await db.insert(recordings).values(item).returning();
     return row;
   }
+  async updateRecording(id: number, item: Partial<InsertRecording>) {
+    const [row] = await db.update(recordings).set(item).where(eq(recordings.id, id)).returning();
+    return row ?? null;
+  }
+  async deleteRecording(id: number) {
+    const result = await db.delete(recordings).where(eq(recordings.id, id)).returning();
+    return result.length > 0;
+  }
 
   async getFaq() {
     return db.select().from(faq).orderBy(asc(faq.sort_order));
@@ -71,6 +118,14 @@ export class DatabaseStorage implements IStorage {
   async createFaq(item: InsertFaq) {
     const [row] = await db.insert(faq).values(item).returning();
     return row;
+  }
+  async updateFaq(id: number, item: Partial<InsertFaq>) {
+    const [row] = await db.update(faq).set(item).where(eq(faq.id, id)).returning();
+    return row ?? null;
+  }
+  async deleteFaq(id: number) {
+    const result = await db.delete(faq).where(eq(faq.id, id)).returning();
+    return result.length > 0;
   }
 
   async getContactInfo() {
@@ -84,6 +139,10 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return row;
   }
+  async deleteContactInfo(id: number) {
+    const result = await db.delete(contactInfo).where(eq(contactInfo.id, id)).returning();
+    return result.length > 0;
+  }
 
   async getGalleries() {
     return db.select().from(galleries).orderBy(asc(galleries.sort_order));
@@ -91,6 +150,25 @@ export class DatabaseStorage implements IStorage {
   async createGallery(item: InsertGallery) {
     const [row] = await db.insert(galleries).values(item).returning();
     return row;
+  }
+  async updateGallery(id: number, item: Partial<InsertGallery>) {
+    const [row] = await db.update(galleries).set(item).where(eq(galleries.id, id)).returning();
+    return row ?? null;
+  }
+  async deleteGallery(id: number) {
+    const result = await db.delete(galleries).where(eq(galleries.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getAdminSetting(key: string) {
+    const [row] = await db.select().from(adminSettings).where(eq(adminSettings.key, key));
+    return row?.value ?? null;
+  }
+  async setAdminSetting(key: string, value: string) {
+    await db
+      .insert(adminSettings)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: adminSettings.key, set: { value } });
   }
 }
 

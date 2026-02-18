@@ -84,3 +84,9 @@ export const galleries = pgTable("galleries", {
 export const insertGallerySchema = createInsertSchema(galleries).omit({ id: true });
 export type InsertGallery = z.infer<typeof insertGallerySchema>;
 export type Gallery = typeof galleries.$inferSelect;
+
+export const adminSettings = pgTable("admin_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+});
