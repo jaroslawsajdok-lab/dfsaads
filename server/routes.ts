@@ -9,6 +9,61 @@ import {
 } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
+const BNCD_API_KEY = process.env.BNCD_API_KEY || "";
+const VERSE_CACHE_TTL = 60 * 60 * 1000;
+let verseCache: { data: any; ts: number } | null = null;
+
+async function fetchWeeklyVerse() {
+  if (verseCache && Date.now() - verseCache.ts < VERSE_CACHE_TTL) return verseCache.data;
+
+  if (!BNCD_API_KEY) return null;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch("https://biblianacodzien.pl/bncd/api/open-node/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: BNCD_API_KEY }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.error("BNCD API error:", res.status);
+      return verseCache?.data ?? null;
+    }
+
+    const json = await res.json();
+    if (json.status !== "ok") {
+      console.error("BNCD API status:", json.status, json.error);
+      return verseCache?.data ?? null;
+    }
+
+    const result = {
+      week_text: json.is_week ? json.week : null,
+      week_source: json.is_week ? json.week_s : null,
+      month_text: json.is_month ? json.month : null,
+      month_source: json.is_month ? json.month_s : null,
+      year_text: json.is_year ? json.year : null,
+      year_source: json.is_year ? json.year_s : null,
+      first_text: json.is_first ? json.first : null,
+      first_source: json.is_first ? json.first_s : null,
+      second_text: json.is_second ? json.second : null,
+      second_source: json.is_second ? json.second_s : null,
+      name: json.name || "",
+      date: json.date || "",
+    };
+
+    console.log("BNCD: Fetched weekly verse:", result.week_text?.slice(0, 60));
+    verseCache = { data: result, ts: Date.now() };
+    return result;
+  } catch (err) {
+    console.error("BNCD fetch error:", err);
+    return verseCache?.data ?? null;
+  }
+}
+
 const FB_PAGE_SLUG = process.env.FB_PAGE_SLUG || "wislajawornik";
 const FB_CACHE_TTL = 5 * 60 * 1000;
 let fbCache: { data: any; ts: number } | null = null;
@@ -178,6 +233,11 @@ export async function registerRoutes(
   app.get("/api/galleries", async (_req, res) => {
     const data = await storage.getGalleries();
     res.json(data);
+  });
+
+  app.get("/api/weekly-verse", async (_req, res) => {
+    const verse = await fetchWeeklyVerse();
+    res.json({ verse });
   });
 
   app.get("/api/facebook-posts", async (_req, res) => {
