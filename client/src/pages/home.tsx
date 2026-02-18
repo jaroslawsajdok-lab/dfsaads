@@ -17,6 +17,7 @@ import {
 import logoPion from "@assets/Parafia_EA_Jawornik_logo_PION_kolor_1770990365264.jpg";
 
 const PARISH_LOGO_SRC = "/parish-cross.png";
+const CROSS_H = 300;
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -316,16 +317,23 @@ function TopNav({ shown }: { shown: boolean }) {
       style={{ pointerEvents: shown ? "auto" : "none" }}
       data-testid="nav-wrap"
     >
+      {/*
+        Cross image is 325x515 (cropped). When rendered at CROSS_H:
+        - Grey blocks start at 17.5% from top
+        - Grey blocks end at 44.3% from top
+        - Grey block height = 27% of image height
+        Bars must match that height & vertical position exactly.
+      */}
       <div className="relative mx-auto max-w-6xl px-4">
-        <div className="relative flex items-start justify-center" style={{ height: 220 }}>
-          {/* Left menu bar — aligned to cross arms */}
+        <div className="relative flex items-start justify-center" style={{ height: CROSS_H }}>
+          {/* Left menu bar — aligned to grey cross arms */}
           <div
             className="hidden md:flex items-center justify-end flex-1"
-            style={{ marginTop: 82, height: 56 }}
+            style={{ marginTop: CROSS_H * 0.175, height: CROSS_H * 0.27 }}
             data-testid="nav-arm-left"
           >
             <div
-              className="flex items-center gap-8 px-8 h-full"
+              className="flex items-center gap-8 px-10 h-full"
               style={{ background: "#b0b0b0" }}
               data-testid="nav-left-bar"
             >
@@ -334,7 +342,7 @@ function TopNav({ shown }: { shown: boolean }) {
                   key={item.id}
                   type="button"
                   onClick={() => scrollToId(item.id)}
-                  className="text-sm font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
+                  className="text-[15px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
                   data-testid={`link-nav-left-${item.id}`}
                 >
                   {item.label}
@@ -346,7 +354,7 @@ function TopNav({ shown }: { shown: boolean }) {
           {/* Gap left */}
           <div className="hidden md:block shrink-0" style={{ width: 4 }} />
 
-          {/* Cross logo — large, overlapping hero */}
+          {/* Cross logo — large, overlapping hero below */}
           <button
             type="button"
             onClick={() => scrollToId("top")}
@@ -358,7 +366,7 @@ function TopNav({ shown }: { shown: boolean }) {
               src={PARISH_LOGO_SRC}
               alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
               className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
-              style={{ height: 220, width: 220 }}
+              style={{ height: CROSS_H, width: CROSS_H * (325 / 515) }}
               loading="eager"
               decoding="async"
               data-testid="img-cross-nav"
@@ -368,14 +376,14 @@ function TopNav({ shown }: { shown: boolean }) {
           {/* Gap right */}
           <div className="hidden md:block shrink-0" style={{ width: 4 }} />
 
-          {/* Right menu bar — aligned to cross arms */}
+          {/* Right menu bar — aligned to grey cross arms */}
           <div
             className="hidden md:flex items-center justify-start flex-1"
-            style={{ marginTop: 82, height: 56 }}
+            style={{ marginTop: CROSS_H * 0.175, height: CROSS_H * 0.27 }}
             data-testid="nav-arm-right"
           >
             <div
-              className="flex items-center gap-8 px-8 h-full"
+              className="flex items-center gap-8 px-10 h-full"
               style={{ background: "#b0b0b0" }}
               data-testid="nav-right-bar"
             >
@@ -384,7 +392,7 @@ function TopNav({ shown }: { shown: boolean }) {
                   key={item.id}
                   type="button"
                   onClick={() => scrollToId(item.id)}
-                  className="text-sm font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
+                  className="text-[15px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
                   data-testid={`link-nav-right-${item.id}`}
                 >
                   {item.label}
