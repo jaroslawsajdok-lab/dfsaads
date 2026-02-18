@@ -351,23 +351,29 @@ function TopNav({ shown }: { shown: boolean }) {
           {/* Gap left */}
           <div className="hidden md:block shrink-0" style={{ width: 4 }} />
 
-          {/* Cross logo */}
+          {/* Cross logo — white outline separates it from the grey bar */}
           <button
             type="button"
             onClick={() => scrollToId("top")}
             className="group relative z-10 shrink-0"
             data-testid="button-nav-logo"
             aria-label="Wróć na górę"
+            style={{ padding: 4 }}
           >
-            <img
-              src={PARISH_LOGO_SRC}
-              alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-              className="object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.25)] transition-transform duration-300 group-hover:scale-[1.03]"
-              style={{ height: CROSS_H, width: crossW }}
-              loading="eager"
-              decoding="async"
-              data-testid="img-cross-nav"
-            />
+            <div
+              className="rounded-sm bg-white transition-transform duration-300 group-hover:scale-[1.03]"
+              style={{ padding: 3 }}
+            >
+              <img
+                src={PARISH_LOGO_SRC}
+                alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
+                className="object-contain"
+                style={{ height: CROSS_H - 14, width: Math.round((CROSS_H - 14) * (325 / 515)) }}
+                loading="eager"
+                decoding="async"
+                data-testid="img-cross-nav"
+              />
+            </div>
           </button>
 
           {/* Gap right */}
