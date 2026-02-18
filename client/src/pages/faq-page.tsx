@@ -27,7 +27,7 @@ export default function FaqPage() {
   });
 
   return (
-    <SubpageLayout title="Najczęściej zadawane pytania">
+    <SubpageLayout title="Najczęściej zadawane pytania" titleKey="subpage_faq_title">
       {isLoading ? (
         <div className="py-12 text-center text-muted-foreground" data-testid="faq-loading">
           Ładowanie pytań…

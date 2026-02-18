@@ -24,7 +24,7 @@ export default function GrupyPage() {
   });
 
   return (
-    <SubpageLayout title="Grupy parafialne">
+    <SubpageLayout title="Grupy parafialne" titleKey="subpage_grupy_title">
       {isLoading ? (
         <div className="py-12 text-center text-muted-foreground" data-testid="grupy-loading">
           Ładowanie grup…

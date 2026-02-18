@@ -305,6 +305,25 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // ── Site texts (static editable labels) ──
+  app.get("/api/site-texts", async (_req, res) => {
+    const allSettings = await storage.getAllAdminSettings("site_text_");
+    const map: Record<string, string> = {};
+    for (const row of allSettings) {
+      map[row.key.replace("site_text_", "")] = row.value;
+    }
+    res.json(map);
+  });
+
+  app.put("/api/site-texts/:key", requireAdmin, async (req, res) => {
+    const { value } = req.body;
+    if (typeof value !== "string") {
+      return res.status(400).json({ message: "value required" });
+    }
+    await storage.setAdminSetting(`site_text_${req.params.key}`, value);
+    res.json({ ok: true });
+  });
+
   // ── Upload ──
   app.post("/api/upload", requireAdmin, upload.single("file"), (req, res) => {
     if (!req.file) {

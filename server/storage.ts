@@ -45,6 +45,7 @@ export interface IStorage {
   deleteGallery(id: number): Promise<boolean>;
   getAdminSetting(key: string): Promise<string | null>;
   setAdminSetting(key: string, value: string): Promise<void>;
+  getAllAdminSettings(prefix: string): Promise<{ key: string; value: string }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -169,6 +170,10 @@ export class DatabaseStorage implements IStorage {
       .insert(adminSettings)
       .values({ key, value })
       .onConflictDoUpdate({ target: adminSettings.key, set: { value } });
+  }
+  async getAllAdminSettings(prefix: string) {
+    const rows = await db.select().from(adminSettings);
+    return rows.filter(r => r.key.startsWith(prefix)).map(r => ({ key: r.key, value: r.value }));
   }
 }
 

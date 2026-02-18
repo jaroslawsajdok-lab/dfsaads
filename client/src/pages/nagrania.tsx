@@ -25,7 +25,7 @@ export default function NagraniaPage() {
   });
 
   return (
-    <SubpageLayout title="Nagrania">
+    <SubpageLayout title="Nagrania" titleKey="subpage_nagrania_title">
       {isLoading ? (
         <div className="py-12 text-center text-muted-foreground" data-testid="nagrania-loading">
           Ładowanie nagrań…

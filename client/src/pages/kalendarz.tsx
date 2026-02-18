@@ -28,7 +28,7 @@ export default function KalendarzPage() {
   });
 
   return (
-    <SubpageLayout title="Kalendarz wydarzeń">
+    <SubpageLayout title="Kalendarz wydarzeń" titleKey="subpage_kalendarz_title">
       {isLoading ? (
         <div className="py-12 text-center text-muted-foreground" data-testid="kalendarz-loading">
           Ładowanie wydarzeń…

@@ -2,12 +2,15 @@ import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReactNode } from "react";
+import { EditableStaticText } from "@/pages/home";
 
 export function SubpageLayout({
   title,
+  titleKey,
   children,
 }: {
   title: string;
+  titleKey?: string;
   children: ReactNode;
 }) {
   return (
@@ -30,14 +33,18 @@ export function SubpageLayout({
               data-testid="button-back-home"
             >
               <ArrowLeft className="h-4 w-4" />
-              Powrót na stronę główną
+              <EditableStaticText textKey="subpage_back" defaultValue="Powrót na stronę główną" />
             </Button>
           </Link>
           <h1
             className="font-display text-3xl tracking-[-0.02em] sm:text-4xl"
             data-testid="text-subpage-title"
           >
-            {title}
+            {titleKey ? (
+              <EditableStaticText textKey={titleKey} defaultValue={title} />
+            ) : (
+              title
+            )}
           </h1>
         </div>
       </header>
@@ -47,7 +54,7 @@ export function SubpageLayout({
       </main>
 
       <footer className="border-t py-8 text-center text-sm text-muted-foreground" data-testid="subpage-footer">
-        © {new Date().getFullYear()} Parafia Ewangelicko-Augsburska w Wiśle Jaworniku
+        © {new Date().getFullYear()} <EditableStaticText textKey="subpage_footer" defaultValue="Parafia Ewangelicko-Augsburska w Wiśle Jaworniku" />
       </footer>
     </div>
   );

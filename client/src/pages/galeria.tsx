@@ -24,7 +24,7 @@ export default function GaleriaPage() {
   });
 
   return (
-    <SubpageLayout title="Galeria">
+    <SubpageLayout title="Galeria" titleKey="subpage_galeria_title">
       {isLoading ? (
         <div className="py-12 text-center text-muted-foreground" data-testid="galeria-loading">
           Ładowanie galerii…

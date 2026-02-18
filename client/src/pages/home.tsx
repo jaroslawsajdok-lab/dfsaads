@@ -214,7 +214,7 @@ function VideoHero() {
         >
           <div className="inline-flex items-center gap-3 rounded-full px-5 py-2 text-white/90 glass-dark">
             <span className="text-sm tracking-wide" data-testid="text-hero-pill">
-              Wisła Jawornik · jawornik.eu
+              <EditableStaticText textKey="hero_pill" defaultValue="Wisła Jawornik · jawornik.eu" />
             </span>
           </div>
 
@@ -222,16 +222,13 @@ function VideoHero() {
             className="mt-6 font-display text-4xl leading-[1.03] tracking-[-0.02em] text-white sm:text-6xl"
             data-testid="text-hero-title"
           >
-            Parafia Ewangelicka
-            <br />
-            w Wiśle Jaworniku
+            <EditableStaticText textKey="hero_title" defaultValue="Parafia Ewangelicka w Wiśle Jaworniku" />
           </h1>
           <p
             className="mt-4 max-w-2xl text-balance text-base leading-relaxed text-white/85 sm:text-lg"
             data-testid="text-hero-subtitle"
           >
-            Aktualności, kalendarz wydarzeń, grupy parafialne, nagrania i galeria — wszystko w
-            jednym miejscu.
+            <EditableStaticText textKey="hero_subtitle" defaultValue="Aktualności, kalendarz wydarzeń, grupy parafialne, nagrania i galeria — wszystko w jednym miejscu." multiline />
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -241,7 +238,7 @@ function VideoHero() {
               onClick={() => scrollToId("aktualnosci")}
               data-testid="button-hero-start"
             >
-              Zobacz aktualności
+              <EditableStaticText textKey="hero_btn_start" defaultValue="Zobacz aktualności" />
               <ChevronRight className="ml-1.5 h-4 w-4" />
             </Button>
 
@@ -252,7 +249,7 @@ function VideoHero() {
               onClick={() => window.open("https://osrodek.jawornik.eu", "_blank", "noopener,noreferrer")}
               data-testid="button-hero-guesthouse"
             >
-              Dom Gościnny
+              <EditableStaticText textKey="hero_btn_guesthouse" defaultValue="Dom Gościnny" />
             </Button>
 
             {!canAutoplay && (
@@ -264,7 +261,7 @@ function VideoHero() {
                 data-testid="button-hero-play"
               >
                 <Play className="mr-2 h-4 w-4" />
-                Odtwórz
+                <EditableStaticText textKey="hero_btn_play" defaultValue="Odtwórz" />
               </Button>
             )}
 
@@ -277,7 +274,7 @@ function VideoHero() {
                 data-testid="button-hero-play-fallback"
               >
                 <Play className="mr-2 h-4 w-4" />
-                Odtwórz
+                <EditableStaticText textKey="hero_btn_play" defaultValue="Odtwórz" />
               </Button>
             )}
           </div>
@@ -291,7 +288,7 @@ function VideoHero() {
             data-testid="button-scroll"
             aria-label="Przewiń do kolejnej sekcji"
           >
-            <span className="text-sm" data-testid="text-scroll">Przewiń</span>
+            <span className="text-sm" data-testid="text-scroll"><EditableStaticText textKey="hero_scroll" defaultValue="Przewiń" /></span>
             <ArrowDown className="h-4 w-4 transition group-hover:translate-y-0.5" />
           </button>
         </div>
@@ -413,7 +410,7 @@ function TopNav({ shown }: { shown: boolean }) {
               className="text-[16px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
               data-testid={`link-nav-${item.id}`}
             >
-              {item.label}
+              <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
             </button>
           ))}
 
@@ -481,7 +478,7 @@ function TopNav({ shown }: { shown: boolean }) {
                     className="px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
                     data-testid={`link-dropdown-${item.id}`}
                   >
-                    {item.label}
+                    <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
                   </button>
                 ))}
                 <Separator className="my-1" />
@@ -529,7 +526,7 @@ function TopNav({ shown }: { shown: boolean }) {
           data-testid="nav-mobile-hint"
         >
           <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
-            Menu
+            <EditableStaticText textKey="nav_menu" defaultValue="Menu" />
           </span>
         </div>
       </nav>
@@ -809,6 +806,80 @@ function EditableText({
   );
 }
 
+type SiteTexts = Record<string, string>;
+
+export function EditableStaticText({
+  textKey, defaultValue, multiline = false, className = ""
+}: {
+  textKey: string; defaultValue: string; multiline?: boolean; className?: string;
+}) {
+  const { isEditMode } = useAuth();
+  const { data: siteTexts = {} } = useQuery<SiteTexts>({
+    queryKey: ["site-texts"],
+    queryFn: () => apiFetch("/api/site-texts"),
+  });
+  const displayValue = siteTexts[textKey] || defaultValue;
+
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(displayValue);
+  const qc = useQueryClient();
+
+  useEffect(() => { setText(siteTexts[textKey] || defaultValue); }, [siteTexts, textKey, defaultValue]);
+
+  const mutation = useMutation({
+    mutationFn: async (newVal: string) => {
+      await apiRequest("PUT", `/api/site-texts/${textKey}`, { value: newVal });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["site-texts"] });
+      setEditing(false);
+    },
+  });
+
+  if (!isEditMode) return <span className={className}>{displayValue}</span>;
+
+  if (editing) {
+    return (
+      <span className={cx("inline-flex items-center gap-1", className)} data-testid={`editable-static-${textKey}`}>
+        {multiline ? (
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="min-h-[60px] text-sm"
+            autoFocus
+            data-testid={`input-static-${textKey}`}
+          />
+        ) : (
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="h-7 text-sm"
+            autoFocus
+            data-testid={`input-static-${textKey}`}
+          />
+        )}
+        <button type="button" onClick={() => mutation.mutate(text)} className="rounded p-1 text-green-600 hover:bg-green-50" data-testid={`button-save-static-${textKey}`}>
+          <Save className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" onClick={() => { setText(displayValue); setEditing(false); }} className="rounded p-1 text-red-500 hover:bg-red-50" data-testid={`button-cancel-static-${textKey}`}>
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cx("group/edit inline cursor-pointer border-b border-dashed border-transparent hover:border-yellow-400", className)}
+      onClick={() => setEditing(true)}
+      data-testid={`editable-static-trigger-${textKey}`}
+    >
+      {displayValue}
+      <Pencil className="ml-1 inline h-3 w-3 text-yellow-500 opacity-0 group-hover/edit:opacity-100 transition" />
+    </span>
+  );
+}
+
 function AdminItemActions({ entityType, entityId, queryKey }: { entityType: string; entityId: number; queryKey: string }) {
   const { isEditMode } = useAuth();
   const qc = useQueryClient();
@@ -983,10 +1054,10 @@ export default function HomePage() {
                 />
                 <div>
                   <div className="font-display text-xl tracking-[-0.02em]" data-testid="text-afterband-title">
-                    Witaj w parafii
+                    <EditableStaticText textKey="afterband_title" defaultValue="Witaj w parafii" />
                   </div>
                   <div className="text-sm text-muted-foreground" data-testid="text-afterband-sub">
-                    Szybkie skróty do najważniejszych sekcji.
+                    <EditableStaticText textKey="afterband_sub" defaultValue="Szybkie skróty do najważniejszych sekcji." />
                   </div>
                 </div>
               </div>
@@ -997,7 +1068,7 @@ export default function HomePage() {
                   onClick={() => scrollToId("polecamy")}
                   data-testid="button-jump-kalendarz"
                 >
-                  Kalendarz
+                  <EditableStaticText textKey="jump_kalendarz" defaultValue="Kalendarz" />
                 </Button>
                 <Button
                   variant="secondary"
@@ -1005,7 +1076,7 @@ export default function HomePage() {
                   onClick={() => scrollToId("nagrania")}
                   data-testid="button-jump-nagrania"
                 >
-                  Nagrania
+                  <EditableStaticText textKey="jump_nagrania" defaultValue="Nagrania" />
                 </Button>
                 <Button
                   variant="secondary"
@@ -1013,7 +1084,7 @@ export default function HomePage() {
                   onClick={() => scrollToId("kontakt")}
                   data-testid="button-jump-kontakt"
                 >
-                  Kontakt
+                  <EditableStaticText textKey="jump_kontakt" defaultValue="Kontakt" />
                 </Button>
               </div>
             </div>
@@ -1021,13 +1092,13 @@ export default function HomePage() {
           <div className="md:col-span-5">
             <div className="glass rounded-3xl p-5" data-testid="card-afterband-cta">
               <div className="text-xs text-muted-foreground" data-testid="text-afterband-cta-kicker">
-                Wyróżnione
+                <EditableStaticText textKey="afterband_cta_kicker" defaultValue="Wyróżnione" />
               </div>
               <div className="mt-2 font-display text-2xl tracking-[-0.02em]" data-testid="text-afterband-cta-title">
-                Remont Domu Gościnnego
+                <EditableStaticText textKey="afterband_cta_title" defaultValue="Remont Domu Gościnnego" />
               </div>
               <p className="mt-2 text-sm text-muted-foreground" data-testid="text-afterband-cta-desc">
-                Zobacz informacje i aktualny status prac.
+                <EditableStaticText textKey="afterband_cta_desc" defaultValue="Zobacz informacje i aktualny status prac." />
               </p>
               <Button
                 className="mt-4 w-full rounded-2xl"
@@ -1043,10 +1114,10 @@ export default function HomePage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-news-title">
-              Aktualności
+              <EditableStaticText textKey="news_title" defaultValue="Aktualności" />
             </h2>
             <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-news-subtitle">
-              Najnowsze informacje i ogłoszenia.
+              <EditableStaticText textKey="news_subtitle" defaultValue="Najnowsze informacje i ogłoszenia." />
             </p>
           </div>
           <Button
@@ -1079,15 +1150,15 @@ export default function HomePage() {
           <div className="flex items-start justify-between gap-6">
             <div>
               <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-calendar-title">
-                Kalendarz
+                <EditableStaticText textKey="calendar_title" defaultValue="Kalendarz" />
               </h2>
               <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-calendar-subtitle">
-                Najbliższe wydarzenia i spotkania.
+                <EditableStaticText textKey="calendar_subtitle" defaultValue="Najbliższe wydarzenia i spotkania." />
               </p>
             </div>
             <div className="hidden sm:flex items-center gap-2 rounded-2xl px-3 py-2 glass" data-testid="card-calendar-mini">
               <CalendarIcon className="h-4 w-4 text-primary" />
-              <span className="text-sm" data-testid="text-calendar-mini">Najbliższe 30 dni</span>
+              <span className="text-sm" data-testid="text-calendar-mini"><EditableStaticText textKey="calendar_mini" defaultValue="Najbliższe 30 dni" /></span>
             </div>
           </div>
 
@@ -1155,9 +1226,9 @@ export default function HomePage() {
             </div>
 
             <Card className="rounded-2xl border bg-white/70 p-5 backdrop-blur" data-testid="card-calendar-aside">
-              <div className="font-display text-lg" data-testid="text-calendar-aside-title">Skrót</div>
+              <div className="font-display text-lg" data-testid="text-calendar-aside-title"><EditableStaticText textKey="calendar_aside_title" defaultValue="Skrót" /></div>
               <p className="mt-2 text-sm text-muted-foreground" data-testid="text-calendar-aside-desc">
-                W przyszłości: mini-kalendarz + filtrowanie typów wydarzeń.
+                <EditableStaticText textKey="calendar_aside_desc" defaultValue="Mini-kalendarz i filtrowanie typów wydarzeń." />
               </p>
               <Separator className="my-4" />
               <div className="space-y-3">
@@ -1181,16 +1252,14 @@ export default function HomePage() {
             </Card>
           </div>
 
-          {eventsData.length > 3 && (
-            <div className="mt-6 text-center">
-              <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-events">
-                <Link href="/kalendarz">
-                  Więcej wydarzeń
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          )}
+          <div className="mt-6 text-center">
+            <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-events">
+              <Link href="/kalendarz">
+                <EditableStaticText textKey="btn_more_events" defaultValue="Więcej wydarzeń" />
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -1199,10 +1268,10 @@ export default function HomePage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-groups-title">
-              Grupy w parafii
+              <EditableStaticText textKey="groups_title" defaultValue="Grupy w parafii" />
             </h2>
             <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-groups-subtitle">
-              Dołącz do wspólnoty — znajdź przestrzeń dla siebie.
+              <EditableStaticText textKey="groups_subtitle" defaultValue="Dołącz do wspólnoty — znajdź przestrzeń dla siebie." />
             </p>
           </div>
           {isEditMode && (
@@ -1260,16 +1329,14 @@ export default function HomePage() {
           ))}
         </div>
 
-        {groupsData.length > 3 && (
-          <div className="mt-6 text-center">
-            <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-groups">
-              <Link href="/grupy">
-                Więcej grup
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        )}
+        <div className="mt-6 text-center">
+          <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-groups">
+            <Link href="/grupy">
+              <EditableStaticText textKey="btn_more_groups" defaultValue="Więcej grup" />
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </section>
 
       {/* Nagrania */}
@@ -1278,10 +1345,10 @@ export default function HomePage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-recordings-title">
-                Nagrania
+                <EditableStaticText textKey="recordings_title" defaultValue="Nagrania" />
               </h2>
               <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-recordings-subtitle">
-                Kazania i materiały wideo z YouTube.
+                <EditableStaticText textKey="recordings_subtitle" defaultValue="Kazania i materiały wideo z YouTube." />
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1349,16 +1416,14 @@ export default function HomePage() {
             ))}
           </div>
 
-          {recordingsData.length > 3 && (
-            <div className="mt-6 text-center">
-              <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-recordings">
-                <Link href="/nagrania">
-                  Więcej nagrań
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          )}
+          <div className="mt-6 text-center">
+            <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-recordings">
+              <Link href="/nagrania">
+                <EditableStaticText textKey="btn_more_recordings" defaultValue="Więcej nagrań" />
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -1366,10 +1431,10 @@ export default function HomePage() {
       <section id="galeria" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-galeria">
         <div>
           <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-gallery-title">
-            Galeria
+            <EditableStaticText textKey="gallery_title" defaultValue="Galeria" />
           </h2>
           <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-gallery-subtitle">
-            Przykładowa siatka — docelowo zdjęcia z biblioteki mediów.
+            <EditableStaticText textKey="gallery_subtitle" defaultValue="Zdjęcia z życia parafii." />
           </p>
         </div>
 
@@ -1396,7 +1461,7 @@ export default function HomePage() {
         <div className="mt-6 text-center">
           <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-gallery">
             <Link href="/galeria">
-              Więcej zdjęć
+              <EditableStaticText textKey="btn_more_gallery" defaultValue="Więcej zdjęć" />
               <ChevronRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
@@ -1409,10 +1474,10 @@ export default function HomePage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-faq-title">
-                FAQ
+                <EditableStaticText textKey="faq_title" defaultValue="FAQ" />
               </h2>
               <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-faq-subtitle">
-                Najczęstsze pytania — krótkie odpowiedzi.
+                <EditableStaticText textKey="faq_subtitle" defaultValue="Najczęstsze pytania — krótkie odpowiedzi." />
               </p>
             </div>
             {isEditMode && (
@@ -1447,16 +1512,14 @@ export default function HomePage() {
             </Accordion>
           </div>
 
-          {faqData.length > 3 && (
-            <div className="mt-6 text-center">
-              <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-faq">
-                <Link href="/faq">
-                  Więcej pytań
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          )}
+          <div className="mt-6 text-center">
+            <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-faq">
+              <Link href="/faq">
+                <EditableStaticText textKey="btn_more_faq" defaultValue="Więcej pytań" />
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -1467,10 +1530,10 @@ export default function HomePage() {
           <div className="relative grid gap-6 md:grid-cols-3 md:items-center">
             <div className="md:col-span-2">
               <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-guesthouse-title">
-                Dom Gościnny
+                <EditableStaticText textKey="guesthouse_title" defaultValue="Dom Gościnny" />
               </h2>
               <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-guesthouse-subtitle">
-                Ośrodek wypoczynkowy i miejsce spotkań. Szczegóły, zdjęcia i rezerwacje:
+                <EditableStaticText textKey="guesthouse_subtitle" defaultValue="Ośrodek wypoczynkowy i miejsce spotkań. Szczegóły, zdjęcia i rezerwacje:" />
               </p>
             </div>
             <div className="flex flex-col gap-2">
@@ -1496,10 +1559,10 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
           <div>
             <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-contact-title">
-              Kontakt
+              <EditableStaticText textKey="contact_title" defaultValue="Kontakt" />
             </h2>
             <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-contact-subtitle">
-              Dane kontaktowe oraz formularz (docelowo: Contact Form 7 / WPForms).
+              <EditableStaticText textKey="contact_subtitle" defaultValue="Dane kontaktowe parafii." />
             </p>
           </div>
 
@@ -1509,9 +1572,9 @@ export default function HomePage() {
                 <div className="flex items-start gap-3" data-testid="row-contact-address">
                   <MapPin className="mt-0.5 h-5 w-5 text-primary" />
                   <div>
-                    <div className="text-sm font-medium" data-testid="text-contact-address-title">Adres</div>
+                    <div className="text-sm font-medium" data-testid="text-contact-address-title"><EditableStaticText textKey="contact_address_label" defaultValue="Adres" /></div>
                     <div className="text-sm text-muted-foreground" data-testid="text-contact-address">
-                      {contactData.address || "(uzupełnij adres)"}
+                      <EditableStaticText textKey="contact_address" defaultValue={contactData.address || "(uzupełnij adres)"} />
                     </div>
                   </div>
                 </div>
@@ -1519,9 +1582,9 @@ export default function HomePage() {
                 <div className="flex items-start gap-3" data-testid="row-contact-phone">
                   <Phone className="mt-0.5 h-5 w-5 text-primary" />
                   <div>
-                    <div className="text-sm font-medium" data-testid="text-contact-phone-title">Telefon</div>
+                    <div className="text-sm font-medium" data-testid="text-contact-phone-title"><EditableStaticText textKey="contact_phone_label" defaultValue="Telefon" /></div>
                     <div className="text-sm text-muted-foreground" data-testid="text-contact-phone">
-                      {contactData.phone || "(uzupełnij telefon)"}
+                      <EditableStaticText textKey="contact_phone" defaultValue={contactData.phone || "(uzupełnij telefon)"} />
                     </div>
                   </div>
                 </div>
@@ -1529,9 +1592,9 @@ export default function HomePage() {
                 <div className="flex items-start gap-3" data-testid="row-contact-mail">
                   <Mail className="mt-0.5 h-5 w-5 text-primary" />
                   <div>
-                    <div className="text-sm font-medium" data-testid="text-contact-mail-title">E-mail</div>
+                    <div className="text-sm font-medium" data-testid="text-contact-mail-title"><EditableStaticText textKey="contact_email_label" defaultValue="E-mail" /></div>
                     <div className="text-sm text-muted-foreground" data-testid="text-contact-mail">
-                      {contactData.email || "(uzupełnij e-mail)"}
+                      <EditableStaticText textKey="contact_email" defaultValue={contactData.email || "(uzupełnij e-mail)"} />
                     </div>
                   </div>
                 </div>
@@ -1541,9 +1604,9 @@ export default function HomePage() {
                 <div className="flex items-start gap-3" data-testid="row-contact-hours">
                   <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
                   <div>
-                    <div className="text-sm font-medium" data-testid="text-contact-hours-title">Godziny</div>
+                    <div className="text-sm font-medium" data-testid="text-contact-hours-title"><EditableStaticText textKey="contact_hours_label" defaultValue="Godziny" /></div>
                     <div className="text-sm text-muted-foreground" data-testid="text-contact-hours">
-                      {contactData.hours || "(uzupełnij godziny)"}
+                      <EditableStaticText textKey="contact_hours" defaultValue={contactData.hours || "(uzupełnij godziny)"} />
                     </div>
                   </div>
                 </div>
@@ -1636,7 +1699,7 @@ export default function HomePage() {
           </div>
 
           <footer className="mt-10 flex flex-col gap-2 border-t pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between" data-testid="footer">
-            <div data-testid="text-footer-left">© {new Date().getFullYear()} jawornik.eu</div>
+            <div data-testid="text-footer-left">© {new Date().getFullYear()} <EditableStaticText textKey="footer_text" defaultValue="jawornik.eu" /></div>
             <div className="flex items-center gap-4" data-testid="row-footer-links">
               <Link href="/" data-testid="link-footer-home">Strona główna</Link>
               <button
