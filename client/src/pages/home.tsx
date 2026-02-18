@@ -434,109 +434,58 @@ function timeAgo(iso: string) {
   return `${months} ${months === 1 ? "miesiąc" : months < 5 ? "miesiące" : "miesięcy"} temu`;
 }
 
-const MAX_MSG_LEN = 280;
+const CARD_MSG_LEN = 120;
 
 function FbPostCard({ post }: { post: FbPost }) {
-  const [expanded, setExpanded] = useState(false);
-  const needsTruncate = post.message.length > MAX_MSG_LEN;
-  const displayMsg = expanded || !needsTruncate
-    ? post.message
-    : post.message.slice(0, MAX_MSG_LEN) + "…";
-  const maxPreview = 3;
-  const extraCount = post.images.length - maxPreview;
+  const needsTruncate = post.message.length > CARD_MSG_LEN;
+  const displayMsg = needsTruncate
+    ? post.message.slice(0, CARD_MSG_LEN) + "…"
+    : post.message;
 
   return (
-    <article
-      className="rounded-2xl border bg-white p-5"
+    <a
+      href={post.permalink_url}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex flex-col overflow-hidden rounded-2xl border bg-white transition-shadow hover:shadow-lg"
       data-testid={`fb-post-${post.id}`}
     >
-      <div className="mb-3 flex items-center gap-3">
-        <img
-          src={PARISH_LOGO_SRC}
-          alt=""
-          className="h-10 w-10 rounded-full object-contain"
-        />
-        <div>
-          <a
-            href={post.permalink_url}
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-[#1877F2] hover:underline"
-            data-testid={`fb-post-link-${post.id}`}
-          >
-            Parafia Ewangelicka w Wiśle Jaworniku
-          </a>
-          <div className="text-xs text-muted-foreground">{timeAgo(post.created_time)}</div>
-        </div>
-      </div>
-
-      {post.message && (
-        <div className="mb-3 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
-          {displayMsg}
-          {needsTruncate && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="ml-1 font-semibold text-[#1877F2] hover:underline"
-              data-testid={`fb-post-toggle-${post.id}`}
-            >
-              {expanded ? "Zobacz mniej" : "Zobacz więcej"}
-            </button>
-          )}
-        </div>
-      )}
-
       {post.images.length > 0 && (
-        <a
-          href={post.permalink_url}
-          target="_blank"
-          rel="noreferrer"
-          className="mb-3 block"
-        >
-          {post.images.length === 1 ? (
-            <img
-              src={post.images[0]}
-              alt=""
-              className="w-full rounded-xl object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="grid grid-cols-3 gap-1 overflow-hidden rounded-xl">
-              {post.images.slice(0, maxPreview).map((src, i) => (
-                <div key={i} className="relative aspect-square">
-                  <img
-                    src={src}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                  {i === maxPreview - 1 && extraCount > 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-2xl font-bold text-white">
-                      +{extraCount}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </a>
+        <div className="aspect-[4/3] w-full overflow-hidden">
+          <img
+            src={post.images[0]}
+            alt=""
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            loading="lazy"
+          />
+        </div>
       )}
 
-      <div className="flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1" data-testid={`fb-post-reactions-${post.id}`}>
-          <ThumbsUp className="h-3.5 w-3.5 text-[#1877F2]" />
-          <Heart className="h-3.5 w-3.5 text-red-500" />
-          {post.reactions_count}
-        </span>
-        <span className="flex items-center gap-1" data-testid={`fb-post-shares-${post.id}`}>
-          <Share2 className="h-3.5 w-3.5" />
-          Udostępnienia: {post.shares_count}
-        </span>
-        <span className="flex items-center gap-1" data-testid={`fb-post-comments-${post.id}`}>
-          <MessageCircle className="h-3.5 w-3.5" />
-          Komentarze: {post.comments_count}
-        </span>
+      <div className="flex flex-1 flex-col p-4">
+        <div className="mb-2 text-xs text-muted-foreground">{timeAgo(post.created_time)}</div>
+
+        {post.message && (
+          <p className="mb-3 flex-1 text-sm leading-relaxed text-foreground/90">
+            {displayMsg}
+          </p>
+        )}
+
+        <div className="flex items-center gap-3 border-t pt-2 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1" data-testid={`fb-post-reactions-${post.id}`}>
+            <ThumbsUp className="h-3 w-3 text-[#1877F2]" />
+            {post.reactions_count}
+          </span>
+          <span className="flex items-center gap-1" data-testid={`fb-post-comments-${post.id}`}>
+            <MessageCircle className="h-3 w-3" />
+            {post.comments_count}
+          </span>
+          <span className="flex items-center gap-1" data-testid={`fb-post-shares-${post.id}`}>
+            <Share2 className="h-3 w-3" />
+            {post.shares_count}
+          </span>
+        </div>
       </div>
-    </article>
+    </a>
   );
 }
 
@@ -610,7 +559,7 @@ function FacebookFeed() {
 
   if (hasNativeFeed) {
     return (
-      <div className="mt-8 space-y-4" data-testid="facebook-feed">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="facebook-feed">
         {posts.map((p) => (
           <FbPostCard key={p.id} post={p} />
         ))}
