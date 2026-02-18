@@ -311,6 +311,12 @@ function TopNav({ shown }: { shown: boolean }) {
       {/* White band above the grey bar */}
       <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop }} />
 
+      {/* White fill behind the logo area so video doesn't show through */}
+      <div
+        className="absolute top-0 bg-white"
+        style={{ left: 0, width: logoAreaW + 6, height: barTop + barH + 4 }}
+      />
+
       {/* Full-width grey bar — starts after the logo area */}
       <div
         className="absolute right-0 hidden md:block"
