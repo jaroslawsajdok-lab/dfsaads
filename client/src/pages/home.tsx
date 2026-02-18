@@ -71,15 +71,6 @@ type FaqItem = {
 
 type ContactMap = Record<string, string>;
 
-const NAV = [
-  { id: "onas", label: "O nas" },
-  { id: "polecamy", label: "Polecamy" },
-  { id: "nagrania", label: "Nagrania" },
-  { id: "galeria", label: "Galeria" },
-  { id: "faq", label: "FAQ" },
-  { id: "dom", label: "Dom Gościnny" },
-  { id: "kontakt", label: "Kontakt" },
-] as const;
 
 function cx(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
@@ -304,122 +295,109 @@ function VideoHero() {
   );
 }
 
+const NAV_LEFT = [
+  { id: "onas", label: "O nas" },
+  { id: "polecamy", label: "Polecamy" },
+] as const;
+
+const NAV_RIGHT = [
+  { id: "nagrania", label: "Nagrania" },
+  { id: "galeria", label: "Galeria" },
+  { id: "faq", label: "FAQ" },
+] as const;
+
 function TopNav({ shown }: { shown: boolean }) {
   return (
     <div
       className={cx(
-        "fixed inset-x-0 top-0 z-50 mx-auto px-3 pt-3 transition-all duration-700",
+        "fixed inset-x-0 top-0 z-50 transition-all duration-700",
         shown ? "translate-y-0 opacity-100" : "-translate-y-8 opacity-0 pointer-events-none",
       )}
       data-testid="nav-wrap"
     >
-      <div className="mx-auto max-w-6xl">
-        <div className="relative">
-          {/* Cross centerpiece */}
-          <div
-            className="pointer-events-auto absolute left-1/2 top-0 z-10 -translate-x-1/2"
-            data-testid="nav-logo-center"
-          >
-            <button
-              type="button"
-              onClick={() => scrollToId("top")}
-              className="group"
-              data-testid="button-nav-logo"
-              aria-label="Wróć na górę"
+      <div className="bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-center px-4 py-3">
+          {/* Left menu bar */}
+          <div className="hidden md:flex items-center justify-end" data-testid="nav-arm-left">
+            <div
+              className="flex items-center gap-6 px-6"
+              style={{ height: 36, background: "#b0b0b0" }}
+              data-testid="nav-left-bar"
             >
-              <div className="glass rounded-[30px] p-2 shadow-[0_22px_70px_-34px_hsl(224_70%_10%/.70)]">
-                <img
-                  src={PARISH_LOGO_SRC}
-                  alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-                  className="h-[120px] w-[120px] rounded-[24px] object-contain p-2 transition-transform duration-500 group-hover:scale-[1.02]"
-                  loading="eager"
-                  decoding="async"
-                  data-testid="img-cross-nav"
-                />
-              </div>
-            </button>
+              {NAV_LEFT.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => scrollToId(item.id)}
+                  className="text-[13px] font-medium tracking-wide text-white uppercase transition-opacity hover:opacity-70"
+                  data-testid={`link-nav-left-${item.id}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Nav band: menu embedded into the cross "arms" */}
-          <div className="glass rounded-[30px] px-3 py-3 pt-20" data-testid="nav-band">
-            <div className="relative flex items-center justify-between gap-3">
-              {/* Left "arm" */}
-              <div className="hidden md:flex flex-1 items-center justify-end" data-testid="nav-arm-left">
-                <div className="flex items-center gap-1 rounded-2xl bg-white/45 p-1 backdrop-blur" data-testid="nav-left-pills">
-                  {NAV.slice(0, 3).map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => scrollToId(item.id)}
-                      className="rounded-xl px-3 py-2 text-sm text-foreground/85 transition hover:bg-black/5 hover:text-foreground"
-                      data-testid={`link-nav-left-${item.id}`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Gap left */}
+          <div className="hidden md:block w-[4px] shrink-0" />
 
-              {/* Center caption under cross */}
-              <div className="hidden sm:block text-center" data-testid="nav-brand-center">
-                <div className="font-display text-sm leading-tight tracking-[-0.01em]" data-testid="text-nav-title">
-                  Parafia Ewangelicka
-                </div>
-                <div className="text-xs text-muted-foreground" data-testid="text-nav-subtitle">
-                  w Wiśle Jaworniku
-                </div>
-              </div>
+          {/* Cross logo — centered, no frame */}
+          <button
+            type="button"
+            onClick={() => scrollToId("top")}
+            className="group relative z-10 shrink-0"
+            data-testid="button-nav-logo"
+            aria-label="Wróć na górę"
+          >
+            <img
+              src={PARISH_LOGO_SRC}
+              alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
+              className="h-[72px] w-[72px] object-contain transition-transform duration-300 group-hover:scale-[1.04]"
+              loading="eager"
+              decoding="async"
+              data-testid="img-cross-nav"
+            />
+          </button>
 
-              {/* Right "arm" */}
-              <div className="hidden md:flex flex-1 items-center justify-start" data-testid="nav-arm-right">
-                <div className="flex items-center gap-1 rounded-2xl bg-white/45 p-1 backdrop-blur" data-testid="nav-right-pills">
-                  {NAV.slice(3).map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => scrollToId(item.id)}
-                      className="rounded-xl px-3 py-2 text-sm text-foreground/85 transition hover:bg-black/5 hover:text-foreground"
-                      data-testid={`link-nav-right-${item.id}`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Gap right */}
+          <div className="hidden md:block w-[4px] shrink-0" />
 
-              <div className="ml-auto flex items-center gap-2 md:ml-0" data-testid="nav-cta">
-                <Button
-                  size="sm"
-                  className="rounded-2xl"
-                  onClick={() =>
-                    window.open(
-                      "https://osrodek.jawornik.eu",
-                      "_blank",
-                      "noopener,noreferrer",
-                    )
-                  }
-                  data-testid="button-nav-remont"
+          {/* Right menu bar */}
+          <div className="hidden md:flex items-center justify-start" data-testid="nav-arm-right">
+            <div
+              className="flex items-center gap-6 px-6"
+              style={{ height: 36, background: "#b0b0b0" }}
+              data-testid="nav-right-bar"
+            >
+              {NAV_RIGHT.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => scrollToId(item.id)}
+                  className="text-[13px] font-medium tracking-wide text-white uppercase transition-opacity hover:opacity-70"
+                  data-testid={`link-nav-right-${item.id}`}
                 >
-                  REMONT DOMU GOŚCINNEGO
-                </Button>
-              </div>
+                  {item.label}
+                </button>
+              ))}
             </div>
+          </div>
+        </div>
 
-            <div className="mt-2 block md:hidden" data-testid="nav-mobile">
-              <div className="flex flex-wrap justify-center gap-1">
-                {NAV.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => scrollToId(item.id)}
-                    className="rounded-xl px-3 py-2 text-sm text-foreground/80 transition hover:bg-black/5 hover:text-foreground"
-                    data-testid={`link-nav-mobile-${item.id}`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* Mobile nav */}
+        <div className="block md:hidden border-t border-gray-100 px-4 pb-2" data-testid="nav-mobile">
+          <div className="flex flex-wrap justify-center gap-1 pt-1">
+            {[...NAV_LEFT, ...NAV_RIGHT].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => scrollToId(item.id)}
+                className="px-3 py-1.5 text-[13px] font-medium tracking-wide text-gray-600 uppercase transition-colors hover:text-gray-900"
+                data-testid={`link-nav-mobile-${item.id}`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
