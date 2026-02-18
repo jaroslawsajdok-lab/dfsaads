@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 
-const PARISH_LOGO_SRC = "/parish-cross.png";
+const PARISH_LOGO_SRC = "/parish-cross.svg";
 const CROSS_H = 450;
 
 import { Button } from "@/components/ui/button";
@@ -299,9 +299,9 @@ const NAV_ITEMS = [
 
 function TopNav({ shown }: { shown: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const barH = Math.round(CROSS_H * 0.267);
-  const barTop = Math.round(CROSS_H * 0.170);
-  const crossW = Math.round(CROSS_H * (305 / 495));
+  const barH = Math.round(CROSS_H * 0.2752);
+  const barTop = Math.round(CROSS_H * 0.1632);
+  const crossW = Math.round(CROSS_H * (53.97 / 87.72));
   const logoAreaW = crossW + 12;
 
   return (
