@@ -542,6 +542,53 @@ function FbPostCard({ post }: { post: FbPost }) {
 
 type FbApiResponse = { error: string | null; posts: FbPost[] };
 
+const FB_PLUGIN_W = 500;
+const FB_PLUGIN_H = 800;
+
+function FacebookIframeEmbed() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    function measure() {
+      if (containerRef.current) {
+        setScale(containerRef.current.offsetWidth / FB_PLUGIN_W);
+      }
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  const src =
+    `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent("https://www.facebook.com/wislajawornik")}` +
+    `&tabs=timeline&width=${FB_PLUGIN_W}&height=${FB_PLUGIN_H}&small_header=false&adapt_container_width=false&hide_cover=false&show_facepile=true&locale=pl_PL`;
+
+  return (
+    <div
+      ref={containerRef}
+      className="mt-8 w-full overflow-hidden rounded-2xl"
+      style={{ height: FB_PLUGIN_H * scale }}
+      data-testid="facebook-embed-iframe"
+    >
+      <iframe
+        src={src}
+        width={FB_PLUGIN_W}
+        height={FB_PLUGIN_H}
+        style={{
+          border: "none",
+          overflow: "hidden",
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+        }}
+        allowFullScreen
+        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+        title="Facebook – Parafia Ewangelicka w Wiśle Jaworniku"
+      />
+    </div>
+  );
+}
+
 function FacebookFeed() {
   const { data, isLoading } = useQuery<FbApiResponse>({
     queryKey: ["facebook-posts"],
@@ -550,7 +597,7 @@ function FacebookFeed() {
   });
 
   const posts = data?.posts ?? [];
-  const configError = data?.error === "no_token";
+  const hasNativeFeed = posts.length > 0;
 
   if (isLoading) {
     return (
@@ -560,35 +607,17 @@ function FacebookFeed() {
     );
   }
 
-  if (configError || posts.length === 0) {
+  if (hasNativeFeed) {
     return (
-      <div className="mt-8 rounded-2xl border bg-white p-8 text-center" data-testid="facebook-empty">
-        <Facebook className="mx-auto mb-3 h-10 w-10 text-[#1877F2]" />
-        <p className="mb-2 font-display text-lg">Posty z Facebooka</p>
-        <p className="text-sm text-muted-foreground">
-          {configError
-            ? "Brak tokenu Facebook — skonfiguruj FACEBOOK_PAGE_TOKEN, aby wyświetlić posty."
-            : "Brak postów do wyświetlenia."}
-        </p>
-        <a
-          href="https://www.facebook.com/wislajawornik"
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-block text-sm font-semibold text-[#1877F2] hover:underline"
-        >
-          Zobacz nasze posty na Facebooku →
-        </a>
+      <div className="mt-8 space-y-4" data-testid="facebook-feed">
+        {posts.map((p) => (
+          <FbPostCard key={p.id} post={p} />
+        ))}
       </div>
     );
   }
 
-  return (
-    <div className="mt-8 space-y-4" data-testid="facebook-feed">
-      {posts.map((p) => (
-        <FbPostCard key={p.id} post={p} />
-      ))}
-    </div>
-  );
+  return <FacebookIframeEmbed />;
 }
 
 export default function HomePage() {
