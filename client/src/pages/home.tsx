@@ -14,7 +14,6 @@ import {
   Youtube,
 } from "lucide-react";
 
-import logoPion from "@assets/Parafia_EA_Jawornik_logo_PION_kolor_1770990365264.jpg";
 
 const PARISH_LOGO_SRC = "/parish-cross.png";
 const CROSS_H = 300;
@@ -192,23 +191,15 @@ function VideoHero() {
         <div className="hero-overlay absolute inset-0" />
       </div>
 
-      {/* Content */}
-      <div className="relative mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 pb-10 pt-28 sm:px-8">
+      {/* Content — pushed down to clear the cross logo overlay */}
+      <div className="relative mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 pb-10 sm:px-8" style={{ paddingTop: CROSS_H * 0.5 }}>
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.65, ease: [0.2, 0.8, 0.2, 1] }}
           className="noise relative"
         >
-          <div className="inline-flex items-center gap-3 rounded-full px-4 py-2 text-white/90 glass-dark">
-            <img
-              src={logoPion}
-              alt="Logo parafii"
-              className="h-8 w-8 rounded-md bg-white object-contain p-1"
-              loading="eager"
-              decoding="async"
-              data-testid="img-logo-hero"
-            />
+          <div className="inline-flex items-center gap-3 rounded-full px-5 py-2 text-white/90 glass-dark">
             <span className="text-sm tracking-wide" data-testid="text-hero-pill">
               Wisła Jawornik · jawornik.eu
             </span>
@@ -308,28 +299,24 @@ const NAV_RIGHT = [
 ] as const;
 
 function TopNav({ shown }: { shown: boolean }) {
+  const barH = Math.round(CROSS_H * 0.27);
+  const barTop = Math.round(CROSS_H * 0.175);
+  const crossW = Math.round(CROSS_H * (325 / 515));
+
   return (
-    <div
+    <nav
       className={cx(
         "fixed inset-x-0 top-0 z-50 transition-all duration-700",
-        shown ? "translate-y-0 opacity-100" : "-translate-y-8 opacity-0 pointer-events-none",
+        shown ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none",
       )}
-      style={{ pointerEvents: shown ? "auto" : "none" }}
       data-testid="nav-wrap"
     >
-      {/*
-        Cross image is 325x515 (cropped). When rendered at CROSS_H:
-        - Grey blocks start at 17.5% from top
-        - Grey blocks end at 44.3% from top
-        - Grey block height = 27% of image height
-        Bars must match that height & vertical position exactly.
-      */}
       <div className="relative mx-auto max-w-6xl px-4">
         <div className="relative flex items-start justify-center" style={{ height: CROSS_H }}>
-          {/* Left menu bar — aligned to grey cross arms */}
+          {/* Left menu bar */}
           <div
             className="hidden md:flex items-center justify-end flex-1"
-            style={{ marginTop: CROSS_H * 0.175, height: CROSS_H * 0.27 }}
+            style={{ marginTop: barTop, height: barH }}
             data-testid="nav-arm-left"
           >
             <div
@@ -354,7 +341,7 @@ function TopNav({ shown }: { shown: boolean }) {
           {/* Gap left */}
           <div className="hidden md:block shrink-0" style={{ width: 4 }} />
 
-          {/* Cross logo — large, overlapping hero below */}
+          {/* Cross logo */}
           <button
             type="button"
             onClick={() => scrollToId("top")}
@@ -365,8 +352,8 @@ function TopNav({ shown }: { shown: boolean }) {
             <img
               src={PARISH_LOGO_SRC}
               alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-              className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
-              style={{ height: CROSS_H, width: CROSS_H * (325 / 515) }}
+              className="object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.25)] transition-transform duration-300 group-hover:scale-[1.03]"
+              style={{ height: CROSS_H, width: crossW }}
               loading="eager"
               decoding="async"
               data-testid="img-cross-nav"
@@ -376,10 +363,10 @@ function TopNav({ shown }: { shown: boolean }) {
           {/* Gap right */}
           <div className="hidden md:block shrink-0" style={{ width: 4 }} />
 
-          {/* Right menu bar — aligned to grey cross arms */}
+          {/* Right menu bar */}
           <div
             className="hidden md:flex items-center justify-start flex-1"
-            style={{ marginTop: CROSS_H * 0.175, height: CROSS_H * 0.27 }}
+            style={{ marginTop: barTop, height: barH }}
             data-testid="nav-arm-right"
           >
             <div
@@ -403,8 +390,8 @@ function TopNav({ shown }: { shown: boolean }) {
         </div>
 
         {/* Mobile nav */}
-        <div className="block md:hidden px-2 pb-2" data-testid="nav-mobile">
-          <div className="flex flex-wrap justify-center gap-1">
+        <div className="block md:hidden" data-testid="nav-mobile">
+          <div className="flex flex-wrap justify-center gap-1 rounded-2xl bg-white/90 px-2 py-2 backdrop-blur-sm mx-4">
             {[...NAV_LEFT, ...NAV_RIGHT].map((item) => (
               <button
                 key={item.id}
@@ -419,7 +406,7 @@ function TopNav({ shown }: { shown: boolean }) {
           </div>
         </div>
       </div>
-    </div>
+    </nav>
   );
 }
 
@@ -444,34 +431,6 @@ export default function HomePage() {
       <TopNav shown={stickyShown} />
       <VideoHero />
 
-      {/* Video shrinks into a top strip after 3s/scroll */}
-      <div
-        className={cx(
-          "pointer-events-none fixed inset-x-0 top-0 z-40 transition-all duration-700",
-          stickyShown
-            ? "h-[20svh] opacity-100"
-            : "h-0 opacity-0",
-        )}
-        aria-hidden="true"
-        data-testid="video-topstrip"
-      >
-        <div className="relative h-full w-full overflow-hidden">
-          <video
-            className="h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster="/hero-poster.png"
-            data-testid="video-topstrip-video"
-          >
-            <source src="/hero-drone.mp4" type="video/mp4" />
-          </video>
-          <div className="hero-overlay absolute inset-0 opacity-80" />
-        </div>
-      </div>
-
       {/* Aktualności */}
       <section
         id="aktualnosci"
@@ -483,9 +442,9 @@ export default function HomePage() {
             <div className="glass rounded-3xl p-5" data-testid="card-afterband">
               <div className="flex items-center gap-3">
                 <img
-                  src={logoPion}
+                  src={PARISH_LOGO_SRC}
                   alt="Logo parafii"
-                  className="h-16 w-16 rounded-2xl bg-white object-contain p-2"
+                  className="h-16 w-16 rounded-2xl object-contain"
                   loading="lazy"
                   decoding="async"
                   data-testid="img-logo-afterband"
