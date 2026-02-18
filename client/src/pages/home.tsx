@@ -331,7 +331,7 @@ function TopNav({ shown }: { shown: boolean }) {
                 <img
                   src={PARISH_LOGO_SRC}
                   alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-                  className="h-[120px] w-[120px] rounded-[24px] bg-white/90 object-contain p-3 transition-transform duration-500 group-hover:scale-[1.02]"
+                  className="h-[120px] w-[120px] rounded-[24px] object-contain p-1 transition-transform duration-500 group-hover:scale-[1.02] mix-blend-multiply"
                   loading="eager"
                   decoding="async"
                   data-testid="img-cross-nav"
