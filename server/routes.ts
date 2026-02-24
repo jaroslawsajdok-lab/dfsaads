@@ -81,6 +81,7 @@ const FB_PAGE_SLUG = process.env.FB_PAGE_SLUG || "wislajawornik";
 const FB_CACHE_TTL = 5 * 60 * 1000;
 let fbCache: { data: any; ts: number } | null = null;
 let resolvedPageToken: { pageId: string; token: string; slug: string } | null = null;
+let lastKnownFbSlug: string = FB_PAGE_SLUG;
 
 async function resolvePageToken(): Promise<{ pageId: string; token: string; slug: string } | null> {
   if (resolvedPageToken) return resolvedPageToken;
@@ -118,11 +119,76 @@ async function resolvePageToken(): Promise<{ pageId: string; token: string; slug
       : FB_PAGE_SLUG;
 
     console.log(`FB: Using page "${page.name}" (ID: ${page.id}, slug: ${slug})`);
+    lastKnownFbSlug = slug;
     resolvedPageToken = { pageId: page.id, token: page.access_token, slug };
     return resolvedPageToken;
   } catch (err) {
     console.error("FB resolvePageToken error:", err);
     return null;
+  }
+}
+
+// ── YouTube ──
+const YT_CACHE_TTL = 30 * 60 * 1000;
+const YT_CHANNEL_HANDLE = "@parafiae-awisajawornik2251";
+let ytCache: { data: any; ts: number } | null = null;
+let ytChannelId: string | null = null;
+
+async function resolveYtChannelId(apiKey: string): Promise<string | null> {
+  if (ytChannelId) return ytChannelId;
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(YT_CHANNEL_HANDLE)}&key=${apiKey}`
+    );
+    if (!res.ok) {
+      console.error("YT channel resolve error:", res.status, await res.text());
+      return null;
+    }
+    const json = await res.json();
+    const items = json.items || [];
+    if (items.length === 0) {
+      console.error("YT: No channel found for handle", YT_CHANNEL_HANDLE);
+      return null;
+    }
+    ytChannelId = items[0].id;
+    console.log(`YT: Resolved channel "${YT_CHANNEL_HANDLE}" → ${ytChannelId}`);
+    return ytChannelId;
+  } catch (err) {
+    console.error("YT resolveChannelId error:", err);
+    return null;
+  }
+}
+
+async function fetchYouTubeVideos(): Promise<any[]> {
+  if (ytCache && Date.now() - ytCache.ts < YT_CACHE_TTL) return ytCache.data;
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return [];
+
+  const channelId = await resolveYtChannelId(apiKey);
+  if (!channelId) return [];
+
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12&key=${apiKey}`
+    );
+    if (!res.ok) {
+      console.error("YT search error:", res.status, await res.text());
+      return ytCache?.data ?? [];
+    }
+    const json = await res.json();
+    const videos = (json.items || []).map((item: any) => ({
+      id: item.id.videoId,
+      title: item.snippet.title,
+      date: item.snippet.publishedAt,
+      thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "",
+      channelTitle: item.snippet.channelTitle,
+    }));
+    ytCache = { data: videos, ts: Date.now() };
+    return videos;
+  } catch (err) {
+    console.error("YT fetch error:", err);
+    return ytCache?.data ?? [];
   }
 }
 
@@ -521,12 +587,22 @@ export async function registerRoutes(
   // ── Facebook ──
   app.get("/api/facebook-posts", async (_req, res) => {
     if (!process.env.FACEBOOK_PAGE_TOKEN) {
-      res.json({ error: "no_token", posts: [], pageSlug: FB_PAGE_SLUG });
+      res.json({ error: "no_token", posts: [], pageSlug: lastKnownFbSlug });
       return;
     }
     const posts = await fetchFacebookPosts();
-    const slug = resolvedPageToken?.slug || FB_PAGE_SLUG;
+    const slug = resolvedPageToken?.slug || lastKnownFbSlug;
     res.json({ error: null, posts, pageSlug: slug });
+  });
+
+  // ── YouTube ──
+  app.get("/api/youtube-videos", async (_req, res) => {
+    if (!process.env.YOUTUBE_API_KEY) {
+      res.json({ error: "no_key", videos: [] });
+      return;
+    }
+    const videos = await fetchYouTubeVideos();
+    res.json({ error: null, videos });
   });
 
   return httpServer;

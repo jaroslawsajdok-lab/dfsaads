@@ -78,6 +78,16 @@ type RecordingItem = {
   href: string;
 };
 
+type YtVideo = {
+  id: string;
+  title: string;
+  date: string;
+  thumbnail: string;
+  channelTitle: string;
+};
+
+type YtApiResponse = { error: string | null; videos: YtVideo[] };
+
 type FaqItem = {
   id: number;
   question: string;
@@ -1024,6 +1034,8 @@ export default function HomePage() {
   const { data: eventsData = [] } = useQuery<EventItem[]>({ queryKey: ["events"], queryFn: () => apiFetch("/api/events") });
   const { data: groupsData = [] } = useQuery<GroupItem[]>({ queryKey: ["groups"], queryFn: () => apiFetch("/api/groups") });
   const { data: recordingsData = [] } = useQuery<RecordingItem[]>({ queryKey: ["recordings"], queryFn: () => apiFetch("/api/recordings") });
+  const { data: ytData } = useQuery<YtApiResponse>({ queryKey: ["youtube-videos"], queryFn: () => apiFetch("/api/youtube-videos"), refetchInterval: 30 * 60 * 1000 });
+  const ytVideos = ytData?.videos ?? [];
   const { data: faqData = [] } = useQuery<FaqItem[]>({ queryKey: ["faq"], queryFn: () => apiFetch("/api/faq") });
   const { data: contactData = {} } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
   const { isEditMode } = useAuth();
@@ -1383,37 +1395,61 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {recordingsData.slice(0, 3).map((r) => (
-              <Card
-                key={r.id}
-                className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
-                data-testid={`card-recording-${r.id}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-muted-foreground" data-testid={`text-recording-date-${r.id}`}>
-                    <EditableText value={formatDatePL(r.date)} field="date" entityType="recordings" entityId={r.id} queryKey="recordings" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <AdminItemActions entityType="recordings" entityId={r.id} queryKey="recordings" />
-                    <div className="rounded-full bg-accent p-2 text-accent-foreground transition group-hover:scale-[1.04]" data-testid={`icon-recording-${r.id}`}>
-                      <Play className="h-4 w-4" />
+            {ytVideos.length > 0
+              ? ytVideos.slice(0, 3).map((v) => (
+                  <a
+                    key={v.id}
+                    href={`https://www.youtube.com/watch?v=${v.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group"
+                    data-testid={`card-yt-video-${v.id}`}
+                  >
+                    <Card className="overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:shadow-md">
+                      <div className="relative aspect-video w-full overflow-hidden bg-muted">
+                        <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
+                          <div className="rounded-full bg-white/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-xs text-muted-foreground">{formatDatePL(v.date.slice(0, 10))}</div>
+                        <h3 className="mt-1 line-clamp-2 font-display text-base leading-snug">{v.title}</h3>
+                      </div>
+                    </Card>
+                  </a>
+                ))
+              : recordingsData.slice(0, 3).map((r) => (
+                  <Card
+                    key={r.id}
+                    className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
+                    data-testid={`card-recording-${r.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-muted-foreground" data-testid={`text-recording-date-${r.id}`}>
+                        <EditableText value={formatDatePL(r.date)} field="date" entityType="recordings" entityId={r.id} queryKey="recordings" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <AdminItemActions entityType="recordings" entityId={r.id} queryKey="recordings" />
+                        <div className="rounded-full bg-accent p-2 text-accent-foreground transition group-hover:scale-[1.04]" data-testid={`icon-recording-${r.id}`}>
+                          <Play className="h-4 w-4" />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className="mt-3 font-display text-xl" data-testid={`text-recording-title-${r.id}`}>
-                  <EditableText value={r.title} field="title" entityType="recordings" entityId={r.id} queryKey="recordings" />
-                </div>
-                <Button
-                  variant="ghost"
-                  className="mt-3 -ml-2 rounded-xl"
-                  onClick={() => window.open(r.href, "_blank", "noopener,noreferrer")}
-                  data-testid={`button-recording-open-${r.id}`}
-                >
-                  Otwórz
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </Card>
-            ))}
+                    <div className="mt-3 font-display text-xl" data-testid={`text-recording-title-${r.id}`}>
+                      <EditableText value={r.title} field="title" entityType="recordings" entityId={r.id} queryKey="recordings" />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      className="mt-3 -ml-2 rounded-xl"
+                      onClick={() => window.open(r.href, "_blank", "noopener,noreferrer")}
+                      data-testid={`button-recording-open-${r.id}`}
+                    >
+                      Otwórz
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </Card>
+                ))}
           </div>
 
           <div className="mt-6 text-center">

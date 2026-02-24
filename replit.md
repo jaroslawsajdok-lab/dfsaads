@@ -76,7 +76,8 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 
 ### Third-Party Services
 - **Google Fonts** — DM Sans, Fraunces, and Inter font families loaded from `fonts.googleapis.com`
-- **YouTube** — parish sermon recordings link to the YouTube channel `@parafiae-awisajawornik2251`
+- **YouTube Data API v3** — auto-pulls latest videos from channel `@parafiae-awisajawornik2251`; requires `YOUTUBE_API_KEY` secret; results cached 30 min; falls back to manual recordings if no key
+- **Facebook Graph API** — fetches page posts via `FACEBOOK_PAGE_TOKEN`; page matched by `FB_PAGE_SLUG` env var (default: "wislajawornik"); falls back to iframe embed widget when token expired/missing
 - **Guest House link** — external link to `https://osrodek.jawornik.eu`
 
 ### Key NPM Dependencies
