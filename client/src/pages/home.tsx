@@ -27,6 +27,7 @@ import {
   LogIn,
   LogOut,
   Settings,
+  ImagePlus,
 } from "lucide-react";
 
 
@@ -767,21 +768,18 @@ function FacebookIframeEmbed({ pageSlug = "wislajawornik" }: { pageSlug?: string
 
 function categorizeFbPosts(posts: FbPost[]) {
   const ogloszenia: FbPost[] = [];
-  const transmisje: FbPost[] = [];
-  const aktualnosci: FbPost[] = [];
+  const wydarzenia: FbPost[] = [];
 
   for (const p of posts) {
     const msg = (p.message || "").toLowerCase();
     if (msg.startsWith("ogłoszenia parafialne")) {
       ogloszenia.push(p);
-    } else if (msg.includes("polecamy nagranie") || msg.includes("kazani") || msg.includes("youtube.com") || msg.includes("youtu.be")) {
-      transmisje.push(p);
     } else {
-      aktualnosci.push(p);
+      wydarzenia.push(p);
     }
   }
 
-  return { ogloszenia, transmisje, aktualnosci };
+  return { ogloszenia, wydarzenia };
 }
 
 function FbScrollRow({ title, posts, onSelect }: { title: string; posts: FbPost[]; onSelect: (p: FbPost) => void }) {
@@ -816,7 +814,7 @@ function FbScrollRow({ title, posts, onSelect }: { title: string; posts: FbPost[
   return (
     <div className="mt-8" data-testid={`fb-row-${title.toLowerCase().replace(/\s+/g, "-")}`}>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-display text-lg tracking-tight">{title}</h3>
+        <h3 className="font-display text-2xl tracking-tight">{title}</h3>
         <div className="flex gap-1">
           {canScrollLeft && (
             <button onClick={() => scroll(-1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w lewo">
@@ -845,6 +843,73 @@ function FbScrollRow({ title, posts, onSelect }: { title: string; posts: FbPost[
   );
 }
 
+function FeaturedEventPoster() {
+  const { isEditMode } = useAuth();
+  const qc = useQueryClient();
+  const { data } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "featured_event_poster"],
+    queryFn: () => apiFetch("/api/admin/settings/featured_event_poster"),
+  });
+  const posterUrl = data?.value || null;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      const { url } = await uploadRes.json();
+      await apiRequest("PUT", "/api/admin/settings/featured_event_poster", { value: url });
+      qc.invalidateQueries({ queryKey: ["admin-setting", "featured_event_poster"] });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="glass rounded-3xl overflow-hidden relative h-full min-h-[200px] flex items-center justify-center" data-testid="card-featured-event-poster">
+      {posterUrl ? (
+        <img
+          src={posterUrl}
+          alt="Plakat najbliższego wydarzenia"
+          className="h-full w-full object-cover"
+          data-testid="img-featured-event-poster"
+        />
+      ) : (
+        <div className="flex flex-col items-center gap-2 text-muted-foreground p-6 text-center">
+          <ImagePlus className="h-10 w-10" />
+          <span className="text-sm">Plakat wydarzenia</span>
+        </div>
+      )}
+      {isEditMode && (
+        <>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white backdrop-blur transition hover:bg-black/90"
+            disabled={uploading}
+            data-testid="button-upload-poster"
+          >
+            <ImagePlus className="h-3.5 w-3.5" />
+            {uploading ? "Wysyłanie…" : "Zmień plakat"}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleUpload}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 function FacebookFeed() {
   const { data, isLoading } = useQuery<FbApiResponse>({
     queryKey: ["facebook-posts"],
@@ -856,7 +921,7 @@ function FacebookFeed() {
   const pageSlug = data?.pageSlug || "wislajawornik";
   const hasNativeFeed = posts.length > 0;
   const [selectedPost, setSelectedPost] = useState<FbPost | null>(null);
-  const { ogloszenia, transmisje, aktualnosci } = categorizeFbPosts(posts);
+  const { ogloszenia, wydarzenia } = categorizeFbPosts(posts);
 
   if (isLoading) {
     return (
@@ -869,9 +934,8 @@ function FacebookFeed() {
   if (hasNativeFeed) {
     return (
       <>
+        <FbScrollRow title="Wydarzenia" posts={wydarzenia} onSelect={setSelectedPost} />
         <FbScrollRow title="Ogłoszenia parafialne" posts={ogloszenia} onSelect={setSelectedPost} />
-        <FbScrollRow title="Transmisje i nagrania" posts={transmisje} onSelect={setSelectedPost} />
-        <FbScrollRow title="Aktualności" posts={aktualnosci} onSelect={setSelectedPost} />
         {selectedPost && (
           <FbPostModal post={selectedPost} open={true} onClose={() => setSelectedPost(null)} />
         )}
@@ -1273,25 +1337,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="md:col-span-5">
-            <div className="glass rounded-3xl p-5" data-testid="card-afterband-cta">
-              <div className="text-xs text-muted-foreground" data-testid="text-afterband-cta-kicker">
-                <EditableStaticText textKey="afterband_cta_kicker" defaultValue="Wyróżnione" />
-              </div>
-              <div className="mt-2 font-display text-2xl tracking-[-0.02em]" data-testid="text-afterband-cta-title">
-                <EditableStaticText textKey="afterband_cta_title" defaultValue="Remont Domu Gościnnego" />
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground" data-testid="text-afterband-cta-desc">
-                <EditableStaticText textKey="afterband_cta_desc" defaultValue="Zobacz informacje i aktualny status prac." />
-              </p>
-              <Button
-                className="mt-4 w-full rounded-2xl"
-                onClick={() => window.open("https://osrodek.jawornik.eu", "_blank", "noopener,noreferrer")}
-                data-testid="button-afterband-remont"
-              >
-                Przejdź
-                <ChevronRight className="ml-1.5 h-4 w-4" />
-              </Button>
-            </div>
+            <FeaturedEventPoster />
           </div>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -1321,6 +1367,26 @@ export default function HomePage() {
         </div>
 
         <FacebookFeed />
+
+        <div className="mt-10 glass rounded-3xl p-5" data-testid="card-afterband-cta">
+          <div className="text-xs text-muted-foreground" data-testid="text-afterband-cta-kicker">
+            <EditableStaticText textKey="afterband_cta_kicker" defaultValue="Wyróżnione" />
+          </div>
+          <div className="mt-2 font-display text-2xl tracking-[-0.02em]" data-testid="text-afterband-cta-title">
+            <EditableStaticText textKey="afterband_cta_title" defaultValue="Remont Domu Gościnnego" />
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground" data-testid="text-afterband-cta-desc">
+            <EditableStaticText textKey="afterband_cta_desc" defaultValue="Zobacz informacje i aktualny status prac." />
+          </p>
+          <Button
+            className="mt-4 rounded-2xl"
+            onClick={() => window.open("https://osrodek.jawornik.eu", "_blank", "noopener,noreferrer")}
+            data-testid="button-afterband-remont"
+          >
+            Przejdź
+            <ChevronRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
       </section>
 
       {/* Kalendarz */}

@@ -401,6 +401,20 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  app.get("/api/admin/settings/:key", async (req, res) => {
+    const value = await storage.getAdminSetting(req.params.key);
+    res.json({ value: value || null });
+  });
+
+  app.put("/api/admin/settings/:key", requireAdmin, async (req, res) => {
+    const { value } = req.body;
+    if (typeof value !== "string") {
+      return res.status(400).json({ message: "value required" });
+    }
+    await storage.setAdminSetting(req.params.key, value);
+    res.json({ ok: true });
+  });
+
   // ── Upload ──
   app.post("/api/upload", requireAdmin, upload.single("file"), (req, res) => {
     if (!req.file) {
