@@ -288,7 +288,7 @@ async function seedIfEmpty() {
   }
 }
 
-const uploadsDir = path.resolve("client/public/uploads");
+const uploadsDir = path.resolve("uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
