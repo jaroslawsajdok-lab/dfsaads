@@ -211,7 +211,7 @@ async function fetchFacebookPosts() {
 
   try {
     const fields = "message,full_picture,created_time,permalink_url,attachments{media,subattachments,media_type,url,title},reactions.summary(true).limit(0),shares,comments.summary(true).limit(0)";
-    const url = `https://graph.facebook.com/v21.0/${pageInfo.pageId}/posts?fields=${encodeURIComponent(fields)}&limit=12&access_token=${pageInfo.token}`;
+    const url = `https://graph.facebook.com/v21.0/${pageInfo.pageId}/posts?fields=${encodeURIComponent(fields)}&limit=50&access_token=${pageInfo.token}`;
     const res = await fetch(url);
     if (!res.ok) {
       console.error("Facebook API error:", res.status, await res.text());

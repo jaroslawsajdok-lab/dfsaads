@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowDown,
   Calendar as CalendarIcon,
+  ChevronLeft,
   ChevronRight,
   Facebook,
   Heart,
@@ -673,7 +674,7 @@ function FbPostCard({ post, onSelect }: { post: FbPost; onSelect: () => void }) 
     <button
       type="button"
       onClick={onSelect}
-      className="group flex flex-col overflow-hidden rounded-2xl border bg-white text-left transition-shadow hover:shadow-lg"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-white text-left transition-shadow hover:shadow-lg"
       data-testid={`fb-post-${post.id}`}
     >
       {post.images.length > 0 && (
@@ -764,6 +765,86 @@ function FacebookIframeEmbed({ pageSlug = "wislajawornik" }: { pageSlug?: string
   );
 }
 
+function categorizeFbPosts(posts: FbPost[]) {
+  const ogloszenia: FbPost[] = [];
+  const transmisje: FbPost[] = [];
+  const aktualnosci: FbPost[] = [];
+
+  for (const p of posts) {
+    const msg = (p.message || "").toLowerCase();
+    if (msg.startsWith("ogłoszenia parafialne")) {
+      ogloszenia.push(p);
+    } else if (msg.includes("polecamy nagranie") || msg.includes("kazani") || msg.includes("youtube.com") || msg.includes("youtu.be")) {
+      transmisje.push(p);
+    } else {
+      aktualnosci.push(p);
+    }
+  }
+
+  return { ogloszenia, transmisje, aktualnosci };
+}
+
+function FbScrollRow({ title, posts, onSelect }: { title: string; posts: FbPost[]; onSelect: (p: FbPost) => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", checkScroll);
+    return () => { el.removeEventListener("scroll", checkScroll); window.removeEventListener("resize", checkScroll); };
+  }, [posts]);
+
+  const scroll = (dir: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 320, behavior: "smooth" });
+  };
+
+  if (posts.length === 0) return null;
+
+  return (
+    <div className="mt-8" data-testid={`fb-row-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-display text-lg tracking-tight">{title}</h3>
+        <div className="flex gap-1">
+          {canScrollLeft && (
+            <button onClick={() => scroll(-1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w lewo">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
+          {canScrollRight && (
+            <button onClick={() => scroll(1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w prawo">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {posts.map((p) => (
+          <div key={p.id} className="w-[280px] flex-shrink-0 snap-start sm:w-[300px]">
+            <FbPostCard post={p} onSelect={() => onSelect(p)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FacebookFeed() {
   const { data, isLoading } = useQuery<FbApiResponse>({
     queryKey: ["facebook-posts"],
@@ -775,6 +856,7 @@ function FacebookFeed() {
   const pageSlug = data?.pageSlug || "wislajawornik";
   const hasNativeFeed = posts.length > 0;
   const [selectedPost, setSelectedPost] = useState<FbPost | null>(null);
+  const { ogloszenia, transmisje, aktualnosci } = categorizeFbPosts(posts);
 
   if (isLoading) {
     return (
@@ -787,11 +869,9 @@ function FacebookFeed() {
   if (hasNativeFeed) {
     return (
       <>
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="facebook-feed">
-          {posts.map((p) => (
-            <FbPostCard key={p.id} post={p} onSelect={() => setSelectedPost(p)} />
-          ))}
-        </div>
+        <FbScrollRow title="Ogłoszenia parafialne" posts={ogloszenia} onSelect={setSelectedPost} />
+        <FbScrollRow title="Transmisje i nagrania" posts={transmisje} onSelect={setSelectedPost} />
+        <FbScrollRow title="Aktualności" posts={aktualnosci} onSelect={setSelectedPost} />
         {selectedPost && (
           <FbPostModal post={selectedPost} open={true} onClose={() => setSelectedPost(null)} />
         )}
