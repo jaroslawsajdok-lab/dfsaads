@@ -577,18 +577,103 @@ function timeAgo(iso: string) {
 
 const CARD_MSG_LEN = 120;
 
-function FbPostCard({ post }: { post: FbPost }) {
+function FbPostModal({ post, open, onClose }: { post: FbPost; open: boolean; onClose: () => void }) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeBtnRef.current?.focus();
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      data-testid={`fb-modal-backdrop-${post.id}`}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Post z Facebooka"
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+        data-testid={`fb-modal-${post.id}`}
+      >
+        <button
+          ref={closeBtnRef}
+          onClick={onClose}
+          aria-label="Zamknij"
+          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white hover:text-foreground"
+          data-testid={`fb-modal-close-${post.id}`}
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {post.images.length > 0 && (
+          <div className="space-y-1">
+            {post.images.map((img, i) => (
+              <img key={i} src={img} alt="" className="w-full object-cover" loading="lazy" />
+            ))}
+          </div>
+        )}
+
+        <div className="p-5">
+          <div className="mb-3 text-xs text-muted-foreground">{timeAgo(post.created_time)}</div>
+
+          {post.message && (
+            <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90" data-testid={`fb-modal-message-${post.id}`}>
+              {post.message}
+            </p>
+          )}
+
+          <div className="mt-4 flex items-center gap-3 border-t pt-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <ThumbsUp className="h-3.5 w-3.5 text-[#1877F2]" />
+              {post.reactions_count}
+            </span>
+            <span className="flex items-center gap-1">
+              <MessageCircle className="h-3.5 w-3.5" />
+              {post.comments_count}
+            </span>
+            <span className="flex items-center gap-1">
+              <Share2 className="h-3.5 w-3.5" />
+              {post.shares_count}
+            </span>
+            <a
+              href={post.permalink_url}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto flex items-center gap-1 text-[#1877F2] transition hover:underline"
+              data-testid={`fb-modal-link-${post.id}`}
+            >
+              <Facebook className="h-3.5 w-3.5" />
+              Zobacz na Facebooku
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FbPostCard({ post, onSelect }: { post: FbPost; onSelect: () => void }) {
   const needsTruncate = post.message.length > CARD_MSG_LEN;
   const displayMsg = needsTruncate
     ? post.message.slice(0, CARD_MSG_LEN) + "…"
     : post.message;
 
   return (
-    <a
-      href={post.permalink_url}
-      target="_blank"
-      rel="noreferrer"
-      className="group flex flex-col overflow-hidden rounded-2xl border bg-white transition-shadow hover:shadow-lg"
+    <button
+      type="button"
+      onClick={onSelect}
+      className="group flex flex-col overflow-hidden rounded-2xl border bg-white text-left transition-shadow hover:shadow-lg"
       data-testid={`fb-post-${post.id}`}
     >
       {post.images.length > 0 && (
@@ -626,7 +711,7 @@ function FbPostCard({ post }: { post: FbPost }) {
           </span>
         </div>
       </div>
-    </a>
+    </button>
   );
 }
 
@@ -689,6 +774,7 @@ function FacebookFeed() {
   const posts = data?.posts ?? [];
   const pageSlug = data?.pageSlug || "wislajawornik";
   const hasNativeFeed = posts.length > 0;
+  const [selectedPost, setSelectedPost] = useState<FbPost | null>(null);
 
   if (isLoading) {
     return (
@@ -700,11 +786,16 @@ function FacebookFeed() {
 
   if (hasNativeFeed) {
     return (
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="facebook-feed">
-        {posts.map((p) => (
-          <FbPostCard key={p.id} post={p} />
-        ))}
-      </div>
+      <>
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="facebook-feed">
+          {posts.map((p) => (
+            <FbPostCard key={p.id} post={p} onSelect={() => setSelectedPost(p)} />
+          ))}
+        </div>
+        {selectedPost && (
+          <FbPostModal post={selectedPost} open={true} onClose={() => setSelectedPost(null)} />
+        )}
+      </>
     );
   }
 
