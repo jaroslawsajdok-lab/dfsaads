@@ -93,34 +93,45 @@ async function resolvePageToken(): Promise<{ pageId: string; token: string; slug
     const accountsRes = await fetch(
       `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,link&access_token=${userToken}`
     );
-    if (!accountsRes.ok) {
-      console.error("FB /me/accounts error:", accountsRes.status, await accountsRes.text());
+    if (accountsRes.ok) {
+      const accountsJson = await accountsRes.json();
+      const pages = accountsJson.data || [];
+      if (pages.length > 0) {
+        console.log(`FB: Found ${pages.length} page(s): ${pages.map((p: any) => `"${p.name}" (${p.id})`).join(", ")}`);
+
+        const page = pages.length === 1
+          ? pages[0]
+          : pages.find((p: any) =>
+              p.name?.toLowerCase().includes(FB_PAGE_SLUG.toLowerCase()) ||
+              p.link?.includes(FB_PAGE_SLUG) ||
+              p.id === FB_PAGE_SLUG
+            ) || pages[0];
+
+        let slug = FB_PAGE_SLUG;
+        try { if (page.link) slug = new URL(page.link).pathname.replace(/\//g, ""); } catch {};
+
+        console.log(`FB: Using page "${page.name}" (ID: ${page.id}, slug: ${slug}) [User Token]`);
+        lastKnownFbSlug = slug;
+        resolvedPageToken = { pageId: page.id, token: page.access_token, slug };
+        return resolvedPageToken;
+      }
+    }
+
+    console.log("FB: /me/accounts failed or empty, trying as Page Access Token...");
+    const meRes = await fetch(
+      `https://graph.facebook.com/v21.0/me?fields=id,name,link&access_token=${userToken}`
+    );
+    if (!meRes.ok) {
+      console.error("FB /me error:", meRes.status, await meRes.text());
       return null;
     }
-    const accountsJson = await accountsRes.json();
-    const pages = accountsJson.data || [];
-    if (pages.length === 0) {
-      console.error("FB: No pages found for this token");
-      return null;
-    }
+    const me = await meRes.json();
+    let slug = FB_PAGE_SLUG;
+    try { if (me.link) slug = new URL(me.link).pathname.replace(/\//g, ""); } catch {};
 
-    console.log(`FB: Found ${pages.length} page(s): ${pages.map((p: any) => `"${p.name}" (${p.id})`).join(", ")}`);
-
-    const page = pages.length === 1
-      ? pages[0]
-      : pages.find((p: any) =>
-          p.name?.toLowerCase().includes(FB_PAGE_SLUG.toLowerCase()) ||
-          p.link?.includes(FB_PAGE_SLUG) ||
-          p.id === FB_PAGE_SLUG
-        ) || pages[0];
-
-    const slug = page.link
-      ? new URL(page.link).pathname.replace(/\//g, "")
-      : FB_PAGE_SLUG;
-
-    console.log(`FB: Using page "${page.name}" (ID: ${page.id}, slug: ${slug})`);
+    console.log(`FB: Using page "${me.name}" (ID: ${me.id}, slug: ${slug}) [Page Token]`);
     lastKnownFbSlug = slug;
-    resolvedPageToken = { pageId: page.id, token: page.access_token, slug };
+    resolvedPageToken = { pageId: me.id, token: userToken, slug };
     return resolvedPageToken;
   } catch (err) {
     console.error("FB resolvePageToken error:", err);
