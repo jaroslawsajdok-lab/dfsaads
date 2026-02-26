@@ -173,6 +173,30 @@ function VideoHero() {
   });
   const heroVideoSrc = heroVideoData?.value || "/hero-drone.mp4";
 
+  const { data: heroSpeedData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "hero_video_speed"],
+    queryFn: () => apiFetch("/api/admin/settings/hero_video_speed"),
+  });
+  const heroSpeed = parseFloat(heroSpeedData?.value || "1");
+
+  const { data: heroLoopData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "hero_video_loop"],
+    queryFn: () => apiFetch("/api/admin/settings/hero_video_loop"),
+  });
+  const heroLoop = heroLoopData?.value !== "false";
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.playbackRate = heroSpeed;
+  }, [heroSpeed, heroVideoSrc]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.loop = heroLoop;
+  }, [heroLoop, heroVideoSrc]);
+
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -235,6 +259,18 @@ function VideoHero() {
     }
   };
 
+  const saveVideoSetting = async (key: string, value: string) => {
+    await fetch(`/api/admin/settings/${key}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ value }),
+    });
+    qc.invalidateQueries({ queryKey: ["admin-setting", key] });
+  };
+
+  const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+
   return (
     <section
       id="top"
@@ -249,7 +285,7 @@ function VideoHero() {
           className="h-full w-full object-cover"
           autoPlay
           muted
-          loop
+          loop={heroLoop}
           playsInline
           preload="metadata"
           poster="/hero-poster.png"
@@ -350,10 +386,37 @@ function VideoHero() {
       </div>
 
       {isEditMode && (
-        <>
+        <div className="absolute bottom-6 right-6 z-20 flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm text-white backdrop-blur">
+            <span className="text-white/70">Pętla:</span>
+            <button
+              onClick={() => saveVideoSetting("hero_video_loop", heroLoop ? "false" : "true")}
+              className={`rounded-full px-3 py-0.5 text-xs font-medium transition ${heroLoop ? "bg-green-500/80 text-white" : "bg-white/20 text-white/70 hover:bg-white/30"}`}
+              data-testid="button-toggle-loop"
+            >
+              {heroLoop ? "WŁ" : "WYŁ"}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm text-white backdrop-blur">
+            <span className="text-white/70">Prędkość:</span>
+            <div className="flex gap-1" data-testid="controls-speed">
+              {SPEED_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => saveVideoSetting("hero_video_speed", String(s))}
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium transition ${Math.abs(heroSpeed - s) < 0.01 ? "bg-white text-black" : "bg-white/20 text-white/70 hover:bg-white/30"}`}
+                  data-testid={`button-speed-${s}`}
+                >
+                  {s}x
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             onClick={() => videoFileRef.current?.click()}
-            className="absolute bottom-6 right-6 z-20 flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm text-white backdrop-blur transition hover:bg-black/90"
+            className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm text-white backdrop-blur transition hover:bg-black/90"
             disabled={videoUploading}
             data-testid="button-upload-hero-video"
           >
@@ -368,7 +431,7 @@ function VideoHero() {
             onChange={handleVideoUpload}
             data-testid="input-hero-video"
           />
-        </>
+        </div>
       )}
     </section>
   );
