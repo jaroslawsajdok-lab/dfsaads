@@ -39,7 +39,9 @@ The app uses a multi-page layout with wouter routing. The homepage (`client/src/
   - `GET /api/admin/session` — check admin session
   - `POST /api/admin/logout` — admin logout
   - `GET/PUT/DELETE /api/admin/manual-verse` — manual weekly verse override
-  - `POST /api/upload` — file upload for images
+  - `POST /api/upload` — file upload for images (10 MB limit)
+  - `POST /api/upload-video` — video upload for hero section (200 MB limit)
+  - `GET/PUT /api/admin/settings/:key` — generic admin settings read/write
 - **Auth:** Session-based with bcrypt password hashing, connect-pg-simple session store
 - **Default admin password:** `admin123` (auto-seeded on first run)
 - **Seeding:** The server auto-seeds sample data and default admin password on first run if the database is empty

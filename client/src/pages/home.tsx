@@ -28,6 +28,7 @@ import {
   LogOut,
   Settings,
   ImagePlus,
+  Video,
 } from "lucide-react";
 
 
@@ -160,6 +161,17 @@ function VideoHero() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [canAutoplay, setCanAutoplay] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
+  const { isEditMode } = useAuth();
+  const qc = useQueryClient();
+  const videoFileRef = useRef<HTMLInputElement>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const { data: heroVideoData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "hero_video_url"],
+    queryFn: () => apiFetch("/api/admin/settings/hero_video_url"),
+  });
+  const heroVideoSrc = heroVideoData?.value || "/hero-drone.mp4";
 
   useEffect(() => {
     const v = videoRef.current;
@@ -179,7 +191,7 @@ function VideoHero() {
 
     const t = window.setTimeout(attempt, 120);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [heroVideoSrc]);
 
   const onPlayClick = async () => {
     const v = videoRef.current;
@@ -193,6 +205,36 @@ function VideoHero() {
     }
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVideoUploading(true);
+    setUploadProgress(0);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      await new Promise<void>((resolve, reject) => {
+        xhr.upload.addEventListener("progress", (ev) => {
+          if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+        });
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error("Upload failed"));
+        });
+        xhr.addEventListener("error", () => reject(new Error("Upload failed")));
+        xhr.open("POST", "/api/upload-video");
+        xhr.withCredentials = true;
+        xhr.send(fd);
+      });
+      qc.invalidateQueries({ queryKey: ["admin-setting", "hero_video_url"] });
+    } finally {
+      setVideoUploading(false);
+      setUploadProgress(0);
+      if (videoFileRef.current) videoFileRef.current.value = "";
+    }
+  };
+
   return (
     <section
       id="top"
@@ -203,6 +245,7 @@ function VideoHero() {
       <div className="absolute inset-0">
         <video
           ref={videoRef}
+          key={heroVideoSrc}
           className="h-full w-full object-cover"
           autoPlay
           muted
@@ -212,7 +255,7 @@ function VideoHero() {
           poster="/hero-poster.png"
           data-testid="video-hero"
         >
-          <source src="/hero-drone.mp4" type="video/mp4" />
+          <source src={heroVideoSrc} type="video/mp4" />
         </video>
         <div className="hero-overlay absolute inset-0" />
       </div>
@@ -305,6 +348,28 @@ function VideoHero() {
           </button>
         </div>
       </div>
+
+      {isEditMode && (
+        <>
+          <button
+            onClick={() => videoFileRef.current?.click()}
+            className="absolute bottom-6 right-6 z-20 flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm text-white backdrop-blur transition hover:bg-black/90"
+            disabled={videoUploading}
+            data-testid="button-upload-hero-video"
+          >
+            <Video className="h-4 w-4" />
+            {videoUploading ? `Wysyłanie… ${uploadProgress}%` : "Zmień wideo"}
+          </button>
+          <input
+            ref={videoFileRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={handleVideoUpload}
+            data-testid="input-hero-video"
+          />
+        </>
+      )}
     </section>
   );
 }

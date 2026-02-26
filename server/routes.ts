@@ -302,6 +302,7 @@ const uploadStorage = multer.diskStorage({
   },
 });
 const upload = multer({ storage: uploadStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadVideo = multer({ storage: uploadStorage, limits: { fileSize: 200 * 1024 * 1024 } });
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.session?.isAdmin) {
@@ -421,6 +422,15 @@ export async function registerRoutes(
       return res.status(400).json({ message: "No file uploaded" });
     }
     res.json({ url: `/uploads/${req.file.filename}` });
+  });
+
+  app.post("/api/upload-video", requireAdmin, uploadVideo.single("file"), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const url = `/uploads/${req.file.filename}`;
+    await storage.setAdminSetting("hero_video_url", url);
+    res.json({ url });
   });
 
   // ── News ──
