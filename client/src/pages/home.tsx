@@ -602,7 +602,7 @@ function FbPostModal({ post, open, onClose }: { post: FbPost; open: boolean; onC
         role="dialog"
         aria-modal="true"
         aria-label="Post z Facebooka"
-        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
         data-testid={`fb-modal-${post.id}`}
       >
@@ -624,36 +624,36 @@ function FbPostModal({ post, open, onClose }: { post: FbPost; open: boolean; onC
           </div>
         )}
 
-        <div className="p-5">
-          <div className="mb-3 text-xs text-muted-foreground">{timeAgo(post.created_time)}</div>
+        <div className="p-6">
+          <div className="mb-3 text-sm text-muted-foreground">{timeAgo(post.created_time)}</div>
 
           {post.message && (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90" data-testid={`fb-modal-message-${post.id}`}>
+            <p className="whitespace-pre-line text-base leading-relaxed text-foreground/90" data-testid={`fb-modal-message-${post.id}`}>
               {post.message}
             </p>
           )}
 
-          <div className="mt-4 flex items-center gap-3 border-t pt-3 text-xs text-muted-foreground">
+          <div className="mt-5 flex items-center gap-4 border-t pt-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
-              <ThumbsUp className="h-3.5 w-3.5 text-[#1877F2]" />
+              <ThumbsUp className="h-4 w-4 text-[#1877F2]" />
               {post.reactions_count}
             </span>
             <span className="flex items-center gap-1">
-              <MessageCircle className="h-3.5 w-3.5" />
+              <MessageCircle className="h-4 w-4" />
               {post.comments_count}
             </span>
             <span className="flex items-center gap-1">
-              <Share2 className="h-3.5 w-3.5" />
+              <Share2 className="h-4 w-4" />
               {post.shares_count}
             </span>
             <a
               href={post.permalink_url}
               target="_blank"
               rel="noreferrer"
-              className="ml-auto flex items-center gap-1 text-[#1877F2] transition hover:underline"
+              className="ml-auto flex items-center gap-1.5 text-sm text-[#1877F2] transition hover:underline"
               data-testid={`fb-modal-link-${post.id}`}
             >
-              <Facebook className="h-3.5 w-3.5" />
+              <Facebook className="h-4 w-4" />
               Zobacz na Facebooku
             </a>
           </div>
