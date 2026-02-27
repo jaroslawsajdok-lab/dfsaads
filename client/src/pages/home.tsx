@@ -72,6 +72,7 @@ type GroupItem = {
   lead: string;
   when_text: string;
   description: string;
+  image_url: string | null;
 };
 
 type RecordingItem = {
@@ -902,6 +903,8 @@ function categorizeFbPosts(posts: FbPost[]) {
     const msg = (p.message || "").toLowerCase();
     if (msg.startsWith("ogłoszenia parafialne")) {
       ogloszenia.push(p);
+    } else if (msg.startsWith("polecamy nagranie")) {
+      continue;
     } else {
       wydarzenia.push(p);
     }
@@ -1034,6 +1037,202 @@ function FeaturedEventPoster() {
           />
         </>
       )}
+    </div>
+  );
+}
+
+function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const { isEditMode } = useAuth();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const { data: imgData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "remont_image"],
+    queryFn: () => apiFetch("/api/admin/settings/remont_image"),
+  });
+  const remontImage = imgData?.value || null;
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      const { url } = await uploadRes.json();
+      await apiRequest("PUT", "/api/admin/settings/remont_image", { value: url });
+      qc.invalidateQueries({ queryKey: ["admin-setting", "remont_image"] });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeBtnRef.current?.focus();
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      data-testid="remont-modal-backdrop"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Remont Domu Gościnnego"
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="remont-modal"
+      >
+        <button
+          ref={closeBtnRef}
+          onClick={onClose}
+          aria-label="Zamknij"
+          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white hover:text-foreground"
+          data-testid="remont-modal-close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {remontImage && (
+          <img src={remontImage} alt="Remont Domu Gościnnego" className="w-full object-cover max-h-[400px]" data-testid="remont-modal-image" />
+        )}
+
+        {isEditMode && (
+          <div className="px-6 pt-4">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-full bg-black/10 px-3 py-1.5 text-xs transition hover:bg-black/20"
+              disabled={uploading}
+              data-testid="button-upload-remont-image"
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              {uploading ? "Wysyłanie…" : remontImage ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} data-testid="input-remont-image" />
+          </div>
+        )}
+
+        <div className="p-6">
+          <div className="font-display text-2xl tracking-[-0.02em]" data-testid="remont-modal-title">
+            <EditableStaticText textKey="afterband_cta_title" defaultValue="Remont Domu Gościnnego" />
+          </div>
+          <div className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-foreground/80" data-testid="remont-modal-desc">
+            <EditableStaticText textKey="remont_description" defaultValue="Tutaj pojawi się opis remontu Domu Gościnnego. Admin może edytować ten tekst w trybie edycji." multiline />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GroupModal({ group, open, onClose }: { group: GroupItem; open: boolean; onClose: () => void }) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const { isEditMode } = useAuth();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      const { url } = await uploadRes.json();
+      await apiRequest("PUT", `/api/groups/${group.id}`, { image_url: url });
+      qc.invalidateQueries({ queryKey: ["groups"] });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeBtnRef.current?.focus();
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      data-testid={`group-modal-backdrop-${group.id}`}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={group.name}
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+        data-testid={`group-modal-${group.id}`}
+      >
+        <button
+          ref={closeBtnRef}
+          onClick={onClose}
+          aria-label="Zamknij"
+          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white hover:text-foreground"
+          data-testid={`group-modal-close-${group.id}`}
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {group.image_url && (
+          <img src={group.image_url} alt={group.name} className="w-full object-cover max-h-[400px]" data-testid={`group-modal-image-${group.id}`} />
+        )}
+
+        {isEditMode && (
+          <div className="px-6 pt-4">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-full bg-black/10 px-3 py-1.5 text-xs transition hover:bg-black/20"
+              disabled={uploading}
+              data-testid={`button-upload-group-image-${group.id}`}
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              {uploading ? "Wysyłanie…" : group.image_url ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} data-testid={`input-group-image-${group.id}`} />
+          </div>
+        )}
+
+        <div className="p-6">
+          <div className="font-display text-2xl tracking-[-0.02em]" data-testid={`group-modal-name-${group.id}`}>
+            {group.name}
+          </div>
+          <div className="mt-1 text-sm text-muted-foreground" data-testid={`group-modal-lead-${group.id}`}>
+            {group.lead}
+          </div>
+          <Badge variant="secondary" className="mt-2" data-testid={`group-modal-when-${group.id}`}>
+            {group.when_text}
+          </Badge>
+          <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-foreground/80" data-testid={`group-modal-desc-${group.id}`}>
+            {group.description}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1393,6 +1592,8 @@ function AdminFloatingBar() {
 
 export default function HomePage() {
   const stickyShown = useStickyNavTrigger();
+  const [remontOpen, setRemontOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
 
   const { data: eventsData = [] } = useQuery<EventItem[]>({ queryKey: ["events"], queryFn: () => apiFetch("/api/events") });
   const { data: groupsData = [] } = useQuery<GroupItem[]>({ queryKey: ["groups"], queryFn: () => apiFetch("/api/groups") });
@@ -1401,6 +1602,11 @@ export default function HomePage() {
   const ytVideos = ytData?.videos ?? [];
   const { data: faqData = [] } = useQuery<FaqItem[]>({ queryKey: ["faq"], queryFn: () => apiFetch("/api/faq") });
   const { data: contactData = {} } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
+  const { data: calendarUrlData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "google_calendar_url"],
+    queryFn: () => apiFetch("/api/admin/settings/google_calendar_url"),
+  });
+  const googleCalendarSrc = calendarUrlData?.value || "https://calendar.google.com/calendar/embed?src=peajawornik%40gmail.com&ctz=Europe%2FWarsaw&hl=pl&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&showTz=0";
   const { isEditMode } = useAuth();
 
   return (
@@ -1427,14 +1633,12 @@ export default function HomePage() {
                   decoding="async"
                   data-testid="img-logo-afterband"
                 />
-                <div>
-                  <div className="font-display text-xl tracking-[-0.02em]" data-testid="text-afterband-title">
-                    <EditableStaticText textKey="afterband_title" defaultValue="Witaj w parafii" />
-                  </div>
-                  <div className="text-sm text-muted-foreground" data-testid="text-afterband-sub">
-                    <EditableStaticText textKey="afterband_sub" defaultValue="Szybkie skróty do najważniejszych sekcji." />
-                  </div>
+                <div className="font-display text-xl tracking-[-0.02em]" data-testid="text-afterband-title">
+                  <EditableStaticText textKey="afterband_title" defaultValue="Witaj w parafii" />
                 </div>
+              </div>
+              <div className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-afterband-sub">
+                <EditableStaticText textKey="afterband_sub" defaultValue="Szybkie skróty do najważniejszych sekcji." multiline />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
@@ -1496,7 +1700,12 @@ export default function HomePage() {
 
         <FacebookFeed />
 
-        <div className="mt-10 glass rounded-3xl p-5" data-testid="card-afterband-cta">
+        <button
+          type="button"
+          onClick={() => setRemontOpen(true)}
+          className="mt-10 glass rounded-3xl p-5 w-full text-left transition hover:bg-white/80 cursor-pointer"
+          data-testid="card-afterband-cta"
+        >
           <div className="text-xs text-muted-foreground" data-testid="text-afterband-cta-kicker">
             <EditableStaticText textKey="afterband_cta_kicker" defaultValue="Wyróżnione" />
           </div>
@@ -1506,15 +1715,12 @@ export default function HomePage() {
           <p className="mt-2 text-sm text-muted-foreground" data-testid="text-afterband-cta-desc">
             <EditableStaticText textKey="afterband_cta_desc" defaultValue="Zobacz informacje i aktualny status prac." />
           </p>
-          <Button
-            className="mt-4 rounded-2xl"
-            onClick={() => window.open("https://osrodek.jawornik.eu", "_blank", "noopener,noreferrer")}
-            data-testid="button-afterband-remont"
-          >
-            Przejdź
-            <ChevronRight className="ml-1.5 h-4 w-4" />
-          </Button>
-        </div>
+          <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+            Zobacz więcej
+            <ChevronRight className="h-4 w-4" />
+          </span>
+        </button>
+        <RemontModal open={remontOpen} onClose={() => setRemontOpen(false)} />
       </section>
 
       {/* Kalendarz */}
@@ -1533,110 +1739,69 @@ export default function HomePage() {
                 <EditableStaticText textKey="calendar_subtitle" defaultValue="Najbliższe wydarzenia i spotkania." />
               </p>
             </div>
-            <div className="hidden sm:flex items-center gap-2 rounded-2xl px-3 py-2 glass" data-testid="card-calendar-mini">
-              <CalendarIcon className="h-4 w-4 text-primary" />
-              <span className="text-sm" data-testid="text-calendar-mini"><EditableStaticText textKey="calendar_mini" defaultValue="Najbliższe 30 dni" /></span>
-            </div>
+            {isEditMode && (
+              <AdminAddButton
+                entityType="events"
+                queryKey="events"
+                defaultValues={{ date: "", time: "", type: "", title: "", place: "", description: "" }}
+                fields={[
+                  { key: "date", label: "Data (RRRR-MM-DD)" },
+                  { key: "time", label: "Godzina" },
+                  { key: "type", label: "Typ" },
+                  { key: "title", label: "Tytuł" },
+                  { key: "place", label: "Miejsce" },
+                  { key: "description", label: "Opis", multiline: true },
+                ]}
+              />
+            )}
           </div>
 
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-3">
-              {isEditMode && (
-                <AdminAddButton
-                  entityType="events"
-                  queryKey="events"
-                  defaultValues={{ date: "", time: "", type: "", title: "", place: "", description: "" }}
-                  fields={[
-                    { key: "date", label: "Data (RRRR-MM-DD)" },
-                    { key: "time", label: "Godzina" },
-                    { key: "type", label: "Typ" },
-                    { key: "title", label: "Tytuł" },
-                    { key: "place", label: "Miejsce" },
-                    { key: "description", label: "Opis", multiline: true },
-                  ]}
-                />
-              )}
-              {eventsData.slice(0, 3).map((e) => (
-                <Card
-                  key={e.id}
-                  className="rounded-2xl border bg-white/75 p-5 backdrop-blur"
-                  data-testid={`row-event-${e.id}`}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`text-event-meta-${e.id}`}>
-                        <span className="rounded-lg bg-secondary px-2 py-1" data-testid={`badge-event-date-${e.id}`}>
-                          <EditableText value={formatDatePL(e.date)} field="date" entityType="events" entityId={e.id} queryKey="events" />
-                        </span>
-                        <span className="rounded-lg bg-secondary px-2 py-1" data-testid={`badge-event-time-${e.id}`}>
-                          <EditableText value={e.time} field="time" entityType="events" entityId={e.id} queryKey="events" />
-                        </span>
-                        <Badge variant="secondary" data-testid={`badge-event-type-${e.id}`}>
-                          <EditableText value={e.type} field="type" entityType="events" entityId={e.id} queryKey="events" />
-                        </Badge>
-                      </div>
-                      <div className="mt-2 font-display text-xl" data-testid={`text-event-title-${e.id}`}>
-                        <EditableText value={e.title} field="title" entityType="events" entityId={e.id} queryKey="events" />
-                      </div>
-                      <div className="mt-1 text-sm text-foreground/80" data-testid={`text-event-place-${e.id}`}>
-                        <EditableText value={e.place} field="place" entityType="events" entityId={e.id} queryKey="events" />
-                      </div>
-                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground" data-testid={`text-event-desc-${e.id}`}>
-                        <EditableText value={e.description} field="description" entityType="events" entityId={e.id} queryKey="events" multiline />
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <AdminItemActions entityType="events" entityId={e.id} queryKey="events" />
-                      <Button
-                        variant="secondary"
-                        className="rounded-xl"
-                        onClick={() => scrollToId("kontakt")}
-                        data-testid={`button-event-details-${e.id}`}
-                      >
-                        Szczegóły
-                        <ChevronRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            <Card className="rounded-2xl border bg-white/70 p-5 backdrop-blur" data-testid="card-calendar-aside">
-              <div className="font-display text-lg" data-testid="text-calendar-aside-title"><EditableStaticText textKey="calendar_aside_title" defaultValue="Skrót" /></div>
-              <p className="mt-2 text-sm text-muted-foreground" data-testid="text-calendar-aside-desc">
-                <EditableStaticText textKey="calendar_aside_desc" defaultValue="Mini-kalendarz i filtrowanie typów wydarzeń." />
-              </p>
-              <Separator className="my-4" />
-              <div className="space-y-3">
-                <div className="flex items-start gap-3" data-testid="row-calendar-note">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
-                  <div>
-                    <div className="text-sm" data-testid="text-calendar-note-title">Dodaj wydarzenie</div>
-                    <div className="text-xs text-muted-foreground" data-testid="text-calendar-note-sub">
-                      Edytowalne w panelu WordPress.
-                    </div>
-                  </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {eventsData.slice(0, 3).map((e) => (
+              <Card
+                key={e.id}
+                className="rounded-2xl border bg-white/75 p-5 backdrop-blur"
+                data-testid={`row-event-${e.id}`}
+              >
+                <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`text-event-meta-${e.id}`}>
+                  <span className="rounded-lg bg-secondary px-2 py-1" data-testid={`badge-event-date-${e.id}`}>
+                    <EditableText value={formatDatePL(e.date)} field="date" entityType="events" entityId={e.id} queryKey="events" />
+                  </span>
+                  <span className="rounded-lg bg-secondary px-2 py-1" data-testid={`badge-event-time-${e.id}`}>
+                    <EditableText value={e.time} field="time" entityType="events" entityId={e.id} queryKey="events" />
+                  </span>
                 </div>
-                <Button
-                  className="w-full rounded-xl"
-                  onClick={() => scrollToId("kontakt")}
-                  data-testid="button-calendar-contact"
-                >
-                  Zgłoś wydarzenie
-                </Button>
-              </div>
-            </Card>
+                <div className="mt-2 font-display text-lg" data-testid={`text-event-title-${e.id}`}>
+                  <EditableText value={e.title} field="title" entityType="events" entityId={e.id} queryKey="events" />
+                </div>
+                <div className="mt-1 text-xs text-foreground/60" data-testid={`text-event-place-${e.id}`}>
+                  <EditableText value={e.place} field="place" entityType="events" entityId={e.id} queryKey="events" />
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2" data-testid={`text-event-desc-${e.id}`}>
+                  <EditableText value={e.description} field="description" entityType="events" entityId={e.id} queryKey="events" multiline />
+                </p>
+                <div className="mt-3 flex items-center gap-1">
+                  <AdminItemActions entityType="events" entityId={e.id} queryKey="events" />
+                </div>
+              </Card>
+            ))}
           </div>
 
-          <div className="mt-6 text-center">
-            <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-events">
-              <Link href="/kalendarz">
-                <EditableStaticText textKey="btn_more_events" defaultValue="Więcej wydarzeń" />
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
+          <div className="mt-8 overflow-hidden rounded-2xl border bg-white/70 shadow-sm" data-testid="google-calendar-embed">
+            <iframe
+              src={googleCalendarSrc}
+              className="w-full border-0"
+              style={{ height: "600px" }}
+              title="Kalendarz Google parafii"
+              data-testid="iframe-google-calendar"
+            />
           </div>
+
+          {isEditMode && (
+            <div className="mt-3 text-xs text-muted-foreground">
+              URL kalendarza Google (edytowalny w ustawieniach admina jako <code>google_calendar_url</code>)
+            </div>
+          )}
         </div>
       </section>
 
@@ -1670,9 +1835,13 @@ export default function HomePage() {
           {groupsData.slice(0, 3).map((g) => (
             <Card
               key={g.id}
-              className="rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur"
+              className="rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur cursor-pointer transition hover:bg-white/95 hover:shadow-md"
+              onClick={() => setSelectedGroup(g)}
               data-testid={`card-group-${g.id}`}
             >
+              {g.image_url && (
+                <img src={g.image_url} alt={g.name} className="mb-3 h-32 w-full rounded-xl object-cover" data-testid={`img-group-${g.id}`} />
+              )}
               <div className="flex items-start justify-between">
                 <div>
                   <div className="font-display text-xl" data-testid={`text-group-name-${g.id}`}>
@@ -1689,22 +1858,19 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-foreground/80" data-testid={`text-group-desc-${g.id}`}>
+              <p className="mt-3 text-sm leading-relaxed text-foreground/80 line-clamp-3" data-testid={`text-group-desc-${g.id}`}>
                 <EditableText value={g.description} field="description" entityType="groups" entityId={g.id} queryKey="groups" multiline />
               </p>
-              <div className="mt-4">
-                <Button
-                  variant="secondary"
-                  className="rounded-xl"
-                  onClick={() => scrollToId("kontakt")}
-                  data-testid={`button-group-join-${g.id}`}
-                >
-                  Dołącz
-                </Button>
-              </div>
+              <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary" data-testid={`button-group-details-${g.id}`}>
+                Zobacz więcej
+                <ChevronRight className="h-4 w-4" />
+              </span>
             </Card>
           ))}
         </div>
+        {selectedGroup && (
+          <GroupModal group={selectedGroup} open={true} onClose={() => setSelectedGroup(null)} />
+        )}
 
         <div className="mt-6 text-center">
           <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-groups">
@@ -2086,17 +2252,20 @@ export default function HomePage() {
                 </Button>
               </div>
 
-              <Separator className="my-5" />
-
-              <div className="rounded-2xl border bg-white/60 p-3" data-testid="map-wrap">
-                <div className="text-sm font-medium" data-testid="text-map-title">Mapa</div>
-                <div className="mt-2 aspect-[16/9] w-full overflow-hidden rounded-xl bg-secondary" data-testid="map-embed">
-                  <div className="grid h-full w-full place-items-center text-sm text-muted-foreground" data-testid="text-map-placeholder">
-                    (embed mapy — w WordPress)
-                  </div>
-                </div>
-              </div>
             </Card>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-2xl border bg-white/70 shadow-sm" data-testid="map-wrap">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2581.5!2d18.8356!3d49.6478!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47140ff35ac3b551%3A0x987b1f0c73c78b33!2sParafia%20Ewangelicko-Augsburska%20w%20Wi%C5%9Ble%20Jaworniku!5e0!3m2!1spl!2spl!4v1700000000000!5m2!1spl!2spl"
+              className="w-full border-0"
+              style={{ height: "350px" }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Mapa — Parafia Ewangelicka w Wiśle Jaworniku"
+              data-testid="iframe-google-map"
+            />
           </div>
 
           <footer className="mt-10 flex flex-col gap-2 border-t pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between" data-testid="footer">

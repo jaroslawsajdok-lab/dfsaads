@@ -35,6 +35,7 @@ export const groups = pgTable("groups", {
   lead: text("lead").notNull(),
   when_text: text("when_text").notNull(),
   description: text("description").notNull(),
+  image_url: text("image_url"),
 });
 
 export const insertGroupSchema = createInsertSchema(groups).omit({ id: true });
