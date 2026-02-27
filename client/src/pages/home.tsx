@@ -33,7 +33,8 @@ import {
 
 
 const PARISH_LOGO_SRC = "/parish-cross.svg";
-const CROSS_H = 450;
+const CROSS_H_DESKTOP = 450;
+const CROSS_H_MOBILE = 56;
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -306,7 +307,7 @@ function VideoHero() {
         <div className="hero-overlay absolute inset-0" />
       </div>
 
-      <div className="relative mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 pb-10 sm:px-8" style={{ paddingTop: CROSS_H * 0.5 }}>
+      <div className="relative mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 pb-10 sm:px-8 pt-20 md:pt-56">
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -506,10 +507,11 @@ function TopNav({ shown }: { shown: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const { isAdmin, isEditMode, setEditMode, logout } = useAuth();
-  const barH = Math.round(CROSS_H * 0.2752);
-  const barTop = Math.round(CROSS_H * 0.1632);
-  const crossW = Math.round(CROSS_H * (53.97 / 87.72));
-  const logoAreaW = crossW + 12;
+
+  const desktopBarH = Math.round(CROSS_H_DESKTOP * 0.2752);
+  const desktopBarTop = Math.round(CROSS_H_DESKTOP * 0.1632);
+  const desktopCrossW = Math.round(CROSS_H_DESKTOP * (53.97 / 87.72));
+  const desktopLogoAreaW = desktopCrossW + 12;
 
   return (
     <>
@@ -520,57 +522,35 @@ function TopNav({ shown }: { shown: boolean }) {
           shown ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none",
         )}
         data-testid="nav-wrap"
+        role="navigation"
+        aria-label="Nawigacja główna"
       >
-        <div className="absolute inset-x-0 top-0 bg-white" style={{ height: barTop + barH + 4 }} />
-
-        <div
-          className="absolute right-0 hidden md:block"
-          style={{ top: barTop, height: barH, background: "#b0b0b0", left: logoAreaW + 3 }}
-          data-testid="nav-bar-full"
-        />
-
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className="absolute left-0 top-0 z-10 cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
-          style={{ width: crossW, height: CROSS_H, marginLeft: 3 }}
-          data-testid="button-nav-logo"
-          aria-label="Menu"
-        >
-          <img
-            src={PARISH_LOGO_SRC}
-            alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
-            className="h-full w-full object-contain"
-            loading="eager"
-            decoding="async"
-            data-testid="img-cross-nav"
-          />
-        </button>
-
-        <div
-          className="absolute hidden md:flex items-center gap-8 px-10"
-          style={{ top: barTop, height: barH, left: logoAreaW + 3, right: 0 }}
-          data-testid="nav-desktop-items"
-        >
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => scrollToId(item.id)}
-              className="text-[16px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
-              data-testid={`link-nav-${item.id}`}
-            >
-              <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
-            </button>
-          ))}
-
+        <div className="md:hidden flex items-center h-14 bg-white/95 backdrop-blur-sm shadow-sm px-4">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex items-center gap-2 cursor-pointer"
+            data-testid="button-nav-logo"
+            aria-label="Otwórz menu nawigacyjne"
+            aria-expanded={menuOpen}
+          >
+            <img
+              src={PARISH_LOGO_SRC}
+              alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
+              className="h-10 w-auto object-contain"
+              loading="eager"
+              decoding="async"
+              data-testid="img-cross-nav"
+            />
+            <span className="text-xs font-semibold tracking-widest text-gray-500 uppercase">Menu</span>
+          </button>
           <div className="ml-auto flex items-center gap-2">
             {!isAdmin && (
               <button
                 type="button"
                 onClick={() => setLoginOpen(true)}
-                className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/20 hover:text-white"
-                data-testid="button-nav-login"
+                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                data-testid="button-nav-login-mobile"
                 aria-label="Zaloguj się"
               >
                 <LogIn className="h-4 w-4" />
@@ -583,18 +563,18 @@ function TopNav({ shown }: { shown: boolean }) {
                   onClick={() => setEditMode(!isEditMode)}
                   className={cx(
                     "rounded-lg px-2 py-1 text-xs font-semibold tracking-wide uppercase transition",
-                    isEditMode ? "bg-yellow-400 text-yellow-900" : "bg-white/20 text-white hover:bg-white/30",
+                    isEditMode ? "bg-yellow-400 text-yellow-900" : "bg-gray-200 text-gray-600 hover:bg-gray-300",
                   )}
-                  data-testid="button-nav-editmode"
+                  data-testid="button-nav-editmode-mobile"
                 >
                   <Settings className="mr-1 inline h-3 w-3" />
-                  {isEditMode ? "Edycja ON" : "Edycja OFF"}
+                  {isEditMode ? "ON" : "OFF"}
                 </button>
                 <button
                   type="button"
                   onClick={logout}
-                  className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/20 hover:text-white"
-                  data-testid="button-nav-logout"
+                  className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100"
+                  data-testid="button-nav-logout-mobile"
                   aria-label="Wyloguj"
                 >
                   <LogOut className="h-4 w-4" />
@@ -604,20 +584,102 @@ function TopNav({ shown }: { shown: boolean }) {
           </div>
         </div>
 
+        <div className="hidden md:block">
+          <div className="absolute inset-x-0 top-0 bg-white" style={{ height: desktopBarTop + desktopBarH + 4 }} />
+          <div
+            className="absolute right-0"
+            style={{ top: desktopBarTop, height: desktopBarH, background: "#b0b0b0", left: desktopLogoAreaW + 3 }}
+            data-testid="nav-bar-full"
+          />
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="absolute left-0 top-0 z-10 cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+            style={{ width: desktopCrossW, height: CROSS_H_DESKTOP, marginLeft: 3 }}
+            data-testid="button-nav-logo-desktop"
+            aria-label="Menu"
+          >
+            <img
+              src={PARISH_LOGO_SRC}
+              alt="Logo Parafii Ewangelickiej w Wiśle Jaworniku"
+              className="h-full w-full object-contain"
+              loading="eager"
+              decoding="async"
+            />
+          </button>
+          <div
+            className="absolute flex items-center gap-8 px-10"
+            style={{ top: desktopBarTop, height: desktopBarH, left: desktopLogoAreaW + 3, right: 0 }}
+            data-testid="nav-desktop-items"
+          >
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => scrollToId(item.id)}
+                className="text-[16px] font-semibold tracking-widest text-white uppercase transition-opacity hover:opacity-70"
+                data-testid={`link-nav-${item.id}`}
+              >
+                <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
+              </button>
+            ))}
+            <div className="ml-auto flex items-center gap-2">
+              {!isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setLoginOpen(true)}
+                  className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/20 hover:text-white"
+                  data-testid="button-nav-login"
+                  aria-label="Zaloguj się"
+                >
+                  <LogIn className="h-4 w-4" />
+                </button>
+              )}
+              {isAdmin && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditMode(!isEditMode)}
+                    className={cx(
+                      "rounded-lg px-2 py-1 text-xs font-semibold tracking-wide uppercase transition",
+                      isEditMode ? "bg-yellow-400 text-yellow-900" : "bg-white/20 text-white hover:bg-white/30",
+                    )}
+                    data-testid="button-nav-editmode"
+                  >
+                    <Settings className="mr-1 inline h-3 w-3" />
+                    {isEditMode ? "Edycja ON" : "Edycja OFF"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/20 hover:text-white"
+                    data-testid="button-nav-logout"
+                    aria-label="Wyloguj"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
         {menuOpen && (
           <>
             <div
               className="fixed inset-0 z-40"
               onClick={() => setMenuOpen(false)}
               data-testid="nav-dropdown-backdrop"
+              aria-hidden="true"
             />
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className="absolute z-50 rounded-b-xl bg-white shadow-lg"
-              style={{ top: barTop + barH, left: 3, width: Math.max(crossW, 220) }}
+              className="absolute z-50 rounded-b-xl bg-white shadow-lg left-0 right-0 top-14 md:left-[3px] md:right-auto md:w-[240px]"
+              style={window.matchMedia("(min-width: 768px)").matches ? { top: desktopBarTop + desktopBarH } : {}}
               data-testid="nav-dropdown"
+              role="menu"
             >
               <div className="flex flex-col py-2">
                 {NAV_ITEMS.map((item) => (
@@ -627,6 +689,7 @@ function TopNav({ shown }: { shown: boolean }) {
                     onClick={() => { scrollToId(item.id); setMenuOpen(false); }}
                     className="px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
                     data-testid={`link-dropdown-${item.id}`}
+                    role="menuitem"
                   >
                     <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
                   </button>
@@ -638,6 +701,7 @@ function TopNav({ shown }: { shown: boolean }) {
                     onClick={() => { setMenuOpen(false); setLoginOpen(true); }}
                     className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                     data-testid="link-dropdown-login"
+                    role="menuitem"
                   >
                     <LogIn className="h-3.5 w-3.5" />
                     Zaloguj
@@ -650,6 +714,7 @@ function TopNav({ shown }: { shown: boolean }) {
                       onClick={() => { setEditMode(!isEditMode); setMenuOpen(false); }}
                       className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-500 transition-colors hover:bg-gray-100"
                       data-testid="link-dropdown-editmode"
+                      role="menuitem"
                     >
                       <Settings className="h-3.5 w-3.5" />
                       {isEditMode ? "Wyłącz edycję" : "Włącz edycję"}
@@ -659,6 +724,7 @@ function TopNav({ shown }: { shown: boolean }) {
                       onClick={() => { logout(); setMenuOpen(false); }}
                       className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-400 transition-colors hover:bg-gray-100"
                       data-testid="link-dropdown-logout"
+                      role="menuitem"
                     >
                       <LogOut className="h-3.5 w-3.5" />
                       Wyloguj
@@ -669,16 +735,6 @@ function TopNav({ shown }: { shown: boolean }) {
             </motion.div>
           </>
         )}
-
-        <div
-          className="absolute right-4 flex md:hidden items-center"
-          style={{ top: barTop, height: barH }}
-          data-testid="nav-mobile-hint"
-        >
-          <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
-            <EditableStaticText textKey="nav_menu" defaultValue="Menu" />
-          </span>
-        </div>
       </nav>
     </>
   );
@@ -1891,7 +1947,7 @@ export default function HomePage() {
       </section>
 
       {/* Grupy */}
-      <section id="grupy" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-grupy">
+      <section id="grupy" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-grupy" aria-label="Grupy parafialne">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-groups-title">
@@ -1968,7 +2024,7 @@ export default function HomePage() {
       </section>
 
       {/* Nagrania */}
-      <section id="nagrania" className="bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-nagrania">
+      <section id="nagrania" className="bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-nagrania" aria-label="Nagrania">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -2078,7 +2134,7 @@ export default function HomePage() {
       </section>
 
       {/* Galeria */}
-      <section id="galeria" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-galeria">
+      <section id="galeria" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-galeria" aria-label="Galeria">
         <div>
           <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-gallery-title">
             <EditableStaticText textKey="gallery_title" defaultValue="Galeria" />
@@ -2119,7 +2175,7 @@ export default function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]" data-testid="section-faq">
+      <section id="faq" className="bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]" data-testid="section-faq" aria-label="Najczęściej zadawane pytania">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -2174,7 +2230,7 @@ export default function HomePage() {
       </section>
 
       {/* Dom Gościnny */}
-      <section id="dom" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-dom">
+      <section id="dom" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-dom" aria-label="Dom gościnny">
         <Card className="relative overflow-hidden rounded-3xl border bg-white/80 p-7 backdrop-blur" data-testid="card-guesthouse">
           <div className="absolute inset-0 hero-overlay opacity-35" />
           <div className="relative grid gap-6 md:grid-cols-3 md:items-center">
@@ -2205,7 +2261,7 @@ export default function HomePage() {
       </section>
 
       {/* Kontakt */}
-      <section id="kontakt" className="bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-kontakt">
+      <section id="kontakt" className="bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-kontakt" aria-label="Kontakt">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
           <div>
             <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-contact-title">

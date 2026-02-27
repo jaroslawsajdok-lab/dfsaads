@@ -53,7 +53,7 @@ export function SubpageLayout({
         {children}
       </main>
 
-      <footer className="border-t py-8 text-center text-sm text-muted-foreground" data-testid="subpage-footer">
+      <footer className="border-t py-8 text-center text-sm text-muted-foreground" data-testid="subpage-footer" role="contentinfo">
         © {new Date().getFullYear()} <EditableStaticText textKey="subpage_footer" defaultValue="Parafia Ewangelicko-Augsburska w Wiśle Jaworniku" />
       </footer>
     </div>
