@@ -152,7 +152,7 @@ async function fetchYouTubeVideos(): Promise<any[]> {
 
   try {
     const feed = await rssParser.parseURL(YT_RSS_URL);
-    const videos = (feed.items || []).slice(0, 12).map((item: any) => {
+    const videos = (feed.items || []).slice(0, 40).map((item: any) => {
       const videoId = item.id?.replace("yt:video:", "") || item.link?.split("v=")[1] || "";
       return {
         id: videoId,

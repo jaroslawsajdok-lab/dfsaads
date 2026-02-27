@@ -106,6 +106,15 @@ function cx(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
 }
 
+function eventTypeColor(type: string) {
+  const t = type.toLowerCase();
+  if (t.includes("nabożeństwo") || t.includes("nabożeń")) return { badge: "bg-blue-100 text-blue-700", card: "bg-blue-50/80 border-blue-200/60" };
+  if (t.includes("spotkanie")) return { badge: "bg-amber-100 text-amber-700", card: "bg-amber-50/80 border-amber-200/60" };
+  if (t.includes("koncert") || t.includes("muzyk")) return { badge: "bg-purple-100 text-purple-700", card: "bg-purple-50/80 border-purple-200/60" };
+  if (t.includes("konferencja")) return { badge: "bg-emerald-100 text-emerald-700", card: "bg-emerald-50/80 border-emerald-200/60" };
+  return { badge: "bg-rose-100 text-rose-700", card: "bg-white/75 border-rose-200/40" };
+}
+
 function formatDatePL(isoDate: string) {
   try {
     const d = new Date(`${isoDate}T12:00:00`);
@@ -974,6 +983,85 @@ function FbScrollRow({ title, posts, onSelect }: { title: string; posts: FbPost[
   );
 }
 
+function YtScrollRow({ videos }: { videos: YtVideo[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", checkScroll);
+    return () => { el.removeEventListener("scroll", checkScroll); window.removeEventListener("resize", checkScroll); };
+  }, [videos]);
+
+  const scroll = (dir: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 320, behavior: "smooth" });
+  };
+
+  if (videos.length === 0) return null;
+
+  return (
+    <div className="mt-8" data-testid="yt-scroll-row">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-display text-2xl tracking-tight">Starsze transmisje</h3>
+        <div className="flex gap-1">
+          {canScrollLeft && (
+            <button onClick={() => scroll(-1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w lewo">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
+          {canScrollRight && (
+            <button onClick={() => scroll(1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w prawo">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {videos.map((v) => (
+          <a
+            key={v.id}
+            href={`https://www.youtube.com/watch?v=${v.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-[280px] flex-shrink-0 snap-start sm:w-[300px] group"
+            data-testid={`card-yt-scroll-${v.id}`}
+          >
+            <Card className="overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:shadow-md">
+              <div className="relative aspect-video w-full overflow-hidden bg-muted">
+                <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
+                  <div className="rounded-full bg-white/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
+                </div>
+              </div>
+              <div className="p-3">
+                <div className="text-xs text-muted-foreground">{formatDatePL(v.date.slice(0, 10))}</div>
+                <h3 className="mt-1 line-clamp-2 text-sm font-medium leading-snug">{v.title}</h3>
+              </div>
+            </Card>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FeaturedEventPoster() {
   const { isEditMode } = useAuth();
   const qc = useQueryClient();
@@ -1757,34 +1845,41 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {eventsData.slice(0, 3).map((e) => (
-              <Card
-                key={e.id}
-                className="rounded-2xl border bg-white/75 p-5 backdrop-blur"
-                data-testid={`row-event-${e.id}`}
-              >
-                <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`text-event-meta-${e.id}`}>
-                  <span className="rounded-lg bg-secondary px-2 py-1" data-testid={`badge-event-date-${e.id}`}>
-                    <EditableText value={formatDatePL(e.date)} field="date" entityType="events" entityId={e.id} queryKey="events" />
-                  </span>
-                  <span className="rounded-lg bg-secondary px-2 py-1" data-testid={`badge-event-time-${e.id}`}>
-                    <EditableText value={e.time} field="time" entityType="events" entityId={e.id} queryKey="events" />
-                  </span>
-                </div>
-                <div className="mt-2 font-display text-lg" data-testid={`text-event-title-${e.id}`}>
-                  <EditableText value={e.title} field="title" entityType="events" entityId={e.id} queryKey="events" />
-                </div>
-                <div className="mt-1 text-xs text-foreground/60" data-testid={`text-event-place-${e.id}`}>
-                  <EditableText value={e.place} field="place" entityType="events" entityId={e.id} queryKey="events" />
-                </div>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2" data-testid={`text-event-desc-${e.id}`}>
-                  <EditableText value={e.description} field="description" entityType="events" entityId={e.id} queryKey="events" multiline />
-                </p>
-                <div className="mt-3 flex items-center gap-1">
-                  <AdminItemActions entityType="events" entityId={e.id} queryKey="events" />
-                </div>
-              </Card>
-            ))}
+            {eventsData.slice(0, 3).map((e) => {
+              const typeColor = eventTypeColor(e.type);
+              return (
+                <Card
+                  key={e.id}
+                  className={cx("rounded-2xl border p-5 backdrop-blur", typeColor.card)}
+                  data-testid={`row-event-${e.id}`}
+                >
+                  <div className="flex items-center gap-2 flex-wrap" data-testid={`text-event-meta-${e.id}`}>
+                    <span className={cx("rounded-lg px-2.5 py-1 text-xs font-medium", typeColor.badge)} data-testid={`badge-event-type-${e.id}`}>
+                      <EditableText value={e.type} field="type" entityType="events" entityId={e.id} queryKey="events" />
+                    </span>
+                    <span className="text-sm text-muted-foreground" data-testid={`badge-event-date-${e.id}`}>
+                      <EditableText value={formatDatePL(e.date)} field="date" entityType="events" entityId={e.id} queryKey="events" />
+                    </span>
+                    <span className="text-sm text-muted-foreground" data-testid={`badge-event-time-${e.id}`}>
+                      <EditableText value={e.time} field="time" entityType="events" entityId={e.id} queryKey="events" />
+                    </span>
+                  </div>
+                  <div className="mt-3 font-display text-lg leading-snug" data-testid={`text-event-title-${e.id}`}>
+                    <EditableText value={e.title} field="title" entityType="events" entityId={e.id} queryKey="events" />
+                  </div>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-foreground/60" data-testid={`text-event-place-${e.id}`}>
+                    <MapPin className="h-3 w-3" />
+                    <EditableText value={e.place} field="place" entityType="events" entityId={e.id} queryKey="events" />
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2" data-testid={`text-event-desc-${e.id}`}>
+                    <EditableText value={e.description} field="description" entityType="events" entityId={e.id} queryKey="events" multiline />
+                  </p>
+                  <div className="mt-3 flex items-center gap-1">
+                    <AdminItemActions entityType="events" entityId={e.id} queryKey="events" />
+                  </div>
+                </Card>
+              );
+            })}
           </div>
 
           <div className="mt-8 overflow-hidden rounded-2xl border bg-white/70 shadow-sm" data-testid="google-calendar-embed">
@@ -1925,9 +2020,10 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {ytVideos.length > 0
-              ? ytVideos.slice(0, 3).map((v) => (
+          {ytVideos.length > 0 ? (
+            <>
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                {ytVideos.slice(0, 6).map((v) => (
                   <a
                     key={v.id}
                     href={`https://www.youtube.com/watch?v=${v.id}`}
@@ -1949,48 +2045,45 @@ export default function HomePage() {
                       </div>
                     </Card>
                   </a>
-                ))
-              : recordingsData.slice(0, 3).map((r) => (
-                  <Card
-                    key={r.id}
-                    className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
-                    data-testid={`card-recording-${r.id}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-muted-foreground" data-testid={`text-recording-date-${r.id}`}>
-                        <EditableText value={formatDatePL(r.date)} field="date" entityType="recordings" entityId={r.id} queryKey="recordings" />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <AdminItemActions entityType="recordings" entityId={r.id} queryKey="recordings" />
-                        <div className="rounded-full bg-accent p-2 text-accent-foreground transition group-hover:scale-[1.04]" data-testid={`icon-recording-${r.id}`}>
-                          <Play className="h-4 w-4" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 font-display text-xl" data-testid={`text-recording-title-${r.id}`}>
-                      <EditableText value={r.title} field="title" entityType="recordings" entityId={r.id} queryKey="recordings" />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      className="mt-3 -ml-2 rounded-xl"
-                      onClick={() => window.open(r.href, "_blank", "noopener,noreferrer")}
-                      data-testid={`button-recording-open-${r.id}`}
-                    >
-                      Otwórz
-                      <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
-                  </Card>
                 ))}
-          </div>
-
-          <div className="mt-6 text-center">
-            <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-recordings">
-              <Link href="/nagrania">
-                <EditableStaticText textKey="btn_more_recordings" defaultValue="Więcej nagrań" />
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+              </div>
+              <YtScrollRow videos={ytVideos.slice(6)} />
+            </>
+          ) : (
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {recordingsData.slice(0, 3).map((r) => (
+                <Card
+                  key={r.id}
+                  className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
+                  data-testid={`card-recording-${r.id}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-muted-foreground" data-testid={`text-recording-date-${r.id}`}>
+                      <EditableText value={formatDatePL(r.date)} field="date" entityType="recordings" entityId={r.id} queryKey="recordings" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <AdminItemActions entityType="recordings" entityId={r.id} queryKey="recordings" />
+                      <div className="rounded-full bg-accent p-2 text-accent-foreground transition group-hover:scale-[1.04]" data-testid={`icon-recording-${r.id}`}>
+                        <Play className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 font-display text-xl" data-testid={`text-recording-title-${r.id}`}>
+                    <EditableText value={r.title} field="title" entityType="recordings" entityId={r.id} queryKey="recordings" />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    className="mt-3 -ml-2 rounded-xl"
+                    onClick={() => window.open(r.href, "_blank", "noopener,noreferrer")}
+                    data-testid={`button-recording-open-${r.id}`}
+                  >
+                    Otwórz
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -2255,9 +2348,13 @@ export default function HomePage() {
             </Card>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border bg-white/70 shadow-sm" data-testid="map-wrap">
+          <div className="mt-8 overflow-hidden rounded-2xl border border-primary/10 shadow-sm" data-testid="map-wrap">
+            <div className="bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Znajdź nas na mapie</span>
+            </div>
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2581.5!2d18.8356!3d49.6478!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47140ff35ac3b551%3A0x987b1f0c73c78b33!2sParafia%20Ewangelicko-Augsburska%20w%20Wi%C5%9Ble%20Jaworniku!5e0!3m2!1spl!2spl!4v1700000000000!5m2!1spl!2spl"
+              src="https://www.google.com/maps?q=Parafia+Ewangelicko-Augsburska+Wisła+Jawornik&output=embed"
               className="w-full border-0"
               style={{ height: "350px" }}
               allowFullScreen
