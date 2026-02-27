@@ -332,7 +332,9 @@ async function seedIfEmpty() {
     const defaultHash = await bcrypt.hash("admin123", 10);
     await storage.setAdminSetting("admin_password_hash", defaultHash);
   }
+}
 
+async function clearStaleUploads() {
   const staleKeys = ["hero_video_url", "featured_event_poster", "remont_image"];
   for (const key of staleKeys) {
     const val = await storage.getAdminSetting(key);
@@ -376,6 +378,7 @@ export async function registerRoutes(
 
   await initializeDatabase();
   await seedIfEmpty();
+  await clearStaleUploads();
 
   // ── Auth ──
   app.post("/api/admin/login", async (req, res) => {

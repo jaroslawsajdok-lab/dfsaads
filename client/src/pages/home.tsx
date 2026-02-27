@@ -216,6 +216,7 @@ function VideoHero() {
 
     let retries = 0;
     const MAX_RETRIES = 5;
+    const pendingTimeouts: ReturnType<typeof setTimeout>[] = [];
 
     const tryPlay = async () => {
       try {
@@ -226,7 +227,7 @@ function VideoHero() {
       } catch {
         retries++;
         if (retries < MAX_RETRIES) {
-          setTimeout(tryPlay, 1000);
+          pendingTimeouts.push(setTimeout(tryPlay, 1000));
         } else {
           setCanAutoplay(false);
           setIsPlaying(false);
@@ -236,9 +237,13 @@ function VideoHero() {
 
     const onCanPlay = () => tryPlay();
     const onStalled = () => {
-      if (retries < MAX_RETRIES) setTimeout(tryPlay, 2000);
+      if (retries < MAX_RETRIES) {
+        pendingTimeouts.push(setTimeout(tryPlay, 2000));
+      }
     };
     const onError = () => {
+      setCanAutoplay(false);
+      setIsPlaying(false);
       if (heroVideoSrc !== DEFAULT_VIDEO) {
         setVideoSrcOverride(DEFAULT_VIDEO);
       }
@@ -254,6 +259,7 @@ function VideoHero() {
     if (v.readyState >= 3) tryPlay();
 
     return () => {
+      pendingTimeouts.forEach(clearTimeout);
       v.removeEventListener("canplay", onCanPlay);
       v.removeEventListener("stalled", onStalled);
       v.removeEventListener("error", onError);
