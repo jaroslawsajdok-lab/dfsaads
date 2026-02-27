@@ -491,22 +491,29 @@ export async function registerRoutes(
     res.json({ url });
   });
 
+  const ALLOWED_MIME_PREFIXES = ["image/", "video/", "audio/"];
+
   app.get("/api/files/:id", async (req, res) => {
     try {
+      const fileId = parseInt(req.params.id, 10);
+      if (isNaN(fileId)) {
+        return res.status(400).json({ message: "Invalid file ID" });
+      }
       const result = await pool.query(
         "SELECT filename, mime_type, data FROM files WHERE id = $1",
-        [parseInt(req.params.id, 10)]
+        [fileId]
       );
       if (result.rows.length === 0) {
         return res.status(404).json({ message: "File not found" });
       }
       const file = result.rows[0];
       const buffer = Buffer.from(file.data, "base64");
+      const isMediaType = ALLOWED_MIME_PREFIXES.some(p => file.mime_type.startsWith(p));
       res.set({
-        "Content-Type": file.mime_type,
+        "Content-Type": isMediaType ? file.mime_type : "application/octet-stream",
         "Content-Length": buffer.length.toString(),
         "Cache-Control": "public, max-age=86400, immutable",
-        "Content-Disposition": `inline; filename="${file.filename}"`,
+        "Content-Disposition": `${isMediaType ? "inline" : "attachment"}; filename="${file.filename}"`,
       });
       res.send(buffer);
     } catch (err) {
