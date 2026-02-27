@@ -365,11 +365,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  const PgSession = connectPgSimple(session);
-  const sessionPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  const MemoryStore = (await import("memorystore")).default(session);
   app.use(
     session({
-      store: new PgSession({ pool: sessionPool, createTableIfMissing: true }),
+      store: new MemoryStore({ checkPeriod: 86400000 }),
       secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
       resave: false,
       saveUninitialized: false,
