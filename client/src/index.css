@@ -161,3 +161,41 @@
     display: none;
   }
 }
+
+html.a11y-large-text {
+  font-size: 118%;
+}
+
+html.a11y-largest-text {
+  font-size: 136%;
+}
+
+html.a11y-high-contrast {
+  --foreground: 0 0% 0%;
+  --muted-foreground: 0 0% 20%;
+  --card-foreground: 0 0% 0%;
+  --popover-foreground: 0 0% 0%;
+  --secondary-foreground: 0 0% 0%;
+  --accent-foreground: 0 0% 0%;
+}
+
+html.a11y-high-contrast body {
+  background-color: #fff;
+  color: #000;
+}
+
+html.a11y-high-contrast .text-muted-foreground {
+  color: #333 !important;
+}
+
+html.a11y-high-contrast .text-white\/60,
+html.a11y-high-contrast .text-white\/70,
+html.a11y-high-contrast .text-white\/80,
+html.a11y-high-contrast .text-white\/90 {
+  color: #fff !important;
+}
+
+html.a11y-underline-links a {
+  text-decoration: underline !important;
+  text-underline-offset: 2px;
+}

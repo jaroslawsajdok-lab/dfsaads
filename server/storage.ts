@@ -12,7 +12,7 @@ import {
   type Gallery, type InsertGallery,
 } from "@shared/schema";
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 export const db = drizzle(pool);
 
 export async function initializeDatabase() {
@@ -69,6 +69,13 @@ export async function initializeDatabase() {
       id SERIAL PRIMARY KEY,
       key TEXT NOT NULL UNIQUE,
       value TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS files (
+      id SERIAL PRIMARY KEY,
+      filename TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
     );
   `);
 }
