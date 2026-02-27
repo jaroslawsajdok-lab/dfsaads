@@ -182,7 +182,9 @@ function VideoHero() {
     queryKey: ["admin-setting", "hero_video_url"],
     queryFn: () => apiFetch("/api/admin/settings/hero_video_url"),
   });
-  const heroVideoSrc = heroVideoData?.value || "/hero-drone.mp4";
+  const DEFAULT_VIDEO = "/hero-drone.mp4";
+  const [videoSrcOverride, setVideoSrcOverride] = useState<string | null>(null);
+  const heroVideoSrc = videoSrcOverride || heroVideoData?.value || DEFAULT_VIDEO;
 
   const { data: heroSpeedData } = useQuery<{ value: string | null }>({
     queryKey: ["admin-setting", "hero_video_speed"],
@@ -212,20 +214,57 @@ function VideoHero() {
     const v = videoRef.current;
     if (!v) return;
 
-    const attempt = async () => {
+    let retries = 0;
+    const MAX_RETRIES = 5;
+    const pendingTimeouts: ReturnType<typeof setTimeout>[] = [];
+
+    const tryPlay = async () => {
       try {
         const p = v.play();
         if (p) await p;
         setCanAutoplay(true);
         setIsPlaying(true);
       } catch {
-        setCanAutoplay(false);
-        setIsPlaying(false);
+        retries++;
+        if (retries < MAX_RETRIES) {
+          pendingTimeouts.push(setTimeout(tryPlay, 1000));
+        } else {
+          setCanAutoplay(false);
+          setIsPlaying(false);
+        }
       }
     };
 
-    const t = window.setTimeout(attempt, 120);
-    return () => window.clearTimeout(t);
+    const onCanPlay = () => tryPlay();
+    const onStalled = () => {
+      if (retries < MAX_RETRIES) {
+        pendingTimeouts.push(setTimeout(tryPlay, 2000));
+      }
+    };
+    const onError = () => {
+      setCanAutoplay(false);
+      setIsPlaying(false);
+      if (heroVideoSrc !== DEFAULT_VIDEO) {
+        setVideoSrcOverride(DEFAULT_VIDEO);
+      }
+    };
+
+    v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("stalled", onStalled);
+    v.addEventListener("error", onError);
+
+    const sourceEl = v.querySelector("source");
+    if (sourceEl) sourceEl.addEventListener("error", onError);
+
+    if (v.readyState >= 3) tryPlay();
+
+    return () => {
+      pendingTimeouts.forEach(clearTimeout);
+      v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("stalled", onStalled);
+      v.removeEventListener("error", onError);
+      if (sourceEl) sourceEl.removeEventListener("error", onError);
+    };
   }, [heroVideoSrc]);
 
   const onPlayClick = async () => {

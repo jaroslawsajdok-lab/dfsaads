@@ -334,6 +334,17 @@ async function seedIfEmpty() {
   }
 }
 
+async function clearStaleUploads() {
+  const staleKeys = ["hero_video_url", "featured_event_poster", "remont_image"];
+  for (const key of staleKeys) {
+    const val = await storage.getAdminSetting(key);
+    if (val && val.startsWith("/uploads/")) {
+      await pool.query("DELETE FROM admin_settings WHERE key = $1", [key]);
+      console.log(`Cleared stale /uploads/ reference for ${key}`);
+    }
+  }
+}
+
 const memStorage = multer.memoryStorage();
 const upload = multer({ storage: memStorage, limits: { fileSize: 10 * 1024 * 1024 } });
 const uploadVideo = multer({ storage: memStorage, limits: { fileSize: 200 * 1024 * 1024 } });
@@ -367,6 +378,7 @@ export async function registerRoutes(
 
   await initializeDatabase();
   await seedIfEmpty();
+  await clearStaleUploads();
 
   // ── Auth ──
   app.post("/api/admin/login", async (req, res) => {
