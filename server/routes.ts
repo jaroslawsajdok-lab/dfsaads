@@ -371,7 +371,12 @@ export async function registerRoutes(
       secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
       resave: false,
       saveUninitialized: false,
-      cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "lax" },
+      cookie: {
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        sameSite: process.env.NODE_ENV === "production" ? "none" as const : "lax" as const,
+        secure: process.env.NODE_ENV === "production",
+      },
     })
   );
 
