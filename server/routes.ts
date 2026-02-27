@@ -11,6 +11,7 @@ import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
 import multer from "multer";
 import path from "path";
 import RssParser from "rss-parser";
@@ -365,9 +366,10 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   const PgSession = connectPgSimple(session);
+  const sessionPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
   app.use(
     session({
-      store: new PgSession({ conString: process.env.DATABASE_URL, createTableIfMissing: true }),
+      store: new PgSession({ pool: sessionPool, createTableIfMissing: true }),
       secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
       resave: false,
       saveUninitialized: false,
