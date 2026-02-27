@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage, db } from "./storage";
+import { storage, db, initializeDatabase } from "./storage";
 import {
   insertNewsSchema, insertEventSchema, insertGroupSchema,
   insertRecordingSchema, insertFaqSchema, insertContactInfoSchema,
@@ -375,6 +375,7 @@ export async function registerRoutes(
     })
   );
 
+  await initializeDatabase();
   await seedIfEmpty();
 
   // ── Auth ──
