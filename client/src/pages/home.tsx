@@ -1695,7 +1695,13 @@ export default function HomePage() {
     queryFn: () => apiFetch("/api/admin/settings/google_calendar_url"),
   });
   const baseCalendarUrl = calendarUrlData?.value || "https://calendar.google.com/calendar/embed?src=peajawornik%40gmail.com&ctz=Europe%2FWarsaw";
-  const googleCalendarSrc = baseCalendarUrl + (baseCalendarUrl.includes("bgcolor") ? "" : "&bgcolor=%23ffffff&color=%234285F4&showTitle=0&showPrint=0&showTabs=1&showCalendars=0");
+  const googleCalendarSrc = baseCalendarUrl + (baseCalendarUrl.includes("bgcolor") ? "" : "&bgcolor=%23ffffff&showTitle=0&showPrint=0&showTabs=1&showCalendars=0");
+
+  const { data: gcalEventsData } = useQuery<{ error: string | null; events: any[] }>({
+    queryKey: ["calendar-events"],
+    queryFn: () => apiFetch("/api/calendar-events"),
+  });
+  const gcalEvents = gcalEventsData?.events ?? [];
   const { isEditMode } = useAuth();
 
   return (
@@ -1819,80 +1825,54 @@ export default function HomePage() {
         data-testid="section-kalendarz"
       >
         <div id="kalendarz" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-calendar-title">
-                <EditableStaticText textKey="calendar_title" defaultValue="Kalendarz" />
-              </h2>
-              <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-calendar-subtitle">
-                <EditableStaticText textKey="calendar_subtitle" defaultValue="Najbliższe wydarzenia i spotkania." />
-              </p>
-            </div>
-            {isEditMode && (
-              <AdminAddButton
-                entityType="events"
-                queryKey="events"
-                defaultValues={{ date: "", time: "", type: "", title: "", place: "", description: "" }}
-                fields={[
-                  { key: "date", label: "Data (RRRR-MM-DD)" },
-                  { key: "time", label: "Godzina" },
-                  { key: "type", label: "Typ" },
-                  { key: "title", label: "Tytuł" },
-                  { key: "place", label: "Miejsce" },
-                  { key: "description", label: "Opis", multiline: true },
-                ]}
-              />
-            )}
+          <div>
+            <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-calendar-title">
+              <EditableStaticText textKey="calendar_title" defaultValue="Kalendarz" />
+            </h2>
+            <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-calendar-subtitle">
+              <EditableStaticText textKey="calendar_subtitle" defaultValue="Najbliższe wydarzenia i spotkania." />
+            </p>
           </div>
 
-          {(() => {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            const upcoming = eventsData
-              .filter((ev) => new Date(ev.date + "T" + (ev.time || "23:59")) >= now)
-              .sort((a, b) => new Date(a.date + "T" + (a.time || "00:00")).getTime() - new Date(b.date + "T" + (b.time || "00:00")).getTime())
-              .slice(0, 3);
-            if (upcoming.length === 0) return (
-              <p className="mt-8 text-center text-muted-foreground" data-testid="text-no-upcoming-events">Brak nadchodzących wydarzeń. Dodaj nowe w panelu admina.</p>
-            );
-            return (
-              <div className="mt-8 grid gap-4 md:grid-cols-3">
-                {upcoming.map((ev) => {
-                  const tc = eventTypeColor(ev.type);
-                  return (
-                    <Card key={ev.id} className={cx("rounded-2xl border p-5 backdrop-blur transition-shadow hover:shadow-md", tc.card)} data-testid={`row-event-${ev.id}`}>
-                      <div className="flex items-center gap-2 flex-wrap" data-testid={`text-event-meta-${ev.id}`}>
-                        <span className={cx("rounded-lg px-2.5 py-1 text-xs font-medium", tc.badge)} data-testid={`badge-event-type-${ev.id}`}>
-                          <EditableText value={ev.type} field="type" entityType="events" entityId={ev.id} queryKey="events" />
-                        </span>
-                        <span className="text-sm text-muted-foreground" data-testid={`badge-event-date-${ev.id}`}>
-                          <EditableText value={formatDatePL(ev.date)} field="date" entityType="events" entityId={ev.id} queryKey="events" />
-                        </span>
-                        <span className="text-sm text-muted-foreground" data-testid={`badge-event-time-${ev.id}`}>
-                          <EditableText value={ev.time} field="time" entityType="events" entityId={ev.id} queryKey="events" />
-                        </span>
-                      </div>
-                      <div className="mt-3 font-display text-lg leading-snug" data-testid={`text-event-title-${ev.id}`}>
-                        <EditableText value={ev.title} field="title" entityType="events" entityId={ev.id} queryKey="events" />
-                      </div>
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-foreground/60" data-testid={`text-event-place-${ev.id}`}>
+          {gcalEvents.length === 0 ? (
+            <p className="mt-8 text-center text-muted-foreground" data-testid="text-no-upcoming-events">Brak nadchodzących wydarzeń w kalendarzu Google.</p>
+          ) : (
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {gcalEvents.slice(0, 3).map((ev: any, idx: number) => {
+                const tc = eventTypeColor(ev.type);
+                return (
+                  <Card key={`gcal-${idx}`} className={cx("rounded-2xl border p-5 backdrop-blur transition-shadow hover:shadow-md", tc.card)} data-testid={`row-gcal-event-${idx}`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cx("rounded-lg px-2.5 py-1 text-xs font-medium", tc.badge)} data-testid={`badge-gcal-type-${idx}`}>
+                        {ev.type}
+                      </span>
+                      <span className="text-sm text-muted-foreground" data-testid={`badge-gcal-date-${idx}`}>
+                        {formatDatePL(ev.date)}
+                      </span>
+                      <span className="text-sm text-muted-foreground" data-testid={`badge-gcal-time-${idx}`}>
+                        {ev.time}
+                      </span>
+                    </div>
+                    <div className="mt-3 font-display text-lg leading-snug" data-testid={`text-gcal-title-${idx}`}>
+                      {ev.title}
+                    </div>
+                    {ev.location && (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-foreground/60" data-testid={`text-gcal-location-${idx}`}>
                         <MapPin className="h-3 w-3" />
-                        <EditableText value={ev.place} field="place" entityType="events" entityId={ev.id} queryKey="events" />
+                        {ev.location}
                       </div>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2" data-testid={`text-event-desc-${ev.id}`}>
-                        <EditableText value={ev.description} field="description" entityType="events" entityId={ev.id} queryKey="events" multiline />
-                      </p>
-                      <div className="mt-3 flex items-center gap-1">
-                        <AdminItemActions entityType="events" entityId={ev.id} queryKey="events" />
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            );
-          })()}
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="mt-8 overflow-hidden rounded-2xl border bg-white/70 shadow-sm" data-testid="google-calendar-embed">
+          <div className="mt-8 overflow-hidden rounded-2xl border border-border/50 bg-white shadow-sm" data-testid="google-calendar-embed">
+            <div className="flex items-center gap-2 bg-blue-600 px-4 py-2.5 text-white">
+              <CalendarIcon className="h-4 w-4" />
+              <span className="text-sm font-medium">Kalendarz parafialny</span>
+            </div>
             <iframe
               src={googleCalendarSrc}
               className="w-full border-0"

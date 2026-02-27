@@ -16,6 +16,7 @@ import path from "path";
 import RssParser from "rss-parser";
 import fs from "fs";
 import crypto from "crypto";
+import ical from "node-ical";
 
 declare module "express-session" {
   interface SessionData {
@@ -142,6 +143,86 @@ async function resolvePageToken(): Promise<{ pageId: string; token: string; slug
 
 // ── YouTube (RSS — no API key required) ──
 const YT_CACHE_TTL = 30 * 60 * 1000;
+const GCAL_ICAL_URL = "https://calendar.google.com/calendar/ical/peajawornik%40gmail.com/public/basic.ics";
+const GCAL_CACHE_TTL = 30 * 60 * 1000;
+let gcalCache: { data: any[]; ts: number } | null = null;
+
+function detectEventType(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes("nabożeństwo") || t.includes("nabożeństwa") || t.includes("msza") || t.includes("liturgi")) return "Nabożeństwo";
+  if (t.includes("spotkanie") || t.includes("wieczór") || t.includes("studium")) return "Spotkanie";
+  if (t.includes("koncert") || t.includes("muzyk")) return "Koncert";
+  if (t.includes("konferencja") || t.includes("zjazd") || t.includes("synod")) return "Konferencja";
+  return "Wydarzenie";
+}
+
+async function fetchGoogleCalendarEvents(): Promise<any[]> {
+  if (gcalCache && Date.now() - gcalCache.ts < GCAL_CACHE_TTL) return gcalCache.data;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(GCAL_ICAL_URL, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error(`iCal fetch failed: ${response.status}`);
+    const icsText = await response.text();
+
+    const parsed = ical.sync.parseICS(icsText);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const rangeEnd = new Date(now);
+    rangeEnd.setDate(rangeEnd.getDate() + 90);
+
+    const upcoming: any[] = [];
+
+    for (const key of Object.keys(parsed)) {
+      const comp = parsed[key];
+      if (comp.type !== "VEVENT") continue;
+
+      if (comp.rrule) {
+        try {
+          const occurrences = comp.rrule.between(now, rangeEnd, true);
+          for (const occ of occurrences) {
+            const dt = new Date(occ);
+            if (dt >= now) {
+              upcoming.push({
+                title: comp.summary || "Wydarzenie",
+                date: dt.toISOString().slice(0, 10),
+                time: dt.toTimeString().slice(0, 5),
+                type: detectEventType(comp.summary || ""),
+                location: comp.location || "",
+              });
+            }
+          }
+        } catch {
+          // skip broken rrules
+        }
+      } else {
+        const start = comp.start ? new Date(comp.start) : null;
+        if (start && start >= now) {
+          upcoming.push({
+            title: comp.summary || "Wydarzenie",
+            date: start.toISOString().slice(0, 10),
+            time: start.toTimeString().slice(0, 5),
+            type: detectEventType(comp.summary || ""),
+            location: comp.location || "",
+          });
+        }
+      }
+    }
+
+    upcoming.sort((a, b) => new Date(a.date + "T" + a.time).getTime() - new Date(b.date + "T" + b.time).getTime());
+    const result = upcoming.slice(0, 6);
+    gcalCache = { data: result, ts: Date.now() };
+    console.log(`Google Calendar: fetched ${upcoming.length} upcoming events, returning ${result.length}`);
+    return result;
+  } catch (err) {
+    console.error("Google Calendar iCal fetch error:", err);
+    return gcalCache?.data ?? [];
+  }
+}
+
 const YT_CHANNEL_ID = "UCYwTmxRhm2hZDWkeEZngc4g";
 const YT_RSS_URL = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CHANNEL_ID}`;
 let ytCache: { data: any; ts: number } | null = null;
@@ -602,6 +683,12 @@ export async function registerRoutes(
   app.get("/api/youtube-videos", async (_req, res) => {
     const videos = await fetchYouTubeVideos();
     res.json({ error: null, videos });
+  });
+
+  // ── Google Calendar events (iCal feed) ──
+  app.get("/api/calendar-events", async (_req, res) => {
+    const events = await fetchGoogleCalendarEvents();
+    res.json({ error: null, events });
   });
 
   return httpServer;
