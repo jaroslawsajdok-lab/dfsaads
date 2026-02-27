@@ -1845,18 +1845,36 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {eventsData.slice(0, 3).map((e) => {
+            {(() => {
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              const sorted = [...eventsData].sort((a, b) => {
+                const da = new Date(a.date + "T" + (a.time || "00:00"));
+                const db = new Date(b.date + "T" + (b.time || "00:00"));
+                const aFuture = da >= now;
+                const bFuture = db >= now;
+                if (aFuture && !bFuture) return -1;
+                if (!aFuture && bFuture) return 1;
+                if (aFuture && bFuture) return da.getTime() - db.getTime();
+                return db.getTime() - da.getTime();
+              });
+              return sorted.slice(0, 3);
+            })().map((e) => {
               const typeColor = eventTypeColor(e.type);
+              const eventDate = new Date(e.date + "T" + (e.time || "00:00"));
+              const nowCheck = new Date(); nowCheck.setHours(0,0,0,0);
+              const isPast = eventDate < nowCheck;
               return (
                 <Card
                   key={e.id}
-                  className={cx("rounded-2xl border p-5 backdrop-blur", typeColor.card)}
+                  className={cx("rounded-2xl border p-5 backdrop-blur transition-shadow hover:shadow-md", typeColor.card, isPast && "opacity-60")}
                   data-testid={`row-event-${e.id}`}
                 >
                   <div className="flex items-center gap-2 flex-wrap" data-testid={`text-event-meta-${e.id}`}>
                     <span className={cx("rounded-lg px-2.5 py-1 text-xs font-medium", typeColor.badge)} data-testid={`badge-event-type-${e.id}`}>
                       <EditableText value={e.type} field="type" entityType="events" entityId={e.id} queryKey="events" />
                     </span>
+                    {isPast && <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">minione</span>}
                     <span className="text-sm text-muted-foreground" data-testid={`badge-event-date-${e.id}`}>
                       <EditableText value={formatDatePL(e.date)} field="date" entityType="events" entityId={e.id} queryKey="events" />
                     </span>
