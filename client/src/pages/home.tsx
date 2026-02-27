@@ -293,12 +293,12 @@ function VideoHero() {
         <video
           ref={videoRef}
           key={heroVideoSrc}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover will-change-transform"
           autoPlay
           muted
           loop={heroLoop}
           playsInline
-          preload="metadata"
+          preload="auto"
           poster="/hero-poster.png"
           data-testid="video-hero"
         >

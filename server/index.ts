@@ -76,14 +76,6 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  // Serve uploaded files from /uploads in both dev and prod
-  const uploadsPath = (await import("path")).resolve(process.cwd(), "uploads");
-  const fs = await import("fs");
-  if (!fs.existsSync(uploadsPath)) {
-    fs.mkdirSync(uploadsPath, { recursive: true });
-  }
-  app.use("/uploads", express.static(uploadsPath));
-
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes

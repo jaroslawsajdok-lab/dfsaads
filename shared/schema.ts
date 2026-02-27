@@ -91,3 +91,11 @@ export const adminSettings = pgTable("admin_settings", {
   key: text("key").notNull().unique(),
   value: text("value").notNull(),
 });
+
+export const files = pgTable("files", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  mime_type: text("mime_type").notNull(),
+  data: text("data").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});

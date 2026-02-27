@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
+import { AccessibilityPanel } from "@/components/accessibility-panel";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
 import KalendarzPage from "@/pages/kalendarz";
@@ -97,6 +98,7 @@ function App() {
           <main id="main-content" tabIndex={-1} className="outline-none">
             <Router />
           </main>
+          <AccessibilityPanel />
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
