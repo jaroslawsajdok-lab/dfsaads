@@ -13,6 +13,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import multer from "multer";
 import path from "path";
+import RssParser from "rss-parser";
 import fs from "fs";
 import crypto from "crypto";
 
@@ -139,39 +140,33 @@ async function resolvePageToken(): Promise<{ pageId: string; token: string; slug
   }
 }
 
-// ── YouTube ──
+// ── YouTube (RSS — no API key required) ──
 const YT_CACHE_TTL = 30 * 60 * 1000;
 const YT_CHANNEL_ID = "UCYwTmxRhm2hZDWkeEZngc4g";
+const YT_RSS_URL = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CHANNEL_ID}`;
 let ytCache: { data: any; ts: number } | null = null;
+const rssParser = new RssParser();
 
 async function fetchYouTubeVideos(): Promise<any[]> {
   if (ytCache && Date.now() - ytCache.ts < YT_CACHE_TTL) return ytCache.data;
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) return [];
-
-  const channelId = YT_CHANNEL_ID;
-
   try {
-    const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12&key=${apiKey}`
-    );
-    if (!res.ok) {
-      console.error("YT search error:", res.status, await res.text());
-      return ytCache?.data ?? [];
-    }
-    const json = await res.json();
-    const videos = (json.items || []).map((item: any) => ({
-      id: item.id.videoId,
-      title: item.snippet.title,
-      date: item.snippet.publishedAt,
-      thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "",
-      channelTitle: item.snippet.channelTitle,
-    }));
+    const feed = await rssParser.parseURL(YT_RSS_URL);
+    const videos = (feed.items || []).slice(0, 12).map((item: any) => {
+      const videoId = item.id?.replace("yt:video:", "") || item.link?.split("v=")[1] || "";
+      return {
+        id: videoId,
+        title: item.title || "",
+        date: item.pubDate || item.isoDate || "",
+        thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        channelTitle: feed.title || "Parafia EA Wisła Jawornik",
+      };
+    });
     ytCache = { data: videos, ts: Date.now() };
+    console.log(`YT RSS: fetched ${videos.length} videos`);
     return videos;
   } catch (err) {
-    console.error("YT fetch error:", err);
+    console.error("YT RSS fetch error:", err);
     return ytCache?.data ?? [];
   }
 }
@@ -603,12 +598,8 @@ export async function registerRoutes(
     res.json({ error: null, posts, pageSlug: slug });
   });
 
-  // ── YouTube ──
+  // ── YouTube (RSS feed, no API key needed) ──
   app.get("/api/youtube-videos", async (_req, res) => {
-    if (!process.env.YOUTUBE_API_KEY) {
-      res.json({ error: "no_key", videos: [] });
-      return;
-    }
     const videos = await fetchYouTubeVideos();
     res.json({ error: null, videos });
   });
