@@ -402,7 +402,13 @@ export async function registerRoutes(
     }
 
     req.session.isAdmin = true;
-    res.json({ ok: true });
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: "Session save failed" });
+      }
+      res.json({ ok: true });
+    });
   });
 
   app.get("/api/admin/session", (req, res) => {
