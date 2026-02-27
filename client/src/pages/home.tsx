@@ -1606,7 +1606,7 @@ export default function HomePage() {
     queryKey: ["admin-setting", "google_calendar_url"],
     queryFn: () => apiFetch("/api/admin/settings/google_calendar_url"),
   });
-  const googleCalendarSrc = calendarUrlData?.value || "https://calendar.google.com/calendar/embed?src=peajawornik%40gmail.com&ctz=Europe%2FWarsaw&hl=pl&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&showTz=0";
+  const googleCalendarSrc = calendarUrlData?.value || "https://calendar.google.com/calendar/embed?src=peajawornik%40gmail.com&ctz=Europe%2FWarsaw";
   const { isEditMode } = useAuth();
 
   return (
@@ -1914,7 +1914,7 @@ export default function HomePage() {
                 data-testid="button-recordings-youtube"
               >
                 <a
-                  href="https://www.youtube.com/@parafiae-awisajawornik2251"
+                  href="https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -2199,7 +2199,7 @@ export default function HomePage() {
                     data-testid="button-contact-youtube"
                   >
                     <a
-                      href="https://www.youtube.com/@parafiae-awisajawornik2251"
+                      href="https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g"
                       target="_blank"
                       rel="noreferrer"
                     >

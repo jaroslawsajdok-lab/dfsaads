@@ -78,7 +78,9 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 
 ### Third-Party Services
 - **Google Fonts** — DM Sans, Fraunces, and Inter font families loaded from `fonts.googleapis.com`
-- **YouTube Data API v3** — auto-pulls latest videos from channel `@parafiae-awisajawornik2251`; requires `YOUTUBE_API_KEY` secret; results cached 30 min; falls back to manual recordings if no key
+- **YouTube Data API v3** — auto-pulls latest videos from channel ID `UCYwTmxRhm2hZDWkeEZngc4g`; requires `YOUTUBE_API_KEY` secret; results cached 30 min; falls back to manual recordings if no key
+- **Google Calendar** — embedded iframe from `peajawornik@gmail.com`; admin can override URL via `google_calendar_url` setting
+- **Google Maps** — embedded map showing parish building in contact section
 - **Facebook Graph API** — fetches page posts via `FACEBOOK_PAGE_TOKEN`; page matched by `FB_PAGE_SLUG` env var (default: "wislajawornik"); falls back to iframe embed widget when token expired/missing
 - **Guest House link** — external link to `https://osrodek.jawornik.eu`
 
