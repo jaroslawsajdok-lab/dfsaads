@@ -2294,48 +2294,42 @@ export default function HomePage() {
               </div>
             </Card>
 
-            <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur lg:col-span-2" data-testid="card-contact-form">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <div className="text-sm font-medium" data-testid="text-form-title">Formularz</div>
-                  <p className="mt-1 text-sm text-muted-foreground" data-testid="text-form-subtitle">
-                    Placeholder pod shortcode formularza.
-                  </p>
-                </div>
-                <div className="flex md:justify-end">
-                  <div className="rounded-2xl px-4 py-2 glass" data-testid="text-form-shortcode">
-                    [contact-form-7 id="..."]
+            {/* Przelewy24 — ukryta sekcja, gotowa do aktywacji */}
+            {isEditMode && (
+              <Card className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 backdrop-blur lg:col-span-2" data-testid="card-p24-placeholder">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
+                    <Heart className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-amber-800" data-testid="text-p24-title">Przelewy24 — Ofiary online</div>
+                    <div className="text-xs text-amber-600">Sekcja ukryta dla odwiedzających. Do aktywacji po skonfigurowaniu P24.</div>
                   </div>
                 </div>
-              </div>
 
-              <Separator className="my-5" />
+                <Separator className="my-4 bg-amber-200" />
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border bg-white/70 px-4 py-3" data-testid="field-name">
-                  <div className="text-xs text-muted-foreground" data-testid="label-name">Imię</div>
-                  <div className="mt-1 text-sm" data-testid="value-name">(wtyczka formularza)</div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-amber-200 bg-white/70 px-4 py-3" data-testid="field-p24-amount">
+                    <div className="text-xs text-muted-foreground">Kwota</div>
+                    <div className="mt-1 text-sm text-amber-700" data-testid="value-p24-amount">50 zł / dowolna kwota</div>
+                  </div>
+                  <div className="rounded-2xl border border-amber-200 bg-white/70 px-4 py-3" data-testid="field-p24-title">
+                    <div className="text-xs text-muted-foreground">Tytuł wpłaty</div>
+                    <div className="mt-1 text-sm text-amber-700" data-testid="value-p24-title">Ofiara na parafię</div>
+                  </div>
                 </div>
-                <div className="rounded-2xl border bg-white/70 px-4 py-3" data-testid="field-email">
-                  <div className="text-xs text-muted-foreground" data-testid="label-email">E-mail</div>
-                  <div className="mt-1 text-sm" data-testid="value-email">(wtyczka formularza)</div>
-                </div>
-                <div className="md:col-span-2 rounded-2xl border bg-white/70 px-4 py-3" data-testid="field-message">
-                  <div className="text-xs text-muted-foreground" data-testid="label-message">Wiadomość</div>
-                  <div className="mt-1 text-sm" data-testid="value-message">(wtyczka formularza)</div>
-                </div>
-              </div>
 
-              <div className="mt-4 flex items-center justify-between">
-                <div className="text-xs text-muted-foreground" data-testid="text-form-note">
-                  Po wdrożeniu: formularz wysyła z WordPress.
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="text-xs text-amber-600" data-testid="text-p24-note">
+                    Wymaga: klucz P24_MERCHANT_ID + P24_CRC + P24_API_KEY
+                  </div>
+                  <Button className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white" disabled data-testid="button-p24-pay">
+                    Wpłać ofiarę
+                  </Button>
                 </div>
-                <Button className="rounded-xl" disabled data-testid="button-form-send">
-                  Wyślij
-                </Button>
-              </div>
-
-            </Card>
+              </Card>
+            )}
           </div>
 
           <div className="mt-8 overflow-hidden rounded-2xl border border-primary/10 shadow-sm" data-testid="map-wrap">

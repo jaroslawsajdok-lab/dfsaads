@@ -70,6 +70,8 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 4. **Polish language** — all UI text and content is in Polish
 5. **Glassmorphism UI** — modern visual style with translucent blur effects, especially in the sticky navigation header
 6. **Fullscreen video hero** — the landing section features an autoplay drone video with fallback poster image
+7. **Splash screen** — animated loading screen with parish cross logo on app load (framer-motion, 2s duration, fade-out)
+8. **Przelewy24 placeholder** — hidden donation section prepared for future P24 integration; visible only in admin mode
 
 ## External Dependencies
 
@@ -79,7 +81,7 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 ### Third-Party Services
 - **Google Fonts** — DM Sans, Fraunces, and Inter font families loaded from `fonts.googleapis.com`
 - **YouTube RSS** — auto-pulls latest videos from channel `UCYwTmxRhm2hZDWkeEZngc4g` via RSS feed (`rss-parser`); no API key required; results cached 30 min
-- **Google Calendar** — embedded iframe from `peajawornik@gmail.com`; admin can override URL via `google_calendar_url` setting
+- **Google Calendar iCal** — fetches upcoming events from `peajawornik@gmail.com` iCal feed via `node-ical`; parses RRULE recurrences; cached 30 min; `GET /api/calendar-events` returns nearest 6 events; embedded iframe also shown; admin can override URL via `google_calendar_url` setting
 - **Google Maps** — embedded map showing parish building in contact section
 - **Facebook Graph API** — fetches page posts via `FACEBOOK_PAGE_TOKEN`; page matched by `FB_PAGE_SLUG` env var (default: "wislajawornik"); falls back to iframe embed widget when token expired/missing
 - **Guest House link** — external link to `https://osrodek.jawornik.eu`
@@ -94,3 +96,4 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 - **Wouter** — client-side routing
 - **Zod** — schema validation
 - **connect-pg-simple** — PostgreSQL session store (available but sessions not currently used)
+- **node-ical** — iCal/ICS parser for Google Calendar event feed
