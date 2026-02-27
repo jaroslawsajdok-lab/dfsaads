@@ -676,10 +676,8 @@ function TopNav({ shown }: { shown: boolean }) {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className="absolute z-50 rounded-b-xl bg-white shadow-lg left-0 right-0 top-14 md:left-[3px] md:right-auto md:w-[240px]"
-              style={window.matchMedia("(min-width: 768px)").matches ? { top: desktopBarTop + desktopBarH } : {}}
+              className="absolute z-50 rounded-b-xl bg-white shadow-lg left-0 right-0 top-14 md:left-[3px] md:right-auto md:w-[240px] md:top-[197px]"
               data-testid="nav-dropdown"
-              role="menu"
             >
               <div className="flex flex-col py-2">
                 {NAV_ITEMS.map((item) => (
@@ -689,7 +687,6 @@ function TopNav({ shown }: { shown: boolean }) {
                     onClick={() => { scrollToId(item.id); setMenuOpen(false); }}
                     className="px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
                     data-testid={`link-dropdown-${item.id}`}
-                    role="menuitem"
                   >
                     <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
                   </button>
@@ -701,7 +698,6 @@ function TopNav({ shown }: { shown: boolean }) {
                     onClick={() => { setMenuOpen(false); setLoginOpen(true); }}
                     className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                     data-testid="link-dropdown-login"
-                    role="menuitem"
                   >
                     <LogIn className="h-3.5 w-3.5" />
                     Zaloguj
@@ -714,7 +710,6 @@ function TopNav({ shown }: { shown: boolean }) {
                       onClick={() => { setEditMode(!isEditMode); setMenuOpen(false); }}
                       className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-500 transition-colors hover:bg-gray-100"
                       data-testid="link-dropdown-editmode"
-                      role="menuitem"
                     >
                       <Settings className="h-3.5 w-3.5" />
                       {isEditMode ? "Wyłącz edycję" : "Włącz edycję"}
@@ -724,7 +719,6 @@ function TopNav({ shown }: { shown: boolean }) {
                       onClick={() => { logout(); setMenuOpen(false); }}
                       className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-400 transition-colors hover:bg-gray-100"
                       data-testid="link-dropdown-logout"
-                      role="menuitem"
                     >
                       <LogOut className="h-3.5 w-3.5" />
                       Wyloguj

@@ -94,7 +94,7 @@ function App() {
               <SplashScreen onComplete={() => setShowSplash(false)} />
             )}
           </AnimatePresence>
-          <main id="main-content" role="main">
+          <main id="main-content" tabIndex={-1} className="outline-none">
             <Router />
           </main>
         </AuthProvider>
