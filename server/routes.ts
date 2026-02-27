@@ -332,6 +332,15 @@ async function seedIfEmpty() {
     const defaultHash = await bcrypt.hash("admin123", 10);
     await storage.setAdminSetting("admin_password_hash", defaultHash);
   }
+
+  const staleKeys = ["hero_video_url", "featured_event_poster", "remont_image"];
+  for (const key of staleKeys) {
+    const val = await storage.getAdminSetting(key);
+    if (val && val.startsWith("/uploads/")) {
+      await pool.query("DELETE FROM admin_settings WHERE key = $1", [key]);
+      console.log(`Cleared stale /uploads/ reference for ${key}`);
+    }
+  }
 }
 
 const memStorage = multer.memoryStorage();

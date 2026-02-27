@@ -51,7 +51,7 @@ The app uses a multi-page layout with wouter routing. The homepage (`client/src/
 - **ORM:** Drizzle ORM with `drizzle-zod` for schema validation
 - **Schema location:** `shared/schema.ts` — shared between client and server
 - **Migration tool:** Drizzle Kit (`npm run db:push` for schema push)
-- **Tables:** `news`, `events`, `groups`, `recordings`, `faq`, `contact_info`, `galleries`, `admin_settings`
+- **Tables:** `news`, `events`, `groups`, `recordings`, `faq`, `contact_info`, `galleries`, `admin_settings`, `files`
 - **Connection:** `pg` (node-postgres) pool
 
 ### Shared Code
@@ -72,6 +72,8 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 6. **Fullscreen video hero** — the landing section features an autoplay drone video with fallback poster image
 7. **Splash screen** — animated loading screen with parish cross logo on app load (framer-motion, 2s duration, fade-out)
 8. **Przelewy24 placeholder** — hidden donation section prepared for future P24 integration; visible only in admin mode
+9. **Database file storage** — uploaded images/videos are stored as base64 in PostgreSQL `files` table (not on disk), served via `GET /api/files/:id` with MIME allowlist and cache headers; survives ephemeral filesystem restarts
+10. **Accessibility panel** — floating bottom-left button opens panel with font size (normal/large/largest), high contrast, and underline links toggles; preferences saved to localStorage; CSS classes applied to `<html>` element
 
 ## External Dependencies
 
