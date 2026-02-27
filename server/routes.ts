@@ -11,6 +11,7 @@ import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
 import multer from "multer";
 import path from "path";
 import RssParser from "rss-parser";
@@ -364,10 +365,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  const PgSession = connectPgSimple(session);
+  const MemoryStore = (await import("memorystore")).default(session);
   app.use(
     session({
-      store: new PgSession({ conString: process.env.DATABASE_URL, createTableIfMissing: true }),
+      store: new MemoryStore({ checkPeriod: 86400000 }),
       secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
       resave: false,
       saveUninitialized: false,
@@ -402,7 +403,13 @@ export async function registerRoutes(
     }
 
     req.session.isAdmin = true;
-    res.json({ ok: true });
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: "Session save failed" });
+      }
+      res.json({ ok: true });
+    });
   });
 
   app.get("/api/admin/session", (req, res) => {
