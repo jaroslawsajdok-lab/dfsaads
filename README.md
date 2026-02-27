@@ -1,0 +1,1 @@
+# Parafia Ewangelicka Wisła Jawornik
