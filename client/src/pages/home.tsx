@@ -1694,7 +1694,8 @@ export default function HomePage() {
     queryKey: ["admin-setting", "google_calendar_url"],
     queryFn: () => apiFetch("/api/admin/settings/google_calendar_url"),
   });
-  const googleCalendarSrc = calendarUrlData?.value || "https://calendar.google.com/calendar/embed?src=peajawornik%40gmail.com&ctz=Europe%2FWarsaw";
+  const baseCalendarUrl = calendarUrlData?.value || "https://calendar.google.com/calendar/embed?src=peajawornik%40gmail.com&ctz=Europe%2FWarsaw";
+  const googleCalendarSrc = baseCalendarUrl + (baseCalendarUrl.includes("bgcolor") ? "" : "&bgcolor=%23ffffff&color=%234285F4&showTitle=0&showPrint=0&showTabs=1&showCalendars=0");
   const { isEditMode } = useAuth();
 
   return (
@@ -1844,61 +1845,52 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {(() => {
-              const now = new Date();
-              now.setHours(0, 0, 0, 0);
-              const sorted = [...eventsData].sort((a, b) => {
-                const da = new Date(a.date + "T" + (a.time || "00:00"));
-                const db = new Date(b.date + "T" + (b.time || "00:00"));
-                const aFuture = da >= now;
-                const bFuture = db >= now;
-                if (aFuture && !bFuture) return -1;
-                if (!aFuture && bFuture) return 1;
-                if (aFuture && bFuture) return da.getTime() - db.getTime();
-                return db.getTime() - da.getTime();
-              });
-              return sorted.slice(0, 3);
-            })().map((e) => {
-              const typeColor = eventTypeColor(e.type);
-              const eventDate = new Date(e.date + "T" + (e.time || "00:00"));
-              const nowCheck = new Date(); nowCheck.setHours(0,0,0,0);
-              const isPast = eventDate < nowCheck;
-              return (
-                <Card
-                  key={e.id}
-                  className={cx("rounded-2xl border p-5 backdrop-blur transition-shadow hover:shadow-md", typeColor.card, isPast && "opacity-60")}
-                  data-testid={`row-event-${e.id}`}
-                >
-                  <div className="flex items-center gap-2 flex-wrap" data-testid={`text-event-meta-${e.id}`}>
-                    <span className={cx("rounded-lg px-2.5 py-1 text-xs font-medium", typeColor.badge)} data-testid={`badge-event-type-${e.id}`}>
-                      <EditableText value={e.type} field="type" entityType="events" entityId={e.id} queryKey="events" />
-                    </span>
-                    {isPast && <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">minione</span>}
-                    <span className="text-sm text-muted-foreground" data-testid={`badge-event-date-${e.id}`}>
-                      <EditableText value={formatDatePL(e.date)} field="date" entityType="events" entityId={e.id} queryKey="events" />
-                    </span>
-                    <span className="text-sm text-muted-foreground" data-testid={`badge-event-time-${e.id}`}>
-                      <EditableText value={e.time} field="time" entityType="events" entityId={e.id} queryKey="events" />
-                    </span>
-                  </div>
-                  <div className="mt-3 font-display text-lg leading-snug" data-testid={`text-event-title-${e.id}`}>
-                    <EditableText value={e.title} field="title" entityType="events" entityId={e.id} queryKey="events" />
-                  </div>
-                  <div className="mt-1 flex items-center gap-1.5 text-xs text-foreground/60" data-testid={`text-event-place-${e.id}`}>
-                    <MapPin className="h-3 w-3" />
-                    <EditableText value={e.place} field="place" entityType="events" entityId={e.id} queryKey="events" />
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2" data-testid={`text-event-desc-${e.id}`}>
-                    <EditableText value={e.description} field="description" entityType="events" entityId={e.id} queryKey="events" multiline />
-                  </p>
-                  <div className="mt-3 flex items-center gap-1">
-                    <AdminItemActions entityType="events" entityId={e.id} queryKey="events" />
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          {(() => {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const upcoming = eventsData
+              .filter((ev) => new Date(ev.date + "T" + (ev.time || "23:59")) >= now)
+              .sort((a, b) => new Date(a.date + "T" + (a.time || "00:00")).getTime() - new Date(b.date + "T" + (b.time || "00:00")).getTime())
+              .slice(0, 3);
+            if (upcoming.length === 0) return (
+              <p className="mt-8 text-center text-muted-foreground" data-testid="text-no-upcoming-events">Brak nadchodzących wydarzeń. Dodaj nowe w panelu admina.</p>
+            );
+            return (
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                {upcoming.map((ev) => {
+                  const tc = eventTypeColor(ev.type);
+                  return (
+                    <Card key={ev.id} className={cx("rounded-2xl border p-5 backdrop-blur transition-shadow hover:shadow-md", tc.card)} data-testid={`row-event-${ev.id}`}>
+                      <div className="flex items-center gap-2 flex-wrap" data-testid={`text-event-meta-${ev.id}`}>
+                        <span className={cx("rounded-lg px-2.5 py-1 text-xs font-medium", tc.badge)} data-testid={`badge-event-type-${ev.id}`}>
+                          <EditableText value={ev.type} field="type" entityType="events" entityId={ev.id} queryKey="events" />
+                        </span>
+                        <span className="text-sm text-muted-foreground" data-testid={`badge-event-date-${ev.id}`}>
+                          <EditableText value={formatDatePL(ev.date)} field="date" entityType="events" entityId={ev.id} queryKey="events" />
+                        </span>
+                        <span className="text-sm text-muted-foreground" data-testid={`badge-event-time-${ev.id}`}>
+                          <EditableText value={ev.time} field="time" entityType="events" entityId={ev.id} queryKey="events" />
+                        </span>
+                      </div>
+                      <div className="mt-3 font-display text-lg leading-snug" data-testid={`text-event-title-${ev.id}`}>
+                        <EditableText value={ev.title} field="title" entityType="events" entityId={ev.id} queryKey="events" />
+                      </div>
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-foreground/60" data-testid={`text-event-place-${ev.id}`}>
+                        <MapPin className="h-3 w-3" />
+                        <EditableText value={ev.place} field="place" entityType="events" entityId={ev.id} queryKey="events" />
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2" data-testid={`text-event-desc-${ev.id}`}>
+                        <EditableText value={ev.description} field="description" entityType="events" entityId={ev.id} queryKey="events" multiline />
+                      </p>
+                      <div className="mt-3 flex items-center gap-1">
+                        <AdminItemActions entityType="events" entityId={ev.id} queryKey="events" />
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           <div className="mt-8 overflow-hidden rounded-2xl border bg-white/70 shadow-sm" data-testid="google-calendar-embed">
             <iframe
