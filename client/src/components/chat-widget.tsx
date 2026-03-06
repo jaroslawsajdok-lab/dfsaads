@@ -40,6 +40,7 @@ function injectWidget() {
   script.setAttribute("data-parish", WIDGET_PARISH);
   script.setAttribute("data-key", WIDGET_KEY);
   script.setAttribute("data-api", WIDGET_API);
+  script.setAttribute("data-marcin-widget", "true");
   document.body.appendChild(script);
 }
 
