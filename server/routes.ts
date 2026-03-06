@@ -743,7 +743,7 @@ export async function registerRoutes(
     res.json({ error: null, events });
   });
 
-  app.get("/uploads/*", (_req, res) => {
+  app.get("/uploads/{*path}", (_req, res) => {
     res.status(404).json({ error: "Legacy /uploads/ path no longer exists. Files are stored in the database." });
   });
 
