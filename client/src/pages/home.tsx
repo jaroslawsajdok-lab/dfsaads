@@ -1742,6 +1742,24 @@ function AdminAddButton({ entityType, queryKey, defaultValues, fields }: {
 
 function AdminFloatingBar() {
   const { isAdmin, isEditMode, setEditMode } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: chatWidgetData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "chat_widget_enabled"],
+    queryFn: () => apiFetch("/api/admin/settings/chat_widget_enabled"),
+    enabled: isAdmin && isEditMode,
+  });
+  const chatWidgetEnabled = chatWidgetData?.value !== "false";
+
+  const toggleChatWidget = useMutation({
+    mutationFn: async () => {
+      const newVal = chatWidgetEnabled ? "false" : "true";
+      await apiRequest("PUT", "/api/admin/settings/chat_widget_enabled", { value: newVal });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-setting", "chat_widget_enabled"] });
+    },
+  });
+
   if (!isAdmin || !isEditMode) return null;
 
   return (
@@ -1751,6 +1769,17 @@ function AdminFloatingBar() {
           <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
           <span className="text-sm font-semibold text-yellow-700" data-testid="text-editmode-label">Tryb edycji aktywny</span>
         </div>
+        <Separator orientation="vertical" className="h-5" />
+        <Button
+          variant={chatWidgetEnabled ? "default" : "outline"}
+          size="sm"
+          className="rounded-xl"
+          onClick={() => toggleChatWidget.mutate()}
+          data-testid="button-toggle-chat-widget"
+        >
+          <MessageCircle className="mr-1 h-4 w-4" />
+          Czat: {chatWidgetEnabled ? "WŁ" : "WYŁ"}
+        </Button>
         <Separator orientation="vertical" className="h-5" />
         <Button
           variant="outline"

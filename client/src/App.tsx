@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { AccessibilityPanel } from "@/components/accessibility-panel";
+import { ChatWidget } from "@/components/chat-widget";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
 import KalendarzPage from "@/pages/kalendarz";
@@ -99,6 +100,7 @@ function App() {
             <Router />
           </main>
           <AccessibilityPanel />
+          <ChatWidget />
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
