@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield, UserPlus, Trash2, KeyRound, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Shield, UserPlus, Trash2, KeyRound, ArrowLeft, Eye, EyeOff, RotateCcw, Check, X } from "lucide-react";
 
 type AdminUser = { id: number; email: string; role: string; created_at: string };
 
@@ -100,6 +100,109 @@ function ChangePasswordForm() {
   );
 }
 
+function AdminUserRow({ user: u, onDelete, onUpdate }: { user: AdminUser; onDelete: (id: number) => void; onUpdate: () => void }) {
+  const [resetting, setResetting] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/admin/users/${u.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPw }),
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      return data;
+    },
+    onSuccess: () => {
+      setMsg({ type: "ok", text: "Hasło zmienione" });
+      setNewPw("");
+      setResetting(false);
+      onUpdate();
+      setTimeout(() => setMsg(null), 3000);
+    },
+    onError: (err: Error) => setMsg({ type: "err", text: err.message }),
+  });
+
+  const handleReset = () => {
+    if (newPw.length < 6) {
+      setMsg({ type: "err", text: "Minimum 6 znaków" });
+      return;
+    }
+    resetMutation.mutate();
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3" data-testid={`admin-user-${u.id}`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="font-medium text-sm">{u.email}</span>
+          <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${u.role === "super_admin" ? "bg-yellow-100 text-yellow-800" : "bg-blue-100 text-blue-800"}`}>
+            {u.role === "super_admin" ? "Super Admin" : "Admin"}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => { setResetting(!resetting); setNewPw(""); setMsg(null); }}
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-blue-50 hover:text-blue-500"
+            title="Resetuj hasło"
+            data-testid={`button-reset-pw-${u.id}`}
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm(`Czy na pewno chcesz usunąć ${u.email}?`)) onDelete(u.id);
+            }}
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+            data-testid={`button-delete-user-${u.id}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      {resetting && (
+        <div className="mt-2 flex items-center gap-2">
+          <Input
+            type="password"
+            placeholder="Nowe hasło (min. 6 znaków)"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            className="flex-1 h-8 text-sm"
+            autoFocus
+            data-testid={`input-reset-pw-${u.id}`}
+          />
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={resetMutation.isPending}
+            className="rounded-lg p-1.5 text-green-500 transition hover:bg-green-50"
+            data-testid={`button-confirm-reset-${u.id}`}
+          >
+            <Check className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => { setResetting(false); setNewPw(""); setMsg(null); }}
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100"
+            data-testid={`button-cancel-reset-${u.id}`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+      {msg && (
+        <p className={`mt-1 text-xs ${msg.type === "ok" ? "text-green-600" : "text-red-500"}`}>{msg.text}</p>
+      )}
+    </div>
+  );
+}
+
 function AdminUsersPanel() {
   const qc = useQueryClient();
   const [newEmail, setNewEmail] = useState("");
@@ -180,26 +283,7 @@ function AdminUsersPanel() {
 
       <div className="space-y-2 mb-6">
         {users.map((u) => (
-          <div key={u.id} className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-4 py-3" data-testid={`admin-user-${u.id}`}>
-            <div>
-              <span className="font-medium text-sm">{u.email}</span>
-              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${u.role === "super_admin" ? "bg-yellow-100 text-yellow-800" : "bg-blue-100 text-blue-800"}`}>
-                {u.role === "super_admin" ? "Super Admin" : "Admin"}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(`Czy na pewno chcesz usunąć ${u.email}?`)) {
-                  deleteMutation.mutate(u.id);
-                }
-              }}
-              className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
-              data-testid={`button-delete-user-${u.id}`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
+          <AdminUserRow key={u.id} user={u} onDelete={(id) => deleteMutation.mutate(id)} onUpdate={() => qc.invalidateQueries({ queryKey: ["admin-users"] })} />
         ))}
       </div>
 
