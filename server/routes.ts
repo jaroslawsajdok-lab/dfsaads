@@ -290,8 +290,9 @@ async function fetchFacebookPosts() {
         comments_count: p.comments?.summary?.total_count ?? 0,
       };
     });
-    fbCache = { data: posts, ts: Date.now() };
-    return posts;
+    const filtered = posts.filter((p: any) => p.images.length > 0 && (p.message.trim() !== "" || p.images.length > 0));
+    fbCache = { data: filtered, ts: Date.now() };
+    return filtered;
   } catch (err) {
     console.error("Facebook fetch error:", err);
     return fbCache?.data ?? [];

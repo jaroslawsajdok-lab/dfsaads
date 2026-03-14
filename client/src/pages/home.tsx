@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowDown,
   Calendar as CalendarIcon,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Facebook,
   Heart,
   Mail,
@@ -488,7 +490,7 @@ function VideoHero() {
 }
 
 const DEFAULT_SECTION_ORDER = [
-  "aktualnosci", "polecamy", "grupy", "nagrania", "galeria", "onas", "dom", "kontakt"
+  "aktualnosci", "polecamy", "nagrania", "galeria", "onas", "dom", "kontakt"
 ];
 
 const SECTION_LABELS: Record<string, string> = {
@@ -536,23 +538,23 @@ function SectionReorderControls({ sectionId }: { sectionId: string }) {
   };
 
   return (
-    <div className="absolute -top-2 right-2 z-10 flex gap-1 rounded-full bg-yellow-400/90 px-2 py-0.5 shadow-sm" data-testid={`reorder-${sectionId}`}>
+    <div className="absolute -top-2 right-2 z-10 flex flex-col gap-0.5 rounded-xl bg-yellow-400/90 px-1.5 py-1 shadow-sm" data-testid={`reorder-${sectionId}`}>
       <button
         onClick={() => move(-1)}
         disabled={idx === 0}
         className="text-yellow-900 disabled:opacity-30 hover:scale-110 transition"
         data-testid={`button-reorder-up-${sectionId}`}
       >
-        <ChevronLeft className="h-4 w-4" />
+        <ChevronUp className="h-4 w-4" />
       </button>
-      <span className="text-[10px] font-bold text-yellow-900 leading-5">{SECTION_LABELS[sectionId]}</span>
+      <span className="text-[10px] font-bold text-yellow-900 leading-4 text-center">{SECTION_LABELS[sectionId]}</span>
       <button
         onClick={() => move(1)}
         disabled={idx === order.length - 1}
         className="text-yellow-900 disabled:opacity-30 hover:scale-110 transition"
         data-testid={`button-reorder-down-${sectionId}`}
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronDown className="h-4 w-4" />
       </button>
     </div>
   );
@@ -1060,6 +1062,8 @@ function categorizeFbPosts(posts: FbPost[]) {
   const wydarzenia: FbPost[] = [];
 
   for (const p of posts) {
+    if (!p.images || p.images.length === 0) continue;
+    if (!p.message && p.images.length === 0) continue;
     const msg = (p.message || "").toLowerCase();
     if (msg.startsWith("ogłoszenia parafialne")) {
       ogloszenia.push(p);
@@ -1812,6 +1816,7 @@ function PosterBannerStrip() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -1869,50 +1874,98 @@ function PosterBannerStrip() {
   const displayPosters = postersData.length > 0 ? [...postersData, ...postersData] : [];
 
   return (
-    <div className="w-full bg-[hsl(214_25%_96%)] py-4" data-testid="poster-banner-strip">
-      {postersData.length > 0 && (
-        <div
-          ref={scrollRef}
-          className="flex gap-4 overflow-hidden px-4"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          data-testid="poster-scroll-container"
-        >
-          {displayPosters.map((p: any, i: number) => (
-            <div key={`${p.id}-${i}`} className="relative flex-shrink-0" data-testid={`poster-item-${p.id}-${i}`}>
-              <img
-                src={p.image_url}
-                alt={p.title}
-                className="h-48 w-auto rounded-xl object-cover shadow-sm"
-                loading="lazy"
-              />
-              {isEditMode && (
-                <button
-                  onClick={() => handleDelete(p.id)}
-                  className="absolute top-1 right-1 rounded-full bg-red-500/80 p-1 text-white backdrop-blur hover:bg-red-600"
-                  data-testid={`button-delete-poster-${p.id}`}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {isEditMode && (
-        <div className="mx-auto mt-3 flex max-w-6xl items-center justify-center gap-2 px-5">
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-full border border-dashed border-yellow-400 px-4 py-2 text-sm text-yellow-600 transition hover:bg-yellow-50"
-            disabled={uploading}
-            data-testid="button-add-poster"
+    <>
+      <div className="relative -mt-24 z-10 w-full py-4" data-testid="poster-banner-strip">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-transparent pointer-events-none" />
+        {postersData.length > 0 && (
+          <div
+            ref={scrollRef}
+            className="relative flex gap-4 overflow-hidden px-4"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            data-testid="poster-scroll-container"
           >
-            <ImagePlus className="h-4 w-4" />
-            {uploading ? "Wysyłanie…" : "Dodaj plakat"}
+            {displayPosters.map((p: any, i: number) => (
+              <div
+                key={`${p.id}-${i}`}
+                className="relative flex-shrink-0 cursor-pointer transition hover:scale-105"
+                onClick={() => !isEditMode && setLightboxIdx(i % postersData.length)}
+                data-testid={`poster-item-${p.id}-${i}`}
+              >
+                <img
+                  src={p.image_url}
+                  alt={p.title}
+                  className="h-48 w-auto rounded-xl object-cover shadow-lg ring-1 ring-white/20"
+                  loading="lazy"
+                />
+                {isEditMode && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                    className="absolute top-1 right-1 rounded-full bg-red-500/80 p-1 text-white backdrop-blur hover:bg-red-600"
+                    data-testid={`button-delete-poster-${p.id}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {isEditMode && (
+          <div className="relative mx-auto mt-3 flex max-w-6xl items-center justify-center gap-2 px-5">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-full border border-dashed border-yellow-400 bg-white/80 px-4 py-2 text-sm text-yellow-600 transition hover:bg-yellow-50"
+              disabled={uploading}
+              data-testid="button-add-poster"
+            >
+              <ImagePlus className="h-4 w-4" />
+              {uploading ? "Wysyłanie…" : "Dodaj plakat"}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+          </div>
+        )}
+      </div>
+
+      {lightboxIdx !== null && postersData.length > 0 && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxIdx(null)}
+          data-testid="poster-lightbox"
+        >
+          <button
+            className="absolute top-4 right-4 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+            onClick={() => setLightboxIdx(null)}
+            data-testid="button-close-lightbox"
+          >
+            <X className="h-6 w-6" />
           </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+          <button
+            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+            onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx - 1 + postersData.length) % postersData.length); }}
+            data-testid="button-lightbox-prev"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <img
+            src={postersData[lightboxIdx].image_url}
+            alt={postersData[lightboxIdx].title}
+            className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="img-lightbox-poster"
+          />
+          <button
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+            onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx + 1) % postersData.length); }}
+            data-testid="button-lightbox-next"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+          <div className="absolute bottom-4 text-center text-sm text-white/70">
+            {lightboxIdx + 1} / {postersData.length}
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -1972,6 +2025,38 @@ function AdminFloatingBar() {
   );
 }
 
+function ExpandableCard({ title, children, defaultOpen = false, testId }: { title: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; testId: string }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card
+      className="rounded-2xl border bg-white/80 p-6 backdrop-blur cursor-pointer transition hover:shadow-md"
+      onClick={() => setOpen(!open)}
+      data-testid={testId}
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="font-display text-xl">{title}</h3>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+        </motion.div>
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mt-3">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
+  );
+}
+
 function SectionONas() {
   const { isEditMode } = useAuth();
   const { data: faqData = [] } = useQuery<FaqItem[]>({ queryKey: ["faq"], queryFn: () => apiFetch("/api/faq") });
@@ -1991,29 +2076,20 @@ function SectionONas() {
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-onas-kim">
-            <h3 className="font-display text-xl" data-testid="text-onas-kim-title">
-              <EditableStaticText textKey="onas_kim_title" defaultValue="Kim jesteśmy" />
-            </h3>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-onas-kim-desc">
+          <ExpandableCard title={<EditableStaticText textKey="onas_kim_title" defaultValue="Kim jesteśmy" />} defaultOpen testId="card-onas-kim">
+            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-onas-kim-desc">
               <EditableStaticText textKey="onas_kim_desc" defaultValue="Parafia Ewangelicko-Augsburska w Wiśle Jaworniku to wspólnota wiary, otwarta na każdego. Jesteśmy częścią Kościoła Ewangelicko-Augsburskiego w RP." multiline />
             </p>
-          </Card>
+          </ExpandableCard>
 
-          <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-onas-naboz">
-            <h3 className="font-display text-xl" data-testid="text-onas-naboz-title">
-              <EditableStaticText textKey="onas_naboz_title" defaultValue="Nabożeństwa" />
-            </h3>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-onas-naboz-desc">
+          <ExpandableCard title={<EditableStaticText textKey="onas_naboz_title" defaultValue="Nabożeństwa" />} defaultOpen testId="card-onas-naboz">
+            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-onas-naboz-desc">
               <EditableStaticText textKey="onas_naboz_desc" defaultValue="Nabożeństwa niedzielne o 9:00\nNabożeństwa tygodniowe wg kalendarza\nSpowiedź i Komunia Święta wg ogłoszeń" multiline />
             </p>
-          </Card>
+          </ExpandableCard>
 
-          <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-onas-grupy">
-            <h3 className="font-display text-xl" data-testid="text-onas-grupy-title">
-              <EditableStaticText textKey="onas_grupy_title" defaultValue="Grupy i spotkania" />
-            </h3>
-            <div className="mt-3 space-y-2">
+          <ExpandableCard title={<EditableStaticText textKey="onas_grupy_title" defaultValue="Grupy i spotkania" />} defaultOpen testId="card-onas-grupy">
+            <div className="space-y-2">
               {groupsData.slice(0, 4).map(g => (
                 <div key={g.id} className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`onas-group-${g.id}`}>
                   <div className="h-1.5 w-1.5 rounded-full bg-primary" />
@@ -2030,7 +2106,7 @@ function SectionONas() {
                 </Button>
               )}
             </div>
-          </Card>
+          </ExpandableCard>
         </div>
 
         {faqData.length > 0 && (
@@ -2156,15 +2232,10 @@ function SectionDomGoscinny() {
 export default function HomePage() {
   const stickyShown = useStickyNavTrigger();
   const sectionOrder = useSectionOrder();
-  const [remontOpen, setRemontOpen] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
 
-  const { data: eventsData = [] } = useQuery<EventItem[]>({ queryKey: ["events"], queryFn: () => apiFetch("/api/events") });
-  const { data: groupsData = [] } = useQuery<GroupItem[]>({ queryKey: ["groups"], queryFn: () => apiFetch("/api/groups") });
   const { data: recordingsData = [] } = useQuery<RecordingItem[]>({ queryKey: ["recordings"], queryFn: () => apiFetch("/api/recordings") });
   const { data: ytData } = useQuery<YtApiResponse>({ queryKey: ["youtube-videos"], queryFn: () => apiFetch("/api/youtube-videos"), refetchInterval: 30 * 60 * 1000 });
   const ytVideos = ytData?.videos ?? [];
-  const { data: faqData = [] } = useQuery<FaqItem[]>({ queryKey: ["faq"], queryFn: () => apiFetch("/api/faq") });
   const { data: contactData = {} } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
   const { data: calendarUrlData } = useQuery<{ value: string | null }>({
     queryKey: ["admin-setting", "google_calendar_url"],
@@ -2183,11 +2254,9 @@ export default function HomePage() {
   const renderSection = (sectionId: string) => {
     switch (sectionId) {
       case "aktualnosci":
-        return <SectionAktualnosci key="aktualnosci" remontOpen={remontOpen} setRemontOpen={setRemontOpen} />;
+        return <SectionAktualnosci key="aktualnosci" />;
       case "polecamy":
         return <SectionKalendarz key="polecamy" gcalEvents={gcalEvents} googleCalendarSrc={googleCalendarSrc} isEditMode={isEditMode} />;
-      case "grupy":
-        return <SectionGrupy key="grupy" groupsData={groupsData} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} />;
       case "nagrania":
         return <SectionNagrania key="nagrania" ytVideos={ytVideos} recordingsData={recordingsData} />;
       case "galeria":
@@ -2210,123 +2279,87 @@ export default function HomePage() {
       <VideoHero />
       <PosterBannerStrip />
 
-      {sectionOrder.map(id => renderSection(id))}
+      <MotionConfig transition={{ layout: { duration: 0.4, ease: "easeInOut" } }}>
+        <AnimatePresence mode="popLayout">
+          {sectionOrder.map(id => {
+            const el = renderSection(id);
+            if (!el) return null;
+            return (
+              <motion.div key={id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                {el}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </MotionConfig>
 
       <AdminFloatingBar />
     </main>
   );
 }
 
-function SectionAktualnosci({ remontOpen, setRemontOpen }: { remontOpen: boolean; setRemontOpen: (v: boolean) => void }) {
-  const { isEditMode } = useAuth();
+function SectionAktualnosci() {
   return (
     <section id="aktualnosci" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-aktualnosci">
       <SectionReorderControls sectionId="aktualnosci" />
-        <div className="mb-8 grid gap-4 md:grid-cols-12" data-testid="hero-afterband">
-          <div className="md:col-span-7">
-            <div className="glass rounded-3xl p-5" data-testid="card-afterband">
-              <div className="flex items-center gap-3">
-                <img
-                  src={PARISH_LOGO_SRC}
-                  alt="Logo parafii"
-                  className="h-16 w-16 rounded-2xl object-contain"
-                  loading="lazy"
-                  decoding="async"
-                  data-testid="img-logo-afterband"
-                />
-                <div className="font-display text-xl tracking-[-0.02em]" data-testid="text-afterband-title">
-                  <EditableStaticText textKey="afterband_title" defaultValue="Witaj w parafii" />
-                </div>
-              </div>
-              <div className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-afterband-sub">
-                <EditableStaticText textKey="afterband_sub" defaultValue="Szybkie skróty do najważniejszych sekcji." multiline />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  variant="secondary"
-                  className="rounded-full"
-                  onClick={() => scrollToId("polecamy")}
-                  data-testid="button-jump-kalendarz"
-                >
-                  <EditableStaticText textKey="jump_kalendarz" defaultValue="Kalendarz" />
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="rounded-full"
-                  onClick={() => scrollToId("nagrania")}
-                  data-testid="button-jump-nagrania"
-                >
-                  <EditableStaticText textKey="jump_nagrania" defaultValue="Nagrania" />
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="rounded-full"
-                  onClick={() => scrollToId("kontakt")}
-                  data-testid="button-jump-kontakt"
-                >
-                  <EditableStaticText textKey="jump_kontakt" defaultValue="Kontakt" />
-                </Button>
-              </div>
+      <div className="mb-8">
+        <div className="glass rounded-3xl p-5" data-testid="card-afterband">
+          <div className="flex items-center gap-3">
+            <img
+              src={PARISH_LOGO_SRC}
+              alt="Logo parafii"
+              className="h-16 w-16 rounded-2xl object-contain"
+              loading="lazy"
+              decoding="async"
+              data-testid="img-logo-afterband"
+            />
+            <div className="font-display text-xl tracking-[-0.02em]" data-testid="text-afterband-title">
+              <EditableStaticText textKey="afterband_title" defaultValue="Witaj w parafii" />
             </div>
           </div>
-          <div className="md:col-span-5">
-            <FeaturedEventPoster />
+          <div className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-afterband-sub">
+            <EditableStaticText textKey="afterband_sub" defaultValue="Szybkie skróty do najważniejszych sekcji." multiline />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="secondary" className="rounded-full" onClick={() => scrollToId("polecamy")} data-testid="button-jump-kalendarz">
+              <EditableStaticText textKey="jump_kalendarz" defaultValue="Kalendarz" />
+            </Button>
+            <Button variant="secondary" className="rounded-full" onClick={() => scrollToId("nagrania")} data-testid="button-jump-nagrania">
+              <EditableStaticText textKey="jump_nagrania" defaultValue="Nagrania" />
+            </Button>
+            <Button variant="secondary" className="rounded-full" onClick={() => scrollToId("kontakt")} data-testid="button-jump-kontakt">
+              <EditableStaticText textKey="jump_kontakt" defaultValue="Kontakt" />
+            </Button>
           </div>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-news-title">
-              <EditableStaticText textKey="news_title" defaultValue="Aktualności" />
-            </h2>
-            <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-news-subtitle">
-              <EditableStaticText textKey="news_subtitle" defaultValue="Najnowsze informacje i ogłoszenia." />
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            className="rounded-xl"
-            asChild
-            data-testid="button-news-facebook"
-          >
-            <a
-              href="https://www.facebook.com/wislajawornik"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Facebook className="mr-2 h-4 w-4" />
-              Facebook
-            </a>
-          </Button>
-        </div>
-
-        <FacebookFeed />
-
-        <button
-          type="button"
-          onClick={() => setRemontOpen(true)}
-          className="mt-10 glass rounded-3xl p-5 w-full text-left transition hover:bg-white/80 cursor-pointer"
-          data-testid="card-afterband-cta"
-        >
-          <div className="text-xs text-muted-foreground" data-testid="text-afterband-cta-kicker">
-            <EditableStaticText textKey="afterband_cta_kicker" defaultValue="Wyróżnione" />
-          </div>
-          <div className="mt-2 font-display text-2xl tracking-[-0.02em]" data-testid="text-afterband-cta-title">
-            <EditableStaticText textKey="afterband_cta_title" defaultValue="Remont Domu Gościnnego" />
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground" data-testid="text-afterband-cta-desc">
-            <EditableStaticText textKey="afterband_cta_desc" defaultValue="Zobacz informacje i aktualny status prac." />
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-news-title">
+            <EditableStaticText textKey="news_title" defaultValue="Aktualności" />
+          </h2>
+          <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-news-subtitle">
+            <EditableStaticText textKey="news_subtitle" defaultValue="Najnowsze informacje i ogłoszenia." />
           </p>
-          <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-            Zobacz więcej
-            <ChevronRight className="h-4 w-4" />
-          </span>
-        </button>
-        <RemontModal open={remontOpen} onClose={() => setRemontOpen(false)} />
+        </div>
+        <Button variant="secondary" className="rounded-xl" asChild data-testid="button-news-facebook">
+          <a href="https://www.facebook.com/wislajawornik" target="_blank" rel="noreferrer">
+            <Facebook className="mr-2 h-4 w-4" />
+            Facebook
+          </a>
+        </Button>
+      </div>
+      <FacebookFeed />
     </section>
   );
 }
 
 function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: { gcalEvents: any[]; googleCalendarSrc: string; isEditMode: boolean }) {
+  const [calView, setCalView] = useState<"week" | "month">("week");
+  const calSrc = calView === "week"
+    ? googleCalendarSrc.replace(/mode=\w+/, "mode=WEEK") + (googleCalendarSrc.includes("mode=") ? "" : "&mode=WEEK")
+    : googleCalendarSrc.replace(/mode=\w+/, "mode=MONTH") + (googleCalendarSrc.includes("mode=") ? "" : "&mode=MONTH");
+
   return (
     <section
       id="polecamy"
@@ -2379,12 +2412,30 @@ function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: { gcalE
           )}
 
           <div className="mt-8 overflow-hidden rounded-2xl border border-border/50 bg-white shadow-sm" data-testid="google-calendar-embed">
-            <div className="flex items-center gap-2 bg-blue-600 px-4 py-2.5 text-white">
-              <CalendarIcon className="h-4 w-4" />
-              <span className="text-sm font-medium">Kalendarz parafialny</span>
+            <div className="flex items-center justify-between bg-blue-600 px-4 py-2.5 text-white">
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                <span className="text-sm font-medium">Kalendarz parafialny</span>
+              </div>
+              <div className="flex rounded-lg bg-white/20 p-0.5" data-testid="calendar-view-toggle">
+                <button
+                  onClick={() => setCalView("week")}
+                  className={cx("rounded-md px-3 py-1 text-xs font-medium transition", calView === "week" ? "bg-white text-blue-700" : "text-white/80 hover:text-white")}
+                  data-testid="button-cal-week"
+                >
+                  Tydzień
+                </button>
+                <button
+                  onClick={() => setCalView("month")}
+                  className={cx("rounded-md px-3 py-1 text-xs font-medium transition", calView === "month" ? "bg-white text-blue-700" : "text-white/80 hover:text-white")}
+                  data-testid="button-cal-month"
+                >
+                  Miesiąc
+                </button>
+              </div>
             </div>
             <iframe
-              src={googleCalendarSrc}
+              src={calSrc}
               className="w-full border-0"
               style={{ height: "600px" }}
               title="Kalendarz Google parafii"
