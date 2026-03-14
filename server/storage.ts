@@ -2,7 +2,7 @@ import { eq, asc, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
-  news, events, groups, recordings, faq, contactInfo, galleries, adminSettings,
+  news, events, groups, recordings, faq, contactInfo, galleries, adminSettings, posters, galleryAlbums,
   type News, type InsertNews,
   type Event, type InsertEvent,
   type Group, type InsertGroup,
@@ -10,6 +10,8 @@ import {
   type Faq, type InsertFaq,
   type ContactInfo, type InsertContactInfo,
   type Gallery, type InsertGallery,
+  type Poster, type InsertPoster,
+  type GalleryAlbum, type InsertGalleryAlbum,
 } from "@shared/schema";
 
 export const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -65,6 +67,19 @@ export async function initializeDatabase() {
       image_url TEXT NOT NULL,
       sort_order INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS posters (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      image_url TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS gallery_albums (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+    ALTER TABLE galleries ADD COLUMN IF NOT EXISTS album_id INTEGER;
     CREATE TABLE IF NOT EXISTS admin_settings (
       id SERIAL PRIMARY KEY,
       key TEXT NOT NULL UNIQUE,
@@ -108,6 +123,14 @@ export interface IStorage {
   createGallery(item: InsertGallery): Promise<Gallery>;
   updateGallery(id: number, item: Partial<InsertGallery>): Promise<Gallery | null>;
   deleteGallery(id: number): Promise<boolean>;
+  getPosters(): Promise<Poster[]>;
+  createPoster(item: InsertPoster): Promise<Poster>;
+  updatePoster(id: number, item: Partial<InsertPoster>): Promise<Poster | null>;
+  deletePoster(id: number): Promise<boolean>;
+  getGalleryAlbums(): Promise<GalleryAlbum[]>;
+  createGalleryAlbum(item: InsertGalleryAlbum): Promise<GalleryAlbum>;
+  updateGalleryAlbum(id: number, item: Partial<InsertGalleryAlbum>): Promise<GalleryAlbum | null>;
+  deleteGalleryAlbum(id: number): Promise<boolean>;
   getAdminSetting(key: string): Promise<string | null>;
   setAdminSetting(key: string, value: string): Promise<void>;
   getAllAdminSettings(prefix: string): Promise<{ key: string; value: string }[]>;
@@ -223,6 +246,38 @@ export class DatabaseStorage implements IStorage {
   }
   async deleteGallery(id: number) {
     const result = await db.delete(galleries).where(eq(galleries.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getPosters() {
+    return db.select().from(posters).orderBy(asc(posters.sort_order));
+  }
+  async createPoster(item: InsertPoster) {
+    const [row] = await db.insert(posters).values(item).returning();
+    return row;
+  }
+  async updatePoster(id: number, item: Partial<InsertPoster>) {
+    const [row] = await db.update(posters).set(item).where(eq(posters.id, id)).returning();
+    return row ?? null;
+  }
+  async deletePoster(id: number) {
+    const result = await db.delete(posters).where(eq(posters.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getGalleryAlbums() {
+    return db.select().from(galleryAlbums).orderBy(asc(galleryAlbums.sort_order));
+  }
+  async createGalleryAlbum(item: InsertGalleryAlbum) {
+    const [row] = await db.insert(galleryAlbums).values(item).returning();
+    return row;
+  }
+  async updateGalleryAlbum(id: number, item: Partial<InsertGalleryAlbum>) {
+    const [row] = await db.update(galleryAlbums).set(item).where(eq(galleryAlbums.id, id)).returning();
+    return row ?? null;
+  }
+  async deleteGalleryAlbum(id: number) {
+    const result = await db.delete(galleryAlbums).where(eq(galleryAlbums.id, id)).returning();
     return result.length > 0;
   }
 

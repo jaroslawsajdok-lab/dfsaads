@@ -487,15 +487,76 @@ function VideoHero() {
   );
 }
 
-const NAV_ITEMS = [
-  { id: "aktualnosci", label: "Aktualności" },
-  { id: "polecamy", label: "Kalendarz" },
-  { id: "grupy", label: "Grupy" },
-  { id: "nagrania", label: "Nagrania" },
-  { id: "galeria", label: "Galeria" },
-  { id: "faq", label: "FAQ" },
-  { id: "kontakt", label: "Kontakt" },
-] as const;
+const DEFAULT_SECTION_ORDER = [
+  "aktualnosci", "polecamy", "grupy", "nagrania", "galeria", "onas", "dom", "kontakt"
+];
+
+const SECTION_LABELS: Record<string, string> = {
+  aktualnosci: "Aktualności",
+  polecamy: "Kalendarz",
+  grupy: "Grupy",
+  nagrania: "Nagrania",
+  galeria: "Galeria",
+  onas: "O nas",
+  dom: "Dom Gościnny",
+  kontakt: "Kontakt",
+};
+
+function useSectionOrder() {
+  const { data } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "section_order"],
+    queryFn: () => apiFetch("/api/admin/settings/section_order"),
+  });
+  try {
+    if (data?.value) return JSON.parse(data.value) as string[];
+  } catch {}
+  return DEFAULT_SECTION_ORDER;
+}
+
+function useNavItems() {
+  const order = useSectionOrder();
+  return order.map(id => ({ id, label: SECTION_LABELS[id] || id }));
+}
+
+function SectionReorderControls({ sectionId }: { sectionId: string }) {
+  const { isEditMode } = useAuth();
+  const order = useSectionOrder();
+  const qc = useQueryClient();
+
+  if (!isEditMode) return null;
+  const idx = order.indexOf(sectionId);
+
+  const move = async (dir: -1 | 1) => {
+    const newOrder = [...order];
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= newOrder.length) return;
+    [newOrder[idx], newOrder[newIdx]] = [newOrder[newIdx], newOrder[idx]];
+    await apiRequest("PUT", "/api/admin/settings/section_order", { value: JSON.stringify(newOrder) });
+    qc.invalidateQueries({ queryKey: ["admin-setting", "section_order"] });
+  };
+
+  return (
+    <div className="absolute -top-2 right-2 z-10 flex gap-1 rounded-full bg-yellow-400/90 px-2 py-0.5 shadow-sm" data-testid={`reorder-${sectionId}`}>
+      <button
+        onClick={() => move(-1)}
+        disabled={idx === 0}
+        className="text-yellow-900 disabled:opacity-30 hover:scale-110 transition"
+        data-testid={`button-reorder-up-${sectionId}`}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      <span className="text-[10px] font-bold text-yellow-900 leading-5">{SECTION_LABELS[sectionId]}</span>
+      <button
+        onClick={() => move(1)}
+        disabled={idx === order.length - 1}
+        className="text-yellow-900 disabled:opacity-30 hover:scale-110 transition"
+        data-testid={`button-reorder-down-${sectionId}`}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { login } = useAuth();
@@ -546,6 +607,7 @@ function TopNav({ shown }: { shown: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const { isAdmin, isEditMode, setEditMode, logout } = useAuth();
+  const NAV_ITEMS = useNavItems();
 
   const desktopBarH = Math.round(CROSS_H_DESKTOP * 0.2752);
   const desktopBarTop = Math.round(CROSS_H_DESKTOP * 0.1632);
@@ -1740,6 +1802,120 @@ function AdminAddButton({ entityType, queryKey, defaultValues, fields }: {
   );
 }
 
+function PosterBannerStrip() {
+  const { data: postersData = [] } = useQuery<any[]>({
+    queryKey: ["posters"],
+    queryFn: () => apiFetch("/api/posters"),
+  });
+  const { isEditMode } = useAuth();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || postersData.length === 0) return;
+    let pos = 0;
+    const speed = 0.5;
+    let raf: number;
+    const step = () => {
+      pos += speed;
+      if (pos >= el.scrollWidth / 2) pos = 0;
+      el.scrollLeft = pos;
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    const pause = () => cancelAnimationFrame(raf);
+    const resume = () => { raf = requestAnimationFrame(step); };
+    el.addEventListener("mouseenter", pause);
+    el.addEventListener("mouseleave", resume);
+    el.addEventListener("touchstart", pause, { passive: true });
+    el.addEventListener("touchend", resume);
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("mouseenter", pause);
+      el.removeEventListener("mouseleave", resume);
+      el.removeEventListener("touchstart", pause);
+      el.removeEventListener("touchend", resume);
+    };
+  }, [postersData]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      const { url } = await uploadRes.json();
+      await apiRequest("POST", "/api/posters", { title: file.name, image_url: url, sort_order: postersData.length });
+      qc.invalidateQueries({ queryKey: ["posters"] });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Usunąć ten plakat?")) return;
+    await apiRequest("DELETE", `/api/posters/${id}`);
+    qc.invalidateQueries({ queryKey: ["posters"] });
+  };
+
+  if (postersData.length === 0 && !isEditMode) return null;
+
+  const displayPosters = postersData.length > 0 ? [...postersData, ...postersData] : [];
+
+  return (
+    <div className="w-full bg-[hsl(214_25%_96%)] py-4" data-testid="poster-banner-strip">
+      {postersData.length > 0 && (
+        <div
+          ref={scrollRef}
+          className="flex gap-4 overflow-hidden px-4"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          data-testid="poster-scroll-container"
+        >
+          {displayPosters.map((p: any, i: number) => (
+            <div key={`${p.id}-${i}`} className="relative flex-shrink-0" data-testid={`poster-item-${p.id}-${i}`}>
+              <img
+                src={p.image_url}
+                alt={p.title}
+                className="h-48 w-auto rounded-xl object-cover shadow-sm"
+                loading="lazy"
+              />
+              {isEditMode && (
+                <button
+                  onClick={() => handleDelete(p.id)}
+                  className="absolute top-1 right-1 rounded-full bg-red-500/80 p-1 text-white backdrop-blur hover:bg-red-600"
+                  data-testid={`button-delete-poster-${p.id}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {isEditMode && (
+        <div className="mx-auto mt-3 flex max-w-6xl items-center justify-center gap-2 px-5">
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1.5 rounded-full border border-dashed border-yellow-400 px-4 py-2 text-sm text-yellow-600 transition hover:bg-yellow-50"
+            disabled={uploading}
+            data-testid="button-add-poster"
+          >
+            <ImagePlus className="h-4 w-4" />
+            {uploading ? "Wysyłanie…" : "Dodaj plakat"}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminFloatingBar() {
   const { isAdmin, isEditMode, setEditMode } = useAuth();
   const queryClient = useQueryClient();
@@ -1796,8 +1972,190 @@ function AdminFloatingBar() {
   );
 }
 
+function SectionONas() {
+  const { isEditMode } = useAuth();
+  const { data: faqData = [] } = useQuery<FaqItem[]>({ queryKey: ["faq"], queryFn: () => apiFetch("/api/faq") });
+  const { data: groupsData = [] } = useQuery<GroupItem[]>({ queryKey: ["groups"], queryFn: () => apiFetch("/api/groups") });
+
+  return (
+    <section id="onas" className="relative bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]" data-testid="section-onas" aria-label="O nas">
+      <SectionReorderControls sectionId="onas" />
+      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+        <div>
+          <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-onas-title">
+            <EditableStaticText textKey="onas_title" defaultValue="O nas" />
+          </h2>
+          <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-onas-subtitle">
+            <EditableStaticText textKey="onas_subtitle" defaultValue="Kim jesteśmy i co nas łączy." multiline />
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-onas-kim">
+            <h3 className="font-display text-xl" data-testid="text-onas-kim-title">
+              <EditableStaticText textKey="onas_kim_title" defaultValue="Kim jesteśmy" />
+            </h3>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-onas-kim-desc">
+              <EditableStaticText textKey="onas_kim_desc" defaultValue="Parafia Ewangelicko-Augsburska w Wiśle Jaworniku to wspólnota wiary, otwarta na każdego. Jesteśmy częścią Kościoła Ewangelicko-Augsburskiego w RP." multiline />
+            </p>
+          </Card>
+
+          <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-onas-naboz">
+            <h3 className="font-display text-xl" data-testid="text-onas-naboz-title">
+              <EditableStaticText textKey="onas_naboz_title" defaultValue="Nabożeństwa" />
+            </h3>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-onas-naboz-desc">
+              <EditableStaticText textKey="onas_naboz_desc" defaultValue="Nabożeństwa niedzielne o 9:00\nNabożeństwa tygodniowe wg kalendarza\nSpowiedź i Komunia Święta wg ogłoszeń" multiline />
+            </p>
+          </Card>
+
+          <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-onas-grupy">
+            <h3 className="font-display text-xl" data-testid="text-onas-grupy-title">
+              <EditableStaticText textKey="onas_grupy_title" defaultValue="Grupy i spotkania" />
+            </h3>
+            <div className="mt-3 space-y-2">
+              {groupsData.slice(0, 4).map(g => (
+                <div key={g.id} className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`onas-group-${g.id}`}>
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span>{g.name}</span>
+                  <span className="ml-auto text-xs opacity-60">{g.when_text}</span>
+                </div>
+              ))}
+              {groupsData.length > 4 && (
+                <Button variant="ghost" size="sm" className="rounded-xl text-xs" asChild>
+                  <Link href="/grupy">
+                    Więcej grup
+                    <ChevronRight className="ml-1 h-3 w-3" />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {faqData.length > 0 && (
+          <div className="mt-10">
+            <h3 className="font-display text-xl mb-4" data-testid="text-onas-faq-heading">
+              <EditableStaticText textKey="onas_faq_heading" defaultValue="Najczęściej zadawane pytania" />
+            </h3>
+            <Accordion type="single" collapsible className="w-full" data-testid="accordion-onas-faq">
+              {faqData.slice(0, 4).map((item, idx) => (
+                <AccordionItem key={item.id} value={`i-${item.id}`} data-testid={`onas-faq-item-${idx}`}>
+                  <div className="flex items-center">
+                    <AccordionTrigger className="flex-1" data-testid={`button-onas-faq-${idx}`}>
+                      <EditableText value={item.question} field="question" entityType="faq" entityId={item.id} queryKey="faq" />
+                    </AccordionTrigger>
+                    <AdminItemActions entityType="faq" entityId={item.id} queryKey="faq" />
+                  </div>
+                  <AccordionContent data-testid={`text-onas-faq-${idx}`}>
+                    <div className="whitespace-pre-wrap">
+                      <EditableText value={item.answer} field="answer" entityType="faq" entityId={item.id} queryKey="faq" multiline />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+            {isEditMode && (
+              <div className="mt-3">
+                <AdminAddButton
+                  entityType="faq"
+                  queryKey="faq"
+                  defaultValues={{ question: "", answer: "", sort_order: "0" }}
+                  fields={[
+                    { key: "question", label: "Pytanie" },
+                    { key: "answer", label: "Odpowiedź", multiline: true },
+                    { key: "sort_order", label: "Kolejność" },
+                  ]}
+                />
+              </div>
+            )}
+            {faqData.length > 4 && (
+              <div className="mt-4 text-center">
+                <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-faq">
+                  <Link href="/faq">
+                    <EditableStaticText textKey="btn_more_faq" defaultValue="Więcej pytań" />
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SectionDomGoscinny() {
+  return (
+    <section id="dom" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-dom" aria-label="Dom gościnny">
+      <SectionReorderControls sectionId="dom" />
+      <div>
+        <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-dom-title">
+          <EditableStaticText textKey="guesthouse_title" defaultValue="Dom Gościnny" />
+        </h2>
+        <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-dom-subtitle">
+          <EditableStaticText textKey="guesthouse_subtitle" defaultValue="Ośrodek wypoczynkowy i miejsce spotkań w sercu Wisły Jawornika." multiline />
+        </p>
+      </div>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-dom-pokoje">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 mb-4">
+            <MapPin className="h-6 w-6 text-blue-600" />
+          </div>
+          <h3 className="font-display text-lg">
+            <EditableStaticText textKey="dom_pokoje_title" defaultValue="Pokoje gościnne" />
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
+            <EditableStaticText textKey="dom_pokoje_desc" defaultValue="Komfortowe pokoje w otoczeniu gór. Idealne na wypoczynek i rekolekcje." multiline />
+          </p>
+        </Card>
+
+        <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-dom-kuchnia">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 mb-4">
+            <Heart className="h-6 w-6 text-amber-600" />
+          </div>
+          <h3 className="font-display text-lg">
+            <EditableStaticText textKey="dom_kuchnia_title" defaultValue="Kuchnia parafialna" />
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
+            <EditableStaticText textKey="dom_kuchnia_desc" defaultValue="Ciasteczka świąteczne, catering na wydarzenia. Zamówienia w kancelarii." multiline />
+          </p>
+        </Card>
+
+        <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-dom-wspomnienia">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 mb-4">
+            <BookOpen className="h-6 w-6 text-green-600" />
+          </div>
+          <h3 className="font-display text-lg">
+            <EditableStaticText textKey="dom_wspomnienia_title" defaultValue="Wspomnienia" />
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
+            <EditableStaticText textKey="dom_wspomnienia_desc" defaultValue="Gości i odwiedzających zapraszamy do dzielenia się wspomnieniami z pobytów." multiline />
+          </p>
+        </Card>
+      </div>
+
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <Button
+          size="lg"
+          className="rounded-2xl"
+          onClick={() => window.open("https://osrodek.jawornik.eu", "_blank", "noopener,noreferrer")}
+          data-testid="button-guesthouse-open"
+        >
+          Przejdź do strony ośrodka
+          <ChevronRight className="ml-1.5 h-4 w-4" />
+        </Button>
+        <div className="text-xs text-muted-foreground">osrodek.jawornik.eu</div>
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage() {
   const stickyShown = useStickyNavTrigger();
+  const sectionOrder = useSectionOrder();
   const [remontOpen, setRemontOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
 
@@ -1822,18 +2180,48 @@ export default function HomePage() {
   const gcalEvents = gcalEventsData?.events ?? [];
   const { isEditMode } = useAuth();
 
+  const renderSection = (sectionId: string) => {
+    switch (sectionId) {
+      case "aktualnosci":
+        return <SectionAktualnosci key="aktualnosci" remontOpen={remontOpen} setRemontOpen={setRemontOpen} />;
+      case "polecamy":
+        return <SectionKalendarz key="polecamy" gcalEvents={gcalEvents} googleCalendarSrc={googleCalendarSrc} isEditMode={isEditMode} />;
+      case "grupy":
+        return <SectionGrupy key="grupy" groupsData={groupsData} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} />;
+      case "nagrania":
+        return <SectionNagrania key="nagrania" ytVideos={ytVideos} recordingsData={recordingsData} />;
+      case "galeria":
+        return <SectionGaleria key="galeria" />;
+      case "onas":
+        return <SectionONas key="onas" />;
+      case "dom":
+        return <SectionDomGoscinny key="dom" />;
+      case "kontakt":
+        return <SectionKontakt key="kontakt" contactData={contactData} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <main className="min-h-screen" data-testid="page-home">
       <WeeklyVerseBanner />
       <TopNav shown={stickyShown} />
       <VideoHero />
+      <PosterBannerStrip />
 
-      {/* Aktualności */}
-      <section
-        id="aktualnosci"
-        className="mx-auto max-w-6xl px-5 py-16 sm:px-8"
-        data-testid="section-aktualnosci"
-      >
+      {sectionOrder.map(id => renderSection(id))}
+
+      <AdminFloatingBar />
+    </main>
+  );
+}
+
+function SectionAktualnosci({ remontOpen, setRemontOpen }: { remontOpen: boolean; setRemontOpen: (v: boolean) => void }) {
+  const { isEditMode } = useAuth();
+  return (
+    <section id="aktualnosci" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-aktualnosci">
+      <SectionReorderControls sectionId="aktualnosci" />
         <div className="mb-8 grid gap-4 md:grid-cols-12" data-testid="hero-afterband">
           <div className="md:col-span-7">
             <div className="glass rounded-3xl p-5" data-testid="card-afterband">
@@ -1934,15 +2322,19 @@ export default function HomePage() {
           </span>
         </button>
         <RemontModal open={remontOpen} onClose={() => setRemontOpen(false)} />
-      </section>
+    </section>
+  );
+}
 
-      {/* Kalendarz */}
-      <section
-        id="polecamy"
-        className="bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]"
-        data-testid="section-kalendarz"
-      >
-        <div id="kalendarz" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: { gcalEvents: any[]; googleCalendarSrc: string; isEditMode: boolean }) {
+  return (
+    <section
+      id="polecamy"
+      className="relative bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]"
+      data-testid="section-kalendarz"
+    >
+      <SectionReorderControls sectionId="polecamy" />
+      <div id="kalendarz" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
           <div>
             <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-calendar-title">
               <EditableStaticText textKey="calendar_title" defaultValue="Kalendarz" />
@@ -2006,485 +2398,414 @@ export default function HomePage() {
             </div>
           )}
         </div>
-      </section>
+    </section>
+  );
+}
 
-      {/* Grupy */}
-      <section id="grupy" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-grupy" aria-label="Grupy parafialne">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-groups-title">
-              <EditableStaticText textKey="groups_title" defaultValue="Grupy w parafii" />
-            </h2>
-            <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-groups-subtitle">
-              <EditableStaticText textKey="groups_subtitle" defaultValue="Dołącz do wspólnoty — znajdź przestrzeń dla siebie." />
-            </p>
-          </div>
-          {isEditMode && (
-            <AdminAddButton
-              entityType="groups"
-              queryKey="groups"
-              defaultValues={{ name: "", lead: "", when_text: "", description: "" }}
-              fields={[
-                { key: "name", label: "Nazwa grupy" },
-                { key: "lead", label: "Prowadzący" },
-                { key: "when_text", label: "Kiedy" },
-                { key: "description", label: "Opis", multiline: true },
-              ]}
-            />
-          )}
-        </div>
-
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {groupsData.slice(0, 3).map((g) => (
-            <Card
-              key={g.id}
-              className="rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur cursor-pointer transition hover:bg-white/95 hover:shadow-md"
-              onClick={() => setSelectedGroup(g)}
-              data-testid={`card-group-${g.id}`}
-            >
-              {g.image_url && (
-                <img src={g.image_url} alt={g.name} className="mb-3 h-32 w-full rounded-xl object-cover" data-testid={`img-group-${g.id}`} />
-              )}
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="font-display text-xl" data-testid={`text-group-name-${g.id}`}>
-                    <EditableText value={g.name} field="name" entityType="groups" entityId={g.id} queryKey="groups" />
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-group-lead-${g.id}`}>
-                    <EditableText value={g.lead} field="lead" entityType="groups" entityId={g.id} queryKey="groups" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <AdminItemActions entityType="groups" entityId={g.id} queryKey="groups" />
-                  <div className="rounded-xl bg-accent px-2 py-1 text-xs text-accent-foreground" data-testid={`badge-group-when-${g.id}`}>
-                    <EditableText value={g.when_text} field="when_text" entityType="groups" entityId={g.id} queryKey="groups" />
-                  </div>
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-foreground/80 line-clamp-3" data-testid={`text-group-desc-${g.id}`}>
-                <EditableText value={g.description} field="description" entityType="groups" entityId={g.id} queryKey="groups" multiline />
-              </p>
-              <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary" data-testid={`button-group-details-${g.id}`}>
-                Zobacz więcej
-                <ChevronRight className="h-4 w-4" />
-              </span>
-            </Card>
-          ))}
-        </div>
-        {selectedGroup && (
-          <GroupModal group={selectedGroup} open={true} onClose={() => setSelectedGroup(null)} />
-        )}
-
-        <div className="mt-6 text-center">
-          <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-groups">
-            <Link href="/grupy">
-              <EditableStaticText textKey="btn_more_groups" defaultValue="Więcej grup" />
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </section>
-
-      {/* Nagrania */}
-      <section id="nagrania" className="bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-nagrania" aria-label="Nagrania">
-        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-recordings-title">
-                <EditableStaticText textKey="recordings_title" defaultValue="Nagrania" />
-              </h2>
-              <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-recordings-subtitle">
-                <EditableStaticText textKey="recordings_subtitle" defaultValue="Kazania i materiały wideo z YouTube." />
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {isEditMode && (
-                <AdminAddButton
-                  entityType="recordings"
-                  queryKey="recordings"
-                  defaultValues={{ title: "", date: "", href: "" }}
-                  fields={[
-                    { key: "title", label: "Tytuł" },
-                    { key: "date", label: "Data (RRRR-MM-DD)" },
-                    { key: "href", label: "Link YouTube" },
-                  ]}
-                />
-              )}
-              <Button
-                variant="secondary"
-                className="rounded-xl"
-                asChild
-                data-testid="button-recordings-youtube"
-              >
-                <a
-                  href="https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Youtube className="mr-2 h-4 w-4" />
-                  YouTube
-                </a>
-              </Button>
-            </div>
-          </div>
-
-          {ytVideos.length > 0 ? (
-            <>
-              <div className="mt-8 grid gap-4 md:grid-cols-3">
-                {ytVideos.slice(0, 6).map((v) => (
-                  <a
-                    key={v.id}
-                    href={`https://www.youtube.com/watch?v=${v.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group"
-                    data-testid={`card-yt-video-${v.id}`}
-                  >
-                    <Card className="overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:shadow-md">
-                      <div className="relative aspect-video w-full overflow-hidden bg-muted">
-                        <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
-                          <div className="rounded-full bg-white/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <div className="text-xs text-muted-foreground">{formatDatePL(v.date.slice(0, 10))}</div>
-                        <h3 className="mt-1 line-clamp-2 font-display text-base leading-snug">{v.title}</h3>
-                      </div>
-                    </Card>
-                  </a>
-                ))}
-              </div>
-              <YtScrollRow videos={ytVideos.slice(6)} />
-            </>
-          ) : (
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {recordingsData.slice(0, 3).map((r) => (
-                <Card
-                  key={r.id}
-                  className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
-                  data-testid={`card-recording-${r.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-muted-foreground" data-testid={`text-recording-date-${r.id}`}>
-                      <EditableText value={formatDatePL(r.date)} field="date" entityType="recordings" entityId={r.id} queryKey="recordings" />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <AdminItemActions entityType="recordings" entityId={r.id} queryKey="recordings" />
-                      <div className="rounded-full bg-accent p-2 text-accent-foreground transition group-hover:scale-[1.04]" data-testid={`icon-recording-${r.id}`}>
-                        <Play className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 font-display text-xl" data-testid={`text-recording-title-${r.id}`}>
-                    <EditableText value={r.title} field="title" entityType="recordings" entityId={r.id} queryKey="recordings" />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    className="mt-3 -ml-2 rounded-xl"
-                    onClick={() => window.open(r.href, "_blank", "noopener,noreferrer")}
-                    data-testid={`button-recording-open-${r.id}`}
-                  >
-                    Otwórz
-                    <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Galeria */}
-      <section id="galeria" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-galeria" aria-label="Galeria">
+function SectionGrupy({ groupsData, selectedGroup, setSelectedGroup }: { groupsData: GroupItem[]; selectedGroup: GroupItem | null; setSelectedGroup: (g: GroupItem | null) => void }) {
+  const { isEditMode } = useAuth();
+  return (
+    <section id="grupy" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-grupy" aria-label="Grupy parafialne">
+      <SectionReorderControls sectionId="grupy" />
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-gallery-title">
-            <EditableStaticText textKey="gallery_title" defaultValue="Galeria" />
+          <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-groups-title">
+            <EditableStaticText textKey="groups_title" defaultValue="Grupy w parafii" />
           </h2>
-          <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-gallery-subtitle">
-            <EditableStaticText textKey="gallery_subtitle" defaultValue="Zdjęcia z życia parafii." />
+          <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-groups-subtitle">
+            <EditableStaticText textKey="groups_subtitle" defaultValue="Dołącz do wspólnoty — znajdź przestrzeń dla siebie." />
           </p>
         </div>
+        {isEditMode && (
+          <AdminAddButton
+            entityType="groups"
+            queryKey="groups"
+            defaultValues={{ name: "", lead: "", when_text: "", description: "" }}
+            fields={[
+              { key: "name", label: "Nazwa grupy" },
+              { key: "lead", label: "Prowadzący" },
+              { key: "when_text", label: "Kiedy" },
+              { key: "description", label: "Opis", multiline: true },
+            ]}
+          />
+        )}
+      </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => scrollToId("kontakt")}
-              className="group relative aspect-[4/3] overflow-hidden rounded-2xl border bg-[linear-gradient(135deg,hsl(205_88%_92%),hsl(220_32%_98%))]"
-              data-testid={`tile-gallery-${i}`}
-              aria-label="Otwórz galerię"
-            >
-              <div className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100 hero-overlay" />
-              <div className="absolute inset-0 grid place-items-center">
-                <div className="glass rounded-full px-3 py-2 text-sm" data-testid={`text-gallery-tile-${i}`}>
-                  Zobacz
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        {groupsData.slice(0, 3).map((g) => (
+          <Card
+            key={g.id}
+            className="rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur cursor-pointer transition hover:bg-white/95 hover:shadow-md"
+            onClick={() => setSelectedGroup(g)}
+            data-testid={`card-group-${g.id}`}
+          >
+            {g.image_url && (
+              <img src={g.image_url} alt={g.name} className="mb-3 h-32 w-full rounded-xl object-cover" data-testid={`img-group-${g.id}`} />
+            )}
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="font-display text-xl" data-testid={`text-group-name-${g.id}`}>
+                  <EditableText value={g.name} field="name" entityType="groups" entityId={g.id} queryKey="groups" />
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-group-lead-${g.id}`}>
+                  <EditableText value={g.lead} field="lead" entityType="groups" entityId={g.id} queryKey="groups" />
                 </div>
               </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-6 text-center">
-          <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-gallery">
-            <Link href="/galeria">
-              <EditableStaticText textKey="btn_more_gallery" defaultValue="Więcej zdjęć" />
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]" data-testid="section-faq" aria-label="Najczęściej zadawane pytania">
-        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-faq-title">
-                <EditableStaticText textKey="faq_title" defaultValue="FAQ" />
-              </h2>
-              <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-faq-subtitle">
-                <EditableStaticText textKey="faq_subtitle" defaultValue="Najczęstsze pytania — krótkie odpowiedzi." />
-              </p>
+              <div className="flex items-center gap-1">
+                <AdminItemActions entityType="groups" entityId={g.id} queryKey="groups" />
+                <div className="rounded-xl bg-accent px-2 py-1 text-xs text-accent-foreground" data-testid={`badge-group-when-${g.id}`}>
+                  <EditableText value={g.when_text} field="when_text" entityType="groups" entityId={g.id} queryKey="groups" />
+                </div>
+              </div>
             </div>
+            <p className="mt-3 text-sm leading-relaxed text-foreground/80 line-clamp-3" data-testid={`text-group-desc-${g.id}`}>
+              <EditableText value={g.description} field="description" entityType="groups" entityId={g.id} queryKey="groups" multiline />
+            </p>
+            <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary" data-testid={`button-group-details-${g.id}`}>
+              Zobacz więcej
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          </Card>
+        ))}
+      </div>
+      {selectedGroup && (
+        <GroupModal group={selectedGroup} open={true} onClose={() => setSelectedGroup(null)} />
+      )}
+
+      <div className="mt-6 text-center">
+        <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-groups">
+          <Link href="/grupy">
+            <EditableStaticText textKey="btn_more_groups" defaultValue="Więcej grup" />
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function SectionNagrania({ ytVideos, recordingsData }: { ytVideos: any[]; recordingsData: RecordingItem[] }) {
+  const { isEditMode } = useAuth();
+  return (
+    <section id="nagrania" className="relative bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-nagrania" aria-label="Nagrania">
+      <SectionReorderControls sectionId="nagrania" />
+      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-recordings-title">
+              <EditableStaticText textKey="recordings_title" defaultValue="Nagrania" />
+            </h2>
+            <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-recordings-subtitle">
+              <EditableStaticText textKey="recordings_subtitle" defaultValue="Kazania i materiały wideo z YouTube." />
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             {isEditMode && (
               <AdminAddButton
-                entityType="faq"
-                queryKey="faq"
-                defaultValues={{ question: "", answer: "", sort_order: "0" }}
+                entityType="recordings"
+                queryKey="recordings"
+                defaultValues={{ title: "", date: "", href: "" }}
                 fields={[
-                  { key: "question", label: "Pytanie" },
-                  { key: "answer", label: "Odpowiedź", multiline: true },
-                  { key: "sort_order", label: "Kolejność" },
+                  { key: "title", label: "Tytuł" },
+                  { key: "date", label: "Data (RRRR-MM-DD)" },
+                  { key: "href", label: "Link YouTube" },
                 ]}
               />
             )}
-          </div>
-
-          <div className="mt-8">
-            <Accordion type="single" collapsible className="w-full" data-testid="accordion-faq">
-              {faqData.slice(0, 3).map((item, idx) => (
-                <AccordionItem key={item.id} value={`i-${item.id}`} data-testid={`faq-item-${idx}`}>
-                  <div className="flex items-center">
-                    <AccordionTrigger className="flex-1" data-testid={`button-faq-${idx}`}>
-                      <EditableText value={item.question} field="question" entityType="faq" entityId={item.id} queryKey="faq" />
-                    </AccordionTrigger>
-                    <AdminItemActions entityType="faq" entityId={item.id} queryKey="faq" />
-                  </div>
-                  <AccordionContent data-testid={`text-faq-${idx}`}>
-                    <EditableText value={item.answer} field="answer" entityType="faq" entityId={item.id} queryKey="faq" multiline />
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
-
-          <div className="mt-6 text-center">
-            <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-faq">
-              <Link href="/faq">
-                <EditableStaticText textKey="btn_more_faq" defaultValue="Więcej pytań" />
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
+            <Button
+              variant="secondary"
+              className="rounded-xl"
+              asChild
+              data-testid="button-recordings-youtube"
+            >
+              <a
+                href="https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Youtube className="mr-2 h-4 w-4" />
+                YouTube
+              </a>
             </Button>
           </div>
         </div>
-      </section>
 
-      {/* Dom Gościnny */}
-      <section id="dom" className="mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-dom" aria-label="Dom gościnny">
-        <Card className="relative overflow-hidden rounded-3xl border bg-white/80 p-7 backdrop-blur" data-testid="card-guesthouse">
-          <div className="absolute inset-0 hero-overlay opacity-35" />
-          <div className="relative grid gap-6 md:grid-cols-3 md:items-center">
-            <div className="md:col-span-2">
-              <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-guesthouse-title">
-                <EditableStaticText textKey="guesthouse_title" defaultValue="Dom Gościnny" />
-              </h2>
-              <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-guesthouse-subtitle">
-                <EditableStaticText textKey="guesthouse_subtitle" defaultValue="Ośrodek wypoczynkowy i miejsce spotkań. Szczegóły, zdjęcia i rezerwacje:" />
-              </p>
+        {ytVideos.length > 0 ? (
+          <>
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {ytVideos.slice(0, 6).map((v) => (
+                <a
+                  key={v.id}
+                  href={`https://www.youtube.com/watch?v=${v.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group"
+                  data-testid={`card-yt-video-${v.id}`}
+                >
+                  <Card className="overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:shadow-md">
+                    <div className="relative aspect-video w-full overflow-hidden bg-muted">
+                      <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
+                        <div className="rounded-full bg-white/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <div className="text-xs text-muted-foreground">{formatDatePL(v.date.slice(0, 10))}</div>
+                      <h3 className="mt-1 line-clamp-2 font-display text-base leading-snug">{v.title}</h3>
+                    </div>
+                  </Card>
+                </a>
+              ))}
             </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                size="lg"
-                className="rounded-2xl"
-                onClick={() => window.open("https://osrodek.jawornik.eu", "_blank", "noopener,noreferrer")}
-                data-testid="button-guesthouse-open"
+            <YtScrollRow videos={ytVideos.slice(6)} />
+          </>
+        ) : (
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {recordingsData.slice(0, 3).map((r) => (
+              <Card
+                key={r.id}
+                className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
+                data-testid={`card-recording-${r.id}`}
               >
-                Przejdź do strony
-                <ChevronRight className="ml-1.5 h-4 w-4" />
-              </Button>
-              <div className="text-xs text-muted-foreground" data-testid="text-guesthouse-note">
-                Link otworzy się w nowej karcie.
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground" data-testid={`text-recording-date-${r.id}`}>
+                    <EditableText value={formatDatePL(r.date)} field="date" entityType="recordings" entityId={r.id} queryKey="recordings" />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <AdminItemActions entityType="recordings" entityId={r.id} queryKey="recordings" />
+                    <div className="rounded-full bg-accent p-2 text-accent-foreground transition group-hover:scale-[1.04]" data-testid={`icon-recording-${r.id}`}>
+                      <Play className="h-4 w-4" />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 font-display text-xl" data-testid={`text-recording-title-${r.id}`}>
+                  <EditableText value={r.title} field="title" entityType="recordings" entityId={r.id} queryKey="recordings" />
+                </div>
+                <Button
+                  variant="ghost"
+                  className="mt-3 -ml-2 rounded-xl"
+                  onClick={() => window.open(r.href, "_blank", "noopener,noreferrer")}
+                  data-testid={`button-recording-open-${r.id}`}
+                >
+                  Otwórz
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SectionGaleria() {
+  return (
+    <section id="galeria" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-galeria" aria-label="Galeria">
+      <SectionReorderControls sectionId="galeria" />
+      <div>
+        <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-gallery-title">
+          <EditableStaticText textKey="gallery_title" defaultValue="Galeria" />
+        </h2>
+        <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-gallery-subtitle">
+          <EditableStaticText textKey="gallery_subtitle" defaultValue="Zdjęcia z życia parafii." />
+        </p>
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => scrollToId("kontakt")}
+            className="group relative aspect-[4/3] overflow-hidden rounded-2xl border bg-[linear-gradient(135deg,hsl(205_88%_92%),hsl(220_32%_98%))]"
+            data-testid={`tile-gallery-${i}`}
+            aria-label="Otwórz galerię"
+          >
+            <div className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100 hero-overlay" />
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="glass rounded-full px-3 py-2 text-sm" data-testid={`text-gallery-tile-${i}`}>
+                Zobacz
               </div>
             </div>
-          </div>
-        </Card>
-      </section>
+          </button>
+        ))}
+      </div>
 
-      {/* Kontakt */}
-      <section id="kontakt" className="bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-kontakt" aria-label="Kontakt">
-        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-          <div>
-            <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-contact-title">
-              <EditableStaticText textKey="contact_title" defaultValue="Kontakt" />
-            </h2>
-            <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-contact-subtitle">
-              <EditableStaticText textKey="contact_subtitle" defaultValue="Dane kontaktowe parafii." />
-            </p>
-          </div>
+      <div className="mt-6 text-center">
+        <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-gallery">
+          <Link href="/galeria">
+            <EditableStaticText textKey="btn_more_gallery" defaultValue="Więcej zdjęć" />
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
 
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
-            <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-contact-details">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3" data-testid="row-contact-address">
-                  <MapPin className="mt-0.5 h-5 w-5 text-primary" />
-                  <div>
-                    <div className="text-sm font-medium" data-testid="text-contact-address-title"><EditableStaticText textKey="contact_address_label" defaultValue="Adres" /></div>
-                    <div className="text-sm text-muted-foreground" data-testid="text-contact-address">
-                      <EditableStaticText textKey="contact_address" defaultValue={contactData.address || "(uzupełnij adres)"} />
-                    </div>
+function SectionKontakt({ contactData }: { contactData: { address: string; phone: string; email: string; hours: string } }) {
+  const { isEditMode } = useAuth();
+  return (
+    <section id="kontakt" className="relative bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-kontakt" aria-label="Kontakt">
+      <SectionReorderControls sectionId="kontakt" />
+      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+        <div>
+          <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-contact-title">
+            <EditableStaticText textKey="contact_title" defaultValue="Kontakt" />
+          </h2>
+          <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-contact-subtitle">
+            <EditableStaticText textKey="contact_subtitle" defaultValue="Dane kontaktowe parafii." />
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+          <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-contact-details">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3" data-testid="row-contact-address">
+                <MapPin className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm font-medium" data-testid="text-contact-address-title"><EditableStaticText textKey="contact_address_label" defaultValue="Adres" /></div>
+                  <div className="text-sm text-muted-foreground" data-testid="text-contact-address">
+                    <EditableStaticText textKey="contact_address" defaultValue={contactData.address || "(uzupełnij adres)"} />
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-start gap-3" data-testid="row-contact-phone">
-                  <Phone className="mt-0.5 h-5 w-5 text-primary" />
-                  <div>
-                    <div className="text-sm font-medium" data-testid="text-contact-phone-title"><EditableStaticText textKey="contact_phone_label" defaultValue="Telefon" /></div>
-                    <div className="text-sm text-muted-foreground" data-testid="text-contact-phone">
-                      <EditableStaticText textKey="contact_phone" defaultValue={contactData.phone || "(uzupełnij telefon)"} />
-                    </div>
+              <div className="flex items-start gap-3" data-testid="row-contact-phone">
+                <Phone className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm font-medium" data-testid="text-contact-phone-title"><EditableStaticText textKey="contact_phone_label" defaultValue="Telefon" /></div>
+                  <div className="text-sm text-muted-foreground" data-testid="text-contact-phone">
+                    <EditableStaticText textKey="contact_phone" defaultValue={contactData.phone || "(uzupełnij telefon)"} />
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-start gap-3" data-testid="row-contact-mail">
-                  <Mail className="mt-0.5 h-5 w-5 text-primary" />
-                  <div>
-                    <div className="text-sm font-medium" data-testid="text-contact-mail-title"><EditableStaticText textKey="contact_email_label" defaultValue="E-mail" /></div>
-                    <div className="text-sm text-muted-foreground" data-testid="text-contact-mail">
-                      <EditableStaticText textKey="contact_email" defaultValue={contactData.email || "(uzupełnij e-mail)"} />
-                    </div>
+              <div className="flex items-start gap-3" data-testid="row-contact-mail">
+                <Mail className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm font-medium" data-testid="text-contact-mail-title"><EditableStaticText textKey="contact_email_label" defaultValue="E-mail" /></div>
+                  <div className="text-sm text-muted-foreground" data-testid="text-contact-mail">
+                    <EditableStaticText textKey="contact_email" defaultValue={contactData.email || "(uzupełnij e-mail)"} />
                   </div>
                 </div>
+              </div>
 
-                <Separator />
+              <Separator />
 
-                <div className="flex items-start gap-3" data-testid="row-contact-hours">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
-                  <div>
-                    <div className="text-sm font-medium" data-testid="text-contact-hours-title"><EditableStaticText textKey="contact_hours_label" defaultValue="Godziny" /></div>
-                    <div className="text-sm text-muted-foreground" data-testid="text-contact-hours">
-                      <EditableStaticText textKey="contact_hours" defaultValue={contactData.hours || "(uzupełnij godziny)"} />
-                    </div>
+              <div className="flex items-start gap-3" data-testid="row-contact-hours">
+                <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                <div>
+                  <div className="text-sm font-medium" data-testid="text-contact-hours-title"><EditableStaticText textKey="contact_hours_label" defaultValue="Godziny" /></div>
+                  <div className="text-sm text-muted-foreground" data-testid="text-contact-hours">
+                    <EditableStaticText textKey="contact_hours" defaultValue={contactData.hours || "(uzupełnij godziny)"} />
                   </div>
                 </div>
+              </div>
 
-                <Separator />
+              <Separator />
 
-                <div className="flex flex-wrap gap-2" data-testid="row-contact-links">
-                  <Button
-                    variant="secondary"
-                    className="rounded-xl"
-                    asChild
-                    data-testid="button-contact-facebook"
+              <div className="flex flex-wrap gap-2" data-testid="row-contact-links">
+                <Button
+                  variant="secondary"
+                  className="rounded-xl"
+                  asChild
+                  data-testid="button-contact-facebook"
+                >
+                  <a href="https://www.facebook.com/wislajawornik" target="_blank" rel="noreferrer">
+                    <Facebook className="mr-2 h-4 w-4" />
+                    Facebook
+                  </a>
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="rounded-xl"
+                  asChild
+                  data-testid="button-contact-youtube"
+                >
+                  <a
+                    href="https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g"
+                    target="_blank"
+                    rel="noreferrer"
                   >
-                    <a href="https://www.facebook.com/wislajawornik" target="_blank" rel="noreferrer">
-                      <Facebook className="mr-2 h-4 w-4" />
-                      Facebook
-                    </a>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="rounded-xl"
-                    asChild
-                    data-testid="button-contact-youtube"
-                  >
-                    <a
-                      href="https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <Youtube className="mr-2 h-4 w-4" />
-                      YouTube
-                    </a>
-                  </Button>
+                    <Youtube className="mr-2 h-4 w-4" />
+                    YouTube
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {isEditMode && (
+            <Card className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 backdrop-blur lg:col-span-2" data-testid="card-p24-placeholder">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
+                  <Heart className="h-5 w-5 text-amber-600" />
                 </div>
+                <div>
+                  <div className="text-sm font-semibold text-amber-800" data-testid="text-p24-title">Przelewy24 — Ofiary online</div>
+                  <div className="text-xs text-amber-600">Sekcja ukryta dla odwiedzających. Do aktywacji po skonfigurowaniu P24.</div>
+                </div>
+              </div>
+
+              <Separator className="my-4 bg-amber-200" />
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-amber-200 bg-white/70 px-4 py-3" data-testid="field-p24-amount">
+                  <div className="text-xs text-muted-foreground">Kwota</div>
+                  <div className="mt-1 text-sm text-amber-700" data-testid="value-p24-amount">50 zł / dowolna kwota</div>
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-white/70 px-4 py-3" data-testid="field-p24-title">
+                  <div className="text-xs text-muted-foreground">Tytuł wpłaty</div>
+                  <div className="mt-1 text-sm text-amber-700" data-testid="value-p24-title">Ofiara na parafię</div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-xs text-amber-600" data-testid="text-p24-note">
+                  Wymaga: klucz P24_MERCHANT_ID + P24_CRC + P24_API_KEY
+                </div>
+                <Button className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white" disabled data-testid="button-p24-pay">
+                  Wpłać ofiarę
+                </Button>
               </div>
             </Card>
-
-            {/* Przelewy24 — ukryta sekcja, gotowa do aktywacji */}
-            {isEditMode && (
-              <Card className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 backdrop-blur lg:col-span-2" data-testid="card-p24-placeholder">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
-                    <Heart className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-amber-800" data-testid="text-p24-title">Przelewy24 — Ofiary online</div>
-                    <div className="text-xs text-amber-600">Sekcja ukryta dla odwiedzających. Do aktywacji po skonfigurowaniu P24.</div>
-                  </div>
-                </div>
-
-                <Separator className="my-4 bg-amber-200" />
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-2xl border border-amber-200 bg-white/70 px-4 py-3" data-testid="field-p24-amount">
-                    <div className="text-xs text-muted-foreground">Kwota</div>
-                    <div className="mt-1 text-sm text-amber-700" data-testid="value-p24-amount">50 zł / dowolna kwota</div>
-                  </div>
-                  <div className="rounded-2xl border border-amber-200 bg-white/70 px-4 py-3" data-testid="field-p24-title">
-                    <div className="text-xs text-muted-foreground">Tytuł wpłaty</div>
-                    <div className="mt-1 text-sm text-amber-700" data-testid="value-p24-title">Ofiara na parafię</div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="text-xs text-amber-600" data-testid="text-p24-note">
-                    Wymaga: klucz P24_MERCHANT_ID + P24_CRC + P24_API_KEY
-                  </div>
-                  <Button className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white" disabled data-testid="button-p24-pay">
-                    Wpłać ofiarę
-                  </Button>
-                </div>
-              </Card>
-            )}
-          </div>
-
-          <div className="mt-8 overflow-hidden rounded-2xl border border-primary/10 shadow-sm" data-testid="map-wrap">
-            <div className="bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Znajdź nas na mapie</span>
-            </div>
-            <iframe
-              src="https://www.google.com/maps?q=Parafia+Ewangelicko-Augsburska+Wisła+Jawornik&output=embed"
-              className="w-full border-0"
-              style={{ height: "350px" }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Mapa — Parafia Ewangelicka w Wiśle Jaworniku"
-              data-testid="iframe-google-map"
-            />
-          </div>
-
-          <footer className="mt-10 flex flex-col gap-2 border-t pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between" data-testid="footer">
-            <div data-testid="text-footer-left">© {new Date().getFullYear()} <EditableStaticText textKey="footer_text" defaultValue="jawornik.eu" /></div>
-            <div className="flex items-center gap-4" data-testid="row-footer-links">
-              <Link href="/" data-testid="link-footer-home">Strona główna</Link>
-              <button
-                type="button"
-                onClick={() => scrollToId("top")}
-                className="text-muted-foreground hover:text-foreground"
-                data-testid="button-footer-top"
-              >
-                Do góry
-              </button>
-            </div>
-          </footer>
+          )}
         </div>
-      </section>
 
-      <AdminFloatingBar />
-    </main>
+        <div className="mt-8 overflow-hidden rounded-2xl border border-primary/10 shadow-sm" data-testid="map-wrap">
+          <div className="bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Znajdź nas na mapie</span>
+          </div>
+          <iframe
+            src="https://www.google.com/maps?q=Parafia+Ewangelicko-Augsburska+Wisła+Jawornik&output=embed"
+            className="w-full border-0"
+            style={{ height: "350px" }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title="Mapa — Parafia Ewangelicka w Wiśle Jaworniku"
+            data-testid="iframe-google-map"
+          />
+        </div>
+
+        <footer className="mt-10 flex flex-col gap-2 border-t pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between" data-testid="footer">
+          <div data-testid="text-footer-left">© {new Date().getFullYear()} <EditableStaticText textKey="footer_text" defaultValue="jawornik.eu" /></div>
+          <div className="flex items-center gap-4" data-testid="row-footer-links">
+            <Link href="/" data-testid="link-footer-home">Strona główna</Link>
+            <button
+              type="button"
+              onClick={() => scrollToId("top")}
+              className="text-muted-foreground hover:text-foreground"
+              data-testid="button-footer-top"
+            >
+              Do góry
+            </button>
+          </div>
+        </footer>
+      </div>
+    </section>
   );
 }

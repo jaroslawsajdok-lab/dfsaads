@@ -4,8 +4,8 @@ import { storage, db, pool, initializeDatabase } from "./storage";
 import {
   insertNewsSchema, insertEventSchema, insertGroupSchema,
   insertRecordingSchema, insertFaqSchema, insertContactInfoSchema,
-  insertGallerySchema,
-  news, events, groups, recordings, faq, contactInfo, galleries,
+  insertGallerySchema, insertPosterSchema, insertGalleryAlbumSchema,
+  news, events, groups, recordings, faq, contactInfo, galleries, posters, galleryAlbums,
 } from "@shared/schema";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -694,6 +694,54 @@ export async function registerRoutes(
   });
   app.delete("/api/galleries/:id", requireAdmin, async (req, res) => {
     const ok = await storage.deleteGallery(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // ── Posters ──
+  app.get("/api/posters", async (_req, res) => {
+    const data = await storage.getPosters();
+    res.json(data);
+  });
+  app.post("/api/posters", requireAdmin, async (req, res) => {
+    const parsed = insertPosterSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid data" });
+    const item = await storage.createPoster(parsed.data);
+    res.status(201).json(item);
+  });
+  app.put("/api/posters/:id", requireAdmin, async (req, res) => {
+    const parsed = insertPosterSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid data" });
+    const item = await storage.updatePoster(Number(req.params.id), parsed.data);
+    if (!item) return res.status(404).json({ message: "Not found" });
+    res.json(item);
+  });
+  app.delete("/api/posters/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deletePoster(Number(req.params.id));
+    if (!ok) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // ── Gallery Albums ──
+  app.get("/api/gallery-albums", async (_req, res) => {
+    const data = await storage.getGalleryAlbums();
+    res.json(data);
+  });
+  app.post("/api/gallery-albums", requireAdmin, async (req, res) => {
+    const parsed = insertGalleryAlbumSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid data" });
+    const item = await storage.createGalleryAlbum(parsed.data);
+    res.status(201).json(item);
+  });
+  app.put("/api/gallery-albums/:id", requireAdmin, async (req, res) => {
+    const parsed = insertGalleryAlbumSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid data" });
+    const item = await storage.updateGalleryAlbum(Number(req.params.id), parsed.data);
+    if (!item) return res.status(404).json({ message: "Not found" });
+    res.json(item);
+  });
+  app.delete("/api/gallery-albums/:id", requireAdmin, async (req, res) => {
+    const ok = await storage.deleteGalleryAlbum(Number(req.params.id));
     if (!ok) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
   });

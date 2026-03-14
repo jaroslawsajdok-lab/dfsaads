@@ -80,11 +80,34 @@ export const galleries = pgTable("galleries", {
   description: text("description"),
   image_url: text("image_url").notNull(),
   sort_order: integer("sort_order").notNull().default(0),
+  album_id: integer("album_id"),
 });
 
 export const insertGallerySchema = createInsertSchema(galleries).omit({ id: true });
 export type InsertGallery = z.infer<typeof insertGallerySchema>;
 export type Gallery = typeof galleries.$inferSelect;
+
+export const posters = pgTable("posters", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  image_url: text("image_url").notNull(),
+  sort_order: integer("sort_order").notNull().default(0),
+});
+
+export const insertPosterSchema = createInsertSchema(posters).omit({ id: true });
+export type InsertPoster = z.infer<typeof insertPosterSchema>;
+export type Poster = typeof posters.$inferSelect;
+
+export const galleryAlbums = pgTable("gallery_albums", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  sort_order: integer("sort_order").notNull().default(0),
+});
+
+export const insertGalleryAlbumSchema = createInsertSchema(galleryAlbums).omit({ id: true });
+export type InsertGalleryAlbum = z.infer<typeof insertGalleryAlbumSchema>;
+export type GalleryAlbum = typeof galleryAlbums.$inferSelect;
 
 export const adminSettings = pgTable("admin_settings", {
   id: serial("id").primaryKey(),
