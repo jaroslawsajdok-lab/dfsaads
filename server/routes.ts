@@ -171,6 +171,10 @@ async function fetchGoogleCalendarEvents(): Promise<any[]> {
     const rangeEnd = new Date(now);
     rangeEnd.setDate(rangeEnd.getDate() + 90);
 
+    const TZ = "Europe/Warsaw";
+    const fmtDate = (dt: Date) => dt.toLocaleDateString("sv-SE", { timeZone: TZ });
+    const fmtTime = (dt: Date) => dt.toLocaleTimeString("pl-PL", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false });
+
     const upcoming: any[] = [];
 
     for (const key of Object.keys(parsed)) {
@@ -185,8 +189,8 @@ async function fetchGoogleCalendarEvents(): Promise<any[]> {
             if (dt >= now) {
               upcoming.push({
                 title: comp.summary || "Wydarzenie",
-                date: dt.toISOString().slice(0, 10),
-                time: dt.toTimeString().slice(0, 5),
+                date: fmtDate(dt),
+                time: fmtTime(dt),
                 type: detectEventType(comp.summary || ""),
                 location: comp.location || "",
               });
@@ -200,8 +204,8 @@ async function fetchGoogleCalendarEvents(): Promise<any[]> {
         if (start && start >= now) {
           upcoming.push({
             title: comp.summary || "Wydarzenie",
-            date: start.toISOString().slice(0, 10),
-            time: start.toTimeString().slice(0, 5),
+            date: fmtDate(start),
+            time: fmtTime(start),
             type: detectEventType(comp.summary || ""),
             location: comp.location || "",
           });

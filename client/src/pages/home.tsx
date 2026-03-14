@@ -1818,21 +1818,26 @@ function PosterBannerStrip() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
+  const needsCarousel = postersData.length > 3;
+
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || postersData.length === 0) return;
+    if (!el || !needsCarousel) return;
     let pos = 0;
     const speed = 0.5;
     let raf: number;
+    let paused = false;
     const step = () => {
-      pos += speed;
-      if (pos >= el.scrollWidth / 2) pos = 0;
-      el.scrollLeft = pos;
+      if (!paused) {
+        pos += speed;
+        if (pos >= el.scrollWidth / 2) pos = 0;
+        el.scrollLeft = pos;
+      }
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    const pause = () => cancelAnimationFrame(raf);
-    const resume = () => { raf = requestAnimationFrame(step); };
+    const pause = () => { paused = true; };
+    const resume = () => { paused = false; };
     el.addEventListener("mouseenter", pause);
     el.addEventListener("mouseleave", resume);
     el.addEventListener("touchstart", pause, { passive: true });
@@ -1844,7 +1849,7 @@ function PosterBannerStrip() {
       el.removeEventListener("touchstart", pause);
       el.removeEventListener("touchend", resume);
     };
-  }, [postersData]);
+  }, [postersData, needsCarousel]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1871,7 +1876,7 @@ function PosterBannerStrip() {
 
   if (postersData.length === 0 && !isEditMode) return null;
 
-  const displayPosters = postersData.length > 0 ? [...postersData, ...postersData] : [];
+  const displayPosters = needsCarousel ? [...postersData, ...postersData] : postersData;
 
   return (
     <>
@@ -1880,7 +1885,10 @@ function PosterBannerStrip() {
         {postersData.length > 0 && (
           <div
             ref={scrollRef}
-            className="relative flex gap-4 overflow-hidden px-4"
+            className={cx(
+              "relative flex gap-4 px-4",
+              needsCarousel ? "overflow-hidden" : "justify-center overflow-visible"
+            )}
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             data-testid="poster-scroll-container"
           >
@@ -2025,35 +2033,177 @@ function AdminFloatingBar() {
   );
 }
 
-function ExpandableCard({ title, children, defaultOpen = false, testId }: { title: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; testId: string }) {
-  const [open, setOpen] = useState(defaultOpen);
+function ONasContentModal({ open, onClose, textKey, titleKey, defaultTitle, defaultDesc, imageSettingKey }: {
+  open: boolean; onClose: () => void; textKey: string; titleKey: string; defaultTitle: string; defaultDesc: string; imageSettingKey: string;
+}) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const { isEditMode } = useAuth();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const { data: imgSetting } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", imageSettingKey],
+    queryFn: () => apiFetch(`/api/admin/settings/${imageSettingKey}`),
+  });
+  const imageUrl = imgSetting?.value || null;
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      const { url } = await uploadRes.json();
+      await apiRequest("PUT", `/api/admin/settings/${imageSettingKey}`, { value: url });
+      qc.invalidateQueries({ queryKey: ["admin-setting", imageSettingKey] });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeBtnRef.current?.focus();
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
   return (
-    <Card
-      className="rounded-2xl border bg-white/80 p-6 backdrop-blur cursor-pointer transition hover:shadow-md"
-      onClick={() => setOpen(!open)}
-      data-testid={testId}
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      data-testid={`onas-modal-backdrop-${textKey}`}
     >
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-xl">{title}</h3>
-        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="h-5 w-5 text-muted-foreground" />
-        </motion.div>
-      </div>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mt-3">{children}</div>
-          </motion.div>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={defaultTitle}
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+        data-testid={`onas-modal-${textKey}`}
+      >
+        <button
+          ref={closeBtnRef}
+          onClick={onClose}
+          aria-label="Zamknij"
+          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white hover:text-foreground"
+          data-testid={`onas-modal-close-${textKey}`}
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {imageUrl && (
+          <img src={imageUrl} alt={defaultTitle} className="w-full max-h-[400px] object-cover" />
         )}
-      </AnimatePresence>
-    </Card>
+
+        {isEditMode && (
+          <div className="px-6 pt-4">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-full bg-black/10 px-3 py-1.5 text-xs transition hover:bg-black/20"
+              disabled={uploading}
+              data-testid={`button-upload-onas-image-${textKey}`}
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              {uploading ? "Wysyłanie…" : imageUrl ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+          </div>
+        )}
+
+        <div className="p-6">
+          <h2 className="font-display text-2xl tracking-[-0.02em]" data-testid={`onas-modal-title-${textKey}`}>
+            <EditableStaticText textKey={titleKey} defaultValue={defaultTitle} />
+          </h2>
+          <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-foreground/80" data-testid={`onas-modal-desc-${textKey}`}>
+            <EditableStaticText textKey={textKey} defaultValue={defaultDesc} multiline />
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GrupyListModal({ open, onClose, groups }: { open: boolean; onClose: () => void; groups: GroupItem[] }) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeBtnRef.current?.focus();
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+        onClick={onClose}
+        data-testid="grupy-list-modal-backdrop"
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Grupy i spotkania"
+          className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+          onClick={(e) => e.stopPropagation()}
+          data-testid="grupy-list-modal"
+        >
+          <button
+            ref={closeBtnRef}
+            onClick={onClose}
+            aria-label="Zamknij"
+            className="absolute right-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white hover:text-foreground"
+            data-testid="grupy-list-modal-close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          <div className="p-6">
+            <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">Grupy i spotkania</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {groups.map(g => (
+                <Card
+                  key={g.id}
+                  className="rounded-2xl border overflow-hidden cursor-pointer transition hover:shadow-md"
+                  onClick={() => setSelectedGroup(g)}
+                  data-testid={`grupy-modal-card-${g.id}`}
+                >
+                  {g.image_url && (
+                    <img src={g.image_url} alt={g.name} className="w-full h-36 object-cover" loading="lazy" />
+                  )}
+                  <div className="p-4">
+                    <div className="font-display text-lg">{g.name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{g.lead}</div>
+                    <Badge variant="secondary" className="mt-2">{g.when_text}</Badge>
+                    {g.description && (
+                      <p className="mt-2 text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">{g.description}</p>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      {selectedGroup && (
+        <GroupModal group={selectedGroup} open={true} onClose={() => setSelectedGroup(null)} />
+      )}
+    </>
   );
 }
 
@@ -2061,6 +2211,7 @@ function SectionONas() {
   const { isEditMode } = useAuth();
   const { data: faqData = [] } = useQuery<FaqItem[]>({ queryKey: ["faq"], queryFn: () => apiFetch("/api/faq") });
   const { data: groupsData = [] } = useQuery<GroupItem[]>({ queryKey: ["groups"], queryFn: () => apiFetch("/api/groups") });
+  const [openModal, setOpenModal] = useState<"kim" | "naboz" | "grupy" | null>(null);
 
   return (
     <section id="onas" className="relative bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]" data-testid="section-onas" aria-label="O nas">
@@ -2076,20 +2227,44 @@ function SectionONas() {
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          <ExpandableCard title={<EditableStaticText textKey="onas_kim_title" defaultValue="Kim jesteśmy" />} defaultOpen testId="card-onas-kim">
-            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-onas-kim-desc">
-              <EditableStaticText textKey="onas_kim_desc" defaultValue="Parafia Ewangelicko-Augsburska w Wiśle Jaworniku to wspólnota wiary, otwarta na każdego. Jesteśmy częścią Kościoła Ewangelicko-Augsburskiego w RP." multiline />
+          <Card
+            className="rounded-2xl border bg-white/80 p-6 backdrop-blur cursor-pointer transition hover:shadow-md group"
+            onClick={() => setOpenModal("kim")}
+            data-testid="card-onas-kim"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-xl"><EditableStaticText textKey="onas_kim_title" defaultValue="Kim jesteśmy" /></h3>
+              <ChevronRight className="h-5 w-5 text-muted-foreground transition group-hover:translate-x-0.5" />
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+              Parafia Ewangelicko-Augsburska w Wiśle Jaworniku to wspólnota wiary…
             </p>
-          </ExpandableCard>
+          </Card>
 
-          <ExpandableCard title={<EditableStaticText textKey="onas_naboz_title" defaultValue="Nabożeństwa" />} defaultOpen testId="card-onas-naboz">
-            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap" data-testid="text-onas-naboz-desc">
-              <EditableStaticText textKey="onas_naboz_desc" defaultValue="Nabożeństwa niedzielne o 9:00\nNabożeństwa tygodniowe wg kalendarza\nSpowiedź i Komunia Święta wg ogłoszeń" multiline />
+          <Card
+            className="rounded-2xl border bg-white/80 p-6 backdrop-blur cursor-pointer transition hover:shadow-md group"
+            onClick={() => setOpenModal("naboz")}
+            data-testid="card-onas-naboz"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-xl"><EditableStaticText textKey="onas_naboz_title" defaultValue="Nabożeństwa" /></h3>
+              <ChevronRight className="h-5 w-5 text-muted-foreground transition group-hover:translate-x-0.5" />
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+              Nabożeństwa niedzielne o 9:00, tygodniowe wg kalendarza…
             </p>
-          </ExpandableCard>
+          </Card>
 
-          <ExpandableCard title={<EditableStaticText textKey="onas_grupy_title" defaultValue="Grupy i spotkania" />} defaultOpen testId="card-onas-grupy">
-            <div className="space-y-2">
+          <Card
+            className="rounded-2xl border bg-white/80 p-6 backdrop-blur cursor-pointer transition hover:shadow-md group"
+            onClick={() => setOpenModal("grupy")}
+            data-testid="card-onas-grupy"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-xl"><EditableStaticText textKey="onas_grupy_title" defaultValue="Grupy i spotkania" /></h3>
+              <ChevronRight className="h-5 w-5 text-muted-foreground transition group-hover:translate-x-0.5" />
+            </div>
+            <div className="mt-3 space-y-1.5">
               {groupsData.slice(0, 4).map(g => (
                 <div key={g.id} className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`onas-group-${g.id}`}>
                   <div className="h-1.5 w-1.5 rounded-full bg-primary" />
@@ -2098,16 +2273,35 @@ function SectionONas() {
                 </div>
               ))}
               {groupsData.length > 4 && (
-                <Button variant="ghost" size="sm" className="rounded-xl text-xs" asChild>
-                  <Link href="/grupy">
-                    Więcej grup
-                    <ChevronRight className="ml-1 h-3 w-3" />
-                  </Link>
-                </Button>
+                <span className="text-xs text-primary">+{groupsData.length - 4} więcej…</span>
               )}
             </div>
-          </ExpandableCard>
+          </Card>
         </div>
+
+        <ONasContentModal
+          open={openModal === "kim"}
+          onClose={() => setOpenModal(null)}
+          textKey="onas_kim_desc"
+          titleKey="onas_kim_title"
+          defaultTitle="Kim jesteśmy"
+          defaultDesc="Parafia Ewangelicko-Augsburska w Wiśle Jaworniku to wspólnota wiary, otwarta na każdego. Jesteśmy częścią Kościoła Ewangelicko-Augsburskiego w RP."
+          imageSettingKey="onas_kim_image"
+        />
+        <ONasContentModal
+          open={openModal === "naboz"}
+          onClose={() => setOpenModal(null)}
+          textKey="onas_naboz_desc"
+          titleKey="onas_naboz_title"
+          defaultTitle="Nabożeństwa"
+          defaultDesc="Nabożeństwa niedzielne o 9:00\nNabożeństwa tygodniowe wg kalendarza\nSpowiedź i Komunia Święta wg ogłoszeń"
+          imageSettingKey="onas_naboz_image"
+        />
+        <GrupyListModal
+          open={openModal === "grupy"}
+          onClose={() => setOpenModal(null)}
+          groups={groupsData}
+        />
 
         {faqData.length > 0 && (
           <div className="mt-10">
@@ -2356,9 +2550,10 @@ function SectionAktualnosci() {
 
 function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: { gcalEvents: any[]; googleCalendarSrc: string; isEditMode: boolean }) {
   const [calView, setCalView] = useState<"week" | "month">("week");
-  const calSrc = calView === "week"
-    ? googleCalendarSrc.replace(/mode=\w+/, "mode=WEEK") + (googleCalendarSrc.includes("mode=") ? "" : "&mode=WEEK")
-    : googleCalendarSrc.replace(/mode=\w+/, "mode=MONTH") + (googleCalendarSrc.includes("mode=") ? "" : "&mode=MONTH");
+  const calMode = calView === "week" ? "AGENDA" : "MONTH";
+  const calSrc = googleCalendarSrc.includes("mode=")
+    ? googleCalendarSrc.replace(/mode=\w+/, `mode=${calMode}`)
+    : googleCalendarSrc + `&mode=${calMode}`;
 
   return (
     <section
@@ -2437,7 +2632,7 @@ function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: { gcalE
             <iframe
               src={calSrc}
               className="w-full border-0"
-              style={{ height: "600px" }}
+              style={{ height: calView === "week" ? "450px" : "600px" }}
               title="Kalendarz Google parafii"
               data-testid="iframe-google-calendar"
             />
