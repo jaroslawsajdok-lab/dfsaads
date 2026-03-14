@@ -8,6 +8,8 @@ import { ChevronLeft, ChevronRight, ImagePlus, Pencil, Save, X } from "lucide-re
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+const isFilename = (t: string) => /\.\w{2,5}$/.test(t.trim());
+
 function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
   poster: any; index: number; total: number; onClose: () => void; onPrev: () => void; onNext: () => void;
 }) {
@@ -32,6 +34,9 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
     if (field === "title") setEditingTitle(false);
   };
 
+  const realTitle = poster.title && !isFilename(poster.title) ? poster.title : "";
+  const hasContent = isEditMode || realTitle || poster.description;
+
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
@@ -55,45 +60,47 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
       <div className="flex flex-col items-center max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
         <img
           src={poster.image_url}
-          alt={poster.title}
+          alt={realTitle || "Plakat"}
           className="max-h-[70vh] max-w-full rounded-2xl object-contain shadow-2xl"
           data-testid="img-lightbox-poster"
         />
-        <div className="mt-3 w-full max-w-xl text-center">
-          {isEditMode ? (
-            <div className="space-y-2">
-              {editingTitle ? (
-                <div className="flex items-center gap-1 justify-center">
-                  <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-7 text-sm bg-white/10 text-white border-white/30 max-w-xs" autoFocus data-testid="input-poster-title" />
-                  <button onClick={() => saveField("title", title)} className="rounded p-1 text-green-400 hover:bg-green-900/30"><Save className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => { setTitle(poster.title || ""); setEditingTitle(false); }} className="rounded p-1 text-red-400 hover:bg-red-900/30"><X className="h-3.5 w-3.5" /></button>
-                </div>
-              ) : (
-                <p className="text-sm font-semibold text-white/90 cursor-pointer hover:text-yellow-300 transition" onClick={() => setEditingTitle(true)} data-testid="poster-lightbox-title">
-                  {poster.title || "Kliknij, aby dodać tytuł"}
-                  <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
-                </p>
-              )}
-              {editingDesc ? (
-                <div className="flex items-start gap-1 justify-center">
-                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="min-h-[60px] text-sm bg-white/10 text-white border-white/30 max-w-sm" autoFocus data-testid="input-poster-desc" />
-                  <button onClick={() => saveField("description", desc)} className="rounded p-1 text-green-400 hover:bg-green-900/30"><Save className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => { setDesc(poster.description || ""); setEditingDesc(false); }} className="rounded p-1 text-red-400 hover:bg-red-900/30"><X className="h-3.5 w-3.5" /></button>
-                </div>
-              ) : (
-                <p className="text-sm text-white/70 cursor-pointer hover:text-yellow-300 transition whitespace-pre-wrap" onClick={() => setEditingDesc(true)} data-testid="poster-lightbox-desc">
-                  {poster.description || "Kliknij, aby dodać opis"}
-                  <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
-                </p>
-              )}
-            </div>
-          ) : (
-            <>
-              {poster.title && <p className="text-sm font-semibold text-white/90" data-testid="poster-lightbox-title">{poster.title}</p>}
-              {poster.description && <p className="mt-1 text-sm text-white/70 whitespace-pre-wrap" data-testid="poster-lightbox-desc">{poster.description}</p>}
-            </>
-          )}
-        </div>
+        {hasContent && (
+          <div className="mt-3 w-full max-w-xl rounded-xl bg-white px-5 py-3 text-center shadow-lg">
+            {isEditMode ? (
+              <div className="space-y-2">
+                {editingTitle ? (
+                  <div className="flex items-center gap-1 justify-center">
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-7 text-sm max-w-xs" autoFocus data-testid="input-poster-title" />
+                    <button onClick={() => saveField("title", title)} className="rounded p-1 text-green-600 hover:bg-green-100"><Save className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => { setTitle(poster.title || ""); setEditingTitle(false); }} className="rounded p-1 text-red-500 hover:bg-red-100"><X className="h-3.5 w-3.5" /></button>
+                  </div>
+                ) : (
+                  <p className="text-sm font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition" onClick={() => setEditingTitle(true)} data-testid="poster-lightbox-title">
+                    {realTitle || "Kliknij, aby dodać tytuł"}
+                    <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
+                  </p>
+                )}
+                {editingDesc ? (
+                  <div className="flex items-start gap-1 justify-center">
+                    <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="min-h-[60px] text-sm max-w-sm" autoFocus data-testid="input-poster-desc" />
+                    <button onClick={() => saveField("description", desc)} className="rounded p-1 text-green-600 hover:bg-green-100"><Save className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => { setDesc(poster.description || ""); setEditingDesc(false); }} className="rounded p-1 text-red-500 hover:bg-red-100"><X className="h-3.5 w-3.5" /></button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 cursor-pointer hover:text-blue-600 transition whitespace-pre-wrap" onClick={() => setEditingDesc(true)} data-testid="poster-lightbox-desc">
+                    {poster.description || "Kliknij, aby dodać opis"}
+                    <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+                {realTitle && <p className="text-sm font-semibold text-gray-800" data-testid="poster-lightbox-title">{realTitle}</p>}
+                {poster.description && <p className={cx("text-sm text-gray-600 whitespace-pre-wrap", realTitle ? "mt-1" : "")} data-testid="poster-lightbox-desc">{poster.description}</p>}
+              </>
+            )}
+          </div>
+        )}
       </div>
       <button
         className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
