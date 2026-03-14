@@ -31,7 +31,7 @@ function FbPostModal({ post, open, onClose }: { post: FbPost; open: boolean; onC
         role="dialog"
         aria-modal="true"
         aria-label="Post z Facebooka"
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
         data-testid={`fb-modal-${post.id}`}
       >
@@ -39,7 +39,7 @@ function FbPostModal({ post, open, onClose }: { post: FbPost; open: boolean; onC
           ref={closeBtnRef}
           onClick={onClose}
           aria-label="Zamknij"
-          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white hover:text-foreground"
+          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 dark:bg-card/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white dark:hover:bg-card hover:text-foreground"
           data-testid={`fb-modal-close-${post.id}`}
         >
           <X className="h-4 w-4" />
@@ -102,7 +102,7 @@ function FbPostCard({ post, onSelect }: { post: FbPost; onSelect: () => void }) 
     <button
       type="button"
       onClick={onSelect}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-white text-left transition-shadow hover:shadow-lg"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-card text-left transition-shadow hover:shadow-lg"
       data-testid={`fb-post-${post.id}`}
     >
       {post.images.length > 0 && (
@@ -246,12 +246,12 @@ function FbScrollRow({ title, posts, onSelect }: { title: string; posts: FbPost[
         <h3 className="font-display text-2xl tracking-tight">{title}</h3>
         <div className="flex gap-1">
           {canScrollLeft && (
-            <button onClick={() => scroll(-1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w lewo">
+            <button onClick={() => scroll(-1)} className="rounded-full border bg-card p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w lewo">
               <ChevronLeft className="h-4 w-4" />
             </button>
           )}
           {canScrollRight && (
-            <button onClick={() => scroll(1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w prawo">
+            <button onClick={() => scroll(1)} className="rounded-full border bg-card p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w prawo">
               <ChevronRight className="h-4 w-4" />
             </button>
           )}

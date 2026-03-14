@@ -210,7 +210,7 @@ export function EditableStaticText({
             data-testid={`input-static-${textKey}`}
           />
         )}
-        <div className="flex items-center gap-0.5 rounded-md border border-gray-200 bg-gray-50 px-1 py-0.5" data-testid={`font-size-picker-${textKey}`}>
+        <div className="flex items-center gap-0.5 rounded-md border bg-muted px-1 py-0.5" data-testid={`font-size-picker-${textKey}`}>
           {FONT_SIZE_OPTIONS.map(opt => (
             <button
               key={opt.value}
@@ -218,7 +218,7 @@ export function EditableStaticText({
               onClick={() => setFontSize(fontSize === opt.value ? "" : opt.value)}
               className={cx(
                 "rounded px-1.5 py-0.5 text-[10px] font-bold transition",
-                fontSize === opt.value ? "bg-yellow-400 text-yellow-900" : "text-gray-400 hover:text-gray-700 hover:bg-gray-200"
+                fontSize === opt.value ? "bg-yellow-400 text-yellow-900" : "text-muted-foreground hover:text-foreground hover:bg-muted"
               )}
               title={`Rozmiar: ${opt.label}`}
               data-testid={`button-fontsize-${opt.label}-${textKey}`}
@@ -317,7 +317,7 @@ export function AdminAddButton({ entityType, queryKey, defaultValues, fields }: 
 
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setOpen(false)} data-testid={`dialog-add-${entityType}-backdrop`}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()} data-testid={`dialog-add-${entityType}`}>
+          <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()} data-testid={`dialog-add-${entityType}`}>
             <h3 className="font-display text-lg" data-testid={`text-add-${entityType}-title`}>Dodaj nowy element</h3>
             <form
               onSubmit={(e) => { e.preventDefault(); mutation.mutate(formData); }}

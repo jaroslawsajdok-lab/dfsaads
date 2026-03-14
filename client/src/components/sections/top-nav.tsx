@@ -107,11 +107,11 @@ function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" data-testid="dialog-login-backdrop" onClick={() => { resetForm(); onOpenChange(false); }}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()} data-testid="dialog-login">
+      <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()} data-testid="dialog-login">
         {step === "credentials" ? (
           <>
             <div className="flex items-center gap-2 mb-1">
-              <Shield className="h-5 w-5 text-gray-600" />
+              <Shield className="h-5 w-5 text-muted-foreground" />
               <h3 className="font-display text-xl" data-testid="text-login-title">Panel administracyjny</h3>
             </div>
             <p className="text-sm text-muted-foreground" data-testid="text-login-subtitle">Zaloguj się, aby edytować treści.</p>
@@ -174,7 +174,7 @@ function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
                 </Button>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <button type="button" onClick={() => { setStep("credentials"); setCode(""); setError(""); }} className="text-gray-500 hover:text-gray-700 flex items-center gap-1" data-testid="button-code-back">
+                <button type="button" onClick={() => { setStep("credentials"); setCode(""); setError(""); }} className="text-muted-foreground hover:text-foreground flex items-center gap-1" data-testid="button-code-back">
                   <ArrowLeft className="h-3 w-3" /> Wróć
                 </button>
                 <button type="button" onClick={handleResend} className="text-blue-500 hover:text-blue-700 flex items-center gap-1" data-testid="button-code-resend">
@@ -214,7 +214,7 @@ function NavReorderButtons({ sectionId, index, total }: { sectionId: string; ind
       <button
         onClick={(e) => { e.stopPropagation(); move(-1); }}
         disabled={index === 0}
-        className="rounded p-0.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-20 transition"
+        className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 transition"
         data-testid={`button-nav-up-${sectionId}`}
       >
         <ChevronUp className="h-3.5 w-3.5" />
@@ -222,7 +222,7 @@ function NavReorderButtons({ sectionId, index, total }: { sectionId: string; ind
       <button
         onClick={(e) => { e.stopPropagation(); move(1); }}
         disabled={index === total - 1}
-        className="rounded p-0.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-20 transition"
+        className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 transition"
         data-testid={`button-nav-down-${sectionId}`}
       >
         <ChevronDown className="h-3.5 w-3.5" />
@@ -255,7 +255,7 @@ export function TopNav({ shown }: { shown: boolean }) {
         role="navigation"
         aria-label="Nawigacja główna"
       >
-        <div className="md:hidden flex items-center h-14 bg-white/95 backdrop-blur-sm shadow-sm px-4">
+        <div className="md:hidden flex items-center h-14 bg-white/95 dark:bg-card/95 backdrop-blur-sm shadow-sm px-4">
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -272,14 +272,14 @@ export function TopNav({ shown }: { shown: boolean }) {
               decoding="async"
               data-testid="img-cross-nav"
             />
-            <span className="text-xs font-semibold tracking-widest text-gray-500 uppercase">Menu</span>
+            <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Menu</span>
           </button>
           <div className="ml-auto flex items-center gap-2">
             {!isAdmin && (
               <button
                 type="button"
                 onClick={() => setLoginOpen(true)}
-                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 data-testid="button-nav-login-mobile"
                 aria-label="Zaloguj się"
               >
@@ -293,7 +293,7 @@ export function TopNav({ shown }: { shown: boolean }) {
                   onClick={() => setEditMode(!isEditMode)}
                   className={cx(
                     "rounded-lg px-2 py-1 text-xs font-semibold tracking-wide uppercase transition",
-                    isEditMode ? "bg-yellow-400 text-yellow-900" : "bg-gray-200 text-gray-600 hover:bg-gray-300",
+                    isEditMode ? "bg-yellow-400 text-yellow-900" : "bg-muted text-muted-foreground hover:bg-muted/80",
                   )}
                   data-testid="button-nav-editmode-mobile"
                 >
@@ -303,7 +303,7 @@ export function TopNav({ shown }: { shown: boolean }) {
                 <button
                   type="button"
                   onClick={() => setLocation("/bezpieczenstwo")}
-                  className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                  className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   data-testid="button-nav-security-mobile"
                   aria-label="Bezpieczeństwo"
                 >
@@ -312,7 +312,7 @@ export function TopNav({ shown }: { shown: boolean }) {
                 <button
                   type="button"
                   onClick={logout}
-                  className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100"
+                  className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted"
                   data-testid="button-nav-logout-mobile"
                   aria-label="Wyloguj"
                 >
@@ -324,7 +324,7 @@ export function TopNav({ shown }: { shown: boolean }) {
         </div>
 
         <div className="hidden md:block">
-          <div className="absolute inset-x-0 top-0 bg-white" style={{ height: desktopBarTop + desktopBarH + 4 }} />
+          <div className="absolute inset-x-0 top-0 bg-white dark:bg-card" style={{ height: desktopBarTop + desktopBarH + 4 }} />
           <div
             className="absolute right-0"
             style={{ top: desktopBarTop, height: desktopBarH, background: "#b0b0b0", left: desktopLogoAreaW + 3 }}
@@ -424,7 +424,7 @@ export function TopNav({ shown }: { shown: boolean }) {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className="absolute z-50 rounded-b-xl bg-white shadow-lg left-0 right-0 top-14 md:left-[3px] md:right-auto md:w-[280px] md:top-[197px]"
+              className="absolute z-50 rounded-b-xl bg-card shadow-lg left-0 right-0 top-14 md:left-[3px] md:right-auto md:w-[280px] md:top-[197px]"
               data-testid="nav-dropdown"
             >
               <div className="flex flex-col py-2">
@@ -433,7 +433,7 @@ export function TopNav({ shown }: { shown: boolean }) {
                     <button
                       type="button"
                       onClick={() => { scrollToId(item.id); setMenuOpen(false); }}
-                      className="flex-1 px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      className="flex-1 px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-foreground/80 uppercase transition-colors hover:bg-muted hover:text-foreground"
                       data-testid={`link-dropdown-${item.id}`}
                     >
                       <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
@@ -448,7 +448,7 @@ export function TopNav({ shown }: { shown: boolean }) {
                   <button
                     type="button"
                     onClick={() => { setMenuOpen(false); setLoginOpen(true); }}
-                    className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     data-testid="link-dropdown-login"
                   >
                     <LogIn className="h-3.5 w-3.5" />
@@ -460,7 +460,7 @@ export function TopNav({ shown }: { shown: boolean }) {
                     <button
                       type="button"
                       onClick={() => { setEditMode(!isEditMode); setMenuOpen(false); }}
-                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-500 transition-colors hover:bg-gray-100"
+                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-muted-foreground transition-colors hover:bg-muted"
                       data-testid="link-dropdown-editmode"
                     >
                       <Settings className="h-3.5 w-3.5" />
@@ -469,7 +469,7 @@ export function TopNav({ shown }: { shown: boolean }) {
                     <button
                       type="button"
                       onClick={() => { setLocation("/bezpieczenstwo"); setMenuOpen(false); }}
-                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-500 transition-colors hover:bg-gray-100"
+                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-muted-foreground transition-colors hover:bg-muted"
                       data-testid="link-dropdown-security"
                     >
                       <Shield className="h-3.5 w-3.5" />
@@ -478,7 +478,7 @@ export function TopNav({ shown }: { shown: boolean }) {
                     <button
                       type="button"
                       onClick={() => { logout(); setMenuOpen(false); }}
-                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-400 transition-colors hover:bg-gray-100"
+                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-muted-foreground transition-colors hover:bg-muted"
                       data-testid="link-dropdown-logout"
                     >
                       <LogOut className="h-3.5 w-3.5" />

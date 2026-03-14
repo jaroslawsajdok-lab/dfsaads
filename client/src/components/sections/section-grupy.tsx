@@ -56,7 +56,7 @@ function GroupModal({ group, open, onClose }: { group: GroupItem; open: boolean;
         role="dialog"
         aria-modal="true"
         aria-label={group.name}
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
         data-testid={`group-modal-${group.id}`}
       >
@@ -64,7 +64,7 @@ function GroupModal({ group, open, onClose }: { group: GroupItem; open: boolean;
           ref={closeBtnRef}
           onClick={onClose}
           aria-label="Zamknij"
-          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white hover:text-foreground"
+          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 dark:bg-card/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white dark:hover:bg-card hover:text-foreground"
           data-testid={`group-modal-close-${group.id}`}
         >
           <X className="h-4 w-4" />
@@ -141,7 +141,7 @@ export function SectionGrupy({ groupsData, selectedGroup, setSelectedGroup }: { 
         {groupsData.slice(0, 3).map((g) => (
           <Card
             key={g.id}
-            className="rounded-2xl border bg-white/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur cursor-pointer transition hover:bg-white/95 hover:shadow-md"
+            className="rounded-2xl border bg-white/80 dark:bg-card/80 p-5 shadow-[0_1px_0_hsl(220_20%_88%/.7)] backdrop-blur cursor-pointer transition hover:bg-white/95 dark:hover:bg-card/95 hover:shadow-md"
             onClick={() => setSelectedGroup(g)}
             data-testid={`card-group-${g.id}`}
           >

@@ -65,7 +65,7 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
           data-testid="img-lightbox-poster"
         />
         {hasContent && (
-          <div className="mt-3 w-full max-w-xl rounded-xl bg-white px-5 py-3 text-center shadow-lg">
+          <div className="mt-3 w-full max-w-xl rounded-xl bg-card px-5 py-3 text-center shadow-lg">
             {isEditMode ? (
               <div className="space-y-2">
                 {editingTitle ? (
@@ -75,7 +75,7 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
                     <button onClick={() => { setTitle(poster.title || ""); setEditingTitle(false); }} className="rounded p-1 text-red-500 hover:bg-red-100"><X className="h-3.5 w-3.5" /></button>
                   </div>
                 ) : (
-                  <p className="text-sm font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition" onClick={() => setEditingTitle(true)} data-testid="poster-lightbox-title">
+                  <p className="text-sm font-semibold text-foreground cursor-pointer hover:text-blue-600 transition" onClick={() => setEditingTitle(true)} data-testid="poster-lightbox-title">
                     {realTitle || "Kliknij, aby dodać tytuł"}
                     <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
                   </p>
@@ -87,7 +87,7 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
                     <button onClick={() => { setDesc(poster.description || ""); setEditingDesc(false); }} className="rounded p-1 text-red-500 hover:bg-red-100"><X className="h-3.5 w-3.5" /></button>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-600 cursor-pointer hover:text-blue-600 transition whitespace-pre-wrap" onClick={() => setEditingDesc(true)} data-testid="poster-lightbox-desc">
+                  <p className="text-sm text-muted-foreground cursor-pointer hover:text-blue-600 transition whitespace-pre-wrap" onClick={() => setEditingDesc(true)} data-testid="poster-lightbox-desc">
                     {poster.description || "Kliknij, aby dodać opis"}
                     <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
                   </p>
@@ -95,8 +95,8 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
               </div>
             ) : (
               <>
-                {realTitle && <p className="text-sm font-semibold text-gray-800" data-testid="poster-lightbox-title">{realTitle}</p>}
-                {poster.description && <p className={cx("text-sm text-gray-600 whitespace-pre-wrap", realTitle ? "mt-1" : "")} data-testid="poster-lightbox-desc">{poster.description}</p>}
+                {realTitle && <p className="text-sm font-semibold text-foreground" data-testid="poster-lightbox-title">{realTitle}</p>}
+                {poster.description && <p className={cx("text-sm text-muted-foreground whitespace-pre-wrap", realTitle ? "mt-1" : "")} data-testid="poster-lightbox-desc">{poster.description}</p>}
               </>
             )}
           </div>

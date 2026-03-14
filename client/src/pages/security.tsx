@@ -51,9 +51,9 @@ function ChangePasswordForm() {
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6" data-testid="section-change-password">
+    <div className="rounded-xl border bg-card p-6" data-testid="section-change-password">
       <div className="flex items-center gap-2 mb-4">
-        <KeyRound className="h-5 w-5 text-gray-600" />
+        <KeyRound className="h-5 w-5 text-muted-foreground" />
         <h2 className="text-lg font-semibold">Zmiana hasła</h2>
       </div>
       <form onSubmit={handleSubmit} className="space-y-3 max-w-md">
@@ -81,7 +81,7 @@ function ChangePasswordForm() {
           data-testid="input-confirm-password"
         />
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
+          <button type="button" onClick={() => setShowPasswords(!showPasswords)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
             {showPasswords ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
             {showPasswords ? "Ukryj hasła" : "Pokaż hasła"}
           </button>
@@ -136,7 +136,7 @@ function AdminUserRow({ user: u, onDelete, onUpdate }: { user: AdminUser; onDele
   };
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3" data-testid={`admin-user-${u.id}`}>
+    <div className="rounded-lg border bg-muted px-4 py-3" data-testid={`admin-user-${u.id}`}>
       <div className="flex items-center justify-between">
         <div>
           <span className="font-medium text-sm">{u.email}</span>
@@ -275,9 +275,9 @@ function AdminUsersPanel() {
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6" data-testid="section-admin-users">
+    <div className="rounded-xl border bg-card p-6" data-testid="section-admin-users">
       <div className="flex items-center gap-2 mb-4">
-        <Shield className="h-5 w-5 text-gray-600" />
+        <Shield className="h-5 w-5 text-muted-foreground" />
         <h2 className="text-lg font-semibold">Użytkownicy admin</h2>
       </div>
 
@@ -287,8 +287,8 @@ function AdminUsersPanel() {
         ))}
       </div>
 
-      <div className="border-t border-gray-200 pt-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Dodaj nowego admina</h3>
+      <div className="border-t pt-4">
+        <h3 className="text-sm font-semibold text-foreground/80 mb-3">Dodaj nowego admina</h3>
         <form onSubmit={handleAdd} className="space-y-3 max-w-md">
           <Input
             type="email"
@@ -307,7 +307,7 @@ function AdminUsersPanel() {
           <select
             value={newRole}
             onChange={(e) => setNewRole(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             data-testid="select-new-user-role"
           >
             <option value="admin">Admin</option>
@@ -341,22 +341,22 @@ export default function SecurityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-4 py-8">
         <div className="mb-8">
           <button
             type="button"
             onClick={() => setLocation("/")}
-            className="mb-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition"
+            className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition"
             data-testid="button-back-home"
           >
             <ArrowLeft className="h-4 w-4" /> Wróć na stronę
           </button>
           <div className="flex items-center gap-3">
-            <Shield className="h-7 w-7 text-gray-700" />
+            <Shield className="h-7 w-7 text-foreground" />
             <div>
               <h1 className="text-2xl font-bold">Bezpieczeństwo</h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Zalogowany jako: <strong>{adminEmail}</strong>
                 {isSuperAdmin && <span className="ml-1 text-yellow-600">(Super Admin)</span>}
               </p>

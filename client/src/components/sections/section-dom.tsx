@@ -60,7 +60,7 @@ function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) 
         role="dialog"
         aria-modal="true"
         aria-label="Remont Domu Gościnnego"
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
         data-testid="remont-modal"
       >
@@ -68,7 +68,7 @@ function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           ref={closeBtnRef}
           onClick={onClose}
           aria-label="Zamknij"
-          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white hover:text-foreground"
+          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 dark:bg-card/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white dark:hover:bg-card hover:text-foreground"
           data-testid="remont-modal-close"
         >
           <X className="h-4 w-4" />
@@ -120,7 +120,7 @@ export function SectionDomGoscinny() {
       </div>
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
-        <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-dom-pokoje">
+        <Card className="rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-pokoje">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 mb-4">
             <MapPin className="h-6 w-6 text-blue-600" />
           </div>
@@ -132,7 +132,7 @@ export function SectionDomGoscinny() {
           </p>
         </Card>
 
-        <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-dom-kuchnia">
+        <Card className="rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-kuchnia">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 mb-4">
             <Heart className="h-6 w-6 text-amber-600" />
           </div>
@@ -144,7 +144,7 @@ export function SectionDomGoscinny() {
           </p>
         </Card>
 
-        <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-dom-wspomnienia">
+        <Card className="rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-wspomnienia">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 mb-4">
             <BookOpen className="h-6 w-6 text-green-600" />
           </div>

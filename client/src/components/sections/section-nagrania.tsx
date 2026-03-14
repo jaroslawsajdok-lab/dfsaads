@@ -43,12 +43,12 @@ function YtScrollRow({ videos }: { videos: YtVideo[] }) {
         <h3 className="font-display text-2xl tracking-tight">Starsze transmisje</h3>
         <div className="flex gap-1">
           {canScrollLeft && (
-            <button onClick={() => scroll(-1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w lewo">
+            <button onClick={() => scroll(-1)} className="rounded-full border bg-card p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w lewo">
               <ChevronLeft className="h-4 w-4" />
             </button>
           )}
           {canScrollRight && (
-            <button onClick={() => scroll(1)} className="rounded-full border bg-white p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w prawo">
+            <button onClick={() => scroll(1)} className="rounded-full border bg-card p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w prawo">
               <ChevronRight className="h-4 w-4" />
             </button>
           )}
@@ -68,11 +68,11 @@ function YtScrollRow({ videos }: { videos: YtVideo[] }) {
             className="w-[280px] flex-shrink-0 snap-start sm:w-[300px] group"
             data-testid={`card-yt-scroll-${v.id}`}
           >
-            <Card className="overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:shadow-md">
+            <Card className="overflow-hidden rounded-2xl border bg-white/80 dark:bg-card/80 backdrop-blur transition hover:shadow-md">
               <div className="relative aspect-video w-full overflow-hidden bg-muted">
                 <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
-                  <div className="rounded-full bg-white/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
+                  <div className="rounded-full bg-white/90 dark:bg-card/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
                 </div>
               </div>
               <div className="p-3">
@@ -146,11 +146,11 @@ export function SectionNagrania({ ytVideos, recordingsData }: { ytVideos: any[];
                   className="group"
                   data-testid={`card-yt-video-${v.id}`}
                 >
-                  <Card className="overflow-hidden rounded-2xl border bg-white/80 backdrop-blur transition hover:shadow-md">
+                  <Card className="overflow-hidden rounded-2xl border bg-white/80 dark:bg-card/80 backdrop-blur transition hover:shadow-md">
                     <div className="relative aspect-video w-full overflow-hidden bg-muted">
                       <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
-                        <div className="rounded-full bg-white/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
+                        <div className="rounded-full bg-white/90 dark:bg-card/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
                       </div>
                     </div>
                     <div className="p-4">
@@ -168,7 +168,7 @@ export function SectionNagrania({ ytVideos, recordingsData }: { ytVideos: any[];
             {recordingsData.slice(0, 3).map((r) => (
               <Card
                 key={r.id}
-                className="group rounded-2xl border bg-white/80 p-5 backdrop-blur"
+                className="group rounded-2xl border bg-white/80 dark:bg-card/80 p-5 backdrop-blur"
                 data-testid={`card-recording-${r.id}`}
               >
                 <div className="flex items-center justify-between">

@@ -33,7 +33,7 @@ export function SectionKontakt({ contactData }: { contactData: { address: string
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
-          <Card className="rounded-2xl border bg-white/80 p-6 backdrop-blur" data-testid="card-contact-details">
+          <Card className="rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-contact-details">
             <div className="space-y-4">
               <div className="flex items-start gap-3" data-testid="row-contact-address">
                 <MapPin className="mt-0.5 h-5 w-5 text-primary" />
