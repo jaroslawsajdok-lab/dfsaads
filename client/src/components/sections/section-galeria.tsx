@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { apiFetch } from "@/lib/home-helpers";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
+import { GalleryLightbox } from "@/components/gallery-lightbox";
 import { ChevronRight, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -17,23 +18,29 @@ export function SectionGaleria() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadCount, setUploadCount] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const preview = galleries.slice(0, 8);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setUploading(true);
+    setUploadCount(files.length);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-      if (!uploadRes.ok) throw new Error("Błąd wysyłania pliku");
-      const { url } = await uploadRes.json();
-      await apiRequest("POST", "/api/galleries", { title: file.name, image_url: url, sort_order: galleries.length });
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+        if (!uploadRes.ok) continue;
+        const { url } = await uploadRes.json();
+        await apiRequest("POST", "/api/galleries", { title: file.name.replace(/\.[^.]+$/, ""), image_url: url, sort_order: galleries.length });
+      }
       qc.invalidateQueries({ queryKey: ["galleries"] });
     } finally {
       setUploading(false);
+      setUploadCount(0);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
@@ -43,6 +50,12 @@ export function SectionGaleria() {
     await apiRequest("DELETE", `/api/galleries/${id}`);
     qc.invalidateQueries({ queryKey: ["galleries"] });
   };
+
+  const lightboxImages = preview.map((g: any) => ({ id: g.id, url: g.image_url, title: g.title || "" }));
+
+  const openLightbox = useCallback((idx: number) => {
+    if (!isEditMode) setLightboxIndex(idx);
+  }, [isEditMode]);
 
   return (
     <section id="galeria" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-galeria" aria-label="Galeria">
@@ -57,12 +70,15 @@ export function SectionGaleria() {
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {preview.map((g: any) => (
-          <Link
+        {preview.map((g: any, idx: number) => (
+          <div
             key={g.id}
-            href="/galeria"
-            className="group relative aspect-[4/3] overflow-hidden rounded-2xl border bg-muted"
+            className="group relative aspect-[4/3] cursor-pointer overflow-hidden rounded-2xl border bg-muted"
             data-testid={`tile-gallery-${g.id}`}
+            onClick={() => openLightbox(idx)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter") openLightbox(idx); }}
           >
             <img
               src={g.image_url}
@@ -81,7 +97,7 @@ export function SectionGaleria() {
                 <X className="h-3 w-3" />
               </button>
             )}
-          </Link>
+          </div>
         ))}
 
         {preview.length === 0 && !isEditMode && (
@@ -96,14 +112,14 @@ export function SectionGaleria() {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-full border border-dashed border-yellow-400 bg-white/80 px-4 py-2 text-sm text-yellow-600 transition hover:bg-yellow-50"
+            className="flex items-center gap-1.5 rounded-full border border-dashed border-yellow-400 bg-white/80 px-4 py-2 text-sm text-yellow-600 transition hover:bg-yellow-50 dark:bg-card dark:hover:bg-card/80"
             disabled={uploading}
             data-testid="button-add-gallery-photo"
           >
             <ImagePlus className="h-4 w-4" />
-            {uploading ? "Wysyłanie…" : "Dodaj zdjęcie"}
+            {uploading ? `Wysyłanie (${uploadCount})…` : "Dodaj zdjęcia"}
           </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
         </div>
       )}
 
@@ -116,6 +132,15 @@ export function SectionGaleria() {
             </Link>
           </Button>
         </div>
+      )}
+
+      {lightboxIndex !== null && (
+        <GalleryLightbox
+          images={lightboxImages}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
       )}
     </section>
   );

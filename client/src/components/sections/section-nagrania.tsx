@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { formatDatePL } from "@/lib/home-helpers";
+import { formatDatePL, apiFetch } from "@/lib/home-helpers";
 import type { RecordingItem, YtVideo } from "@/lib/home-helpers";
 import { EditableStaticText, EditableText, AdminItemActions, AdminAddButton, SectionReorderControls } from "@/components/admin-tools";
 import { ChevronLeft, ChevronRight, Play, Youtube } from "lucide-react";
@@ -88,6 +89,11 @@ function YtScrollRow({ videos }: { videos: YtVideo[] }) {
 
 export function SectionNagrania({ ytVideos, recordingsData }: { ytVideos: any[]; recordingsData: RecordingItem[] }) {
   const { isEditMode } = useAuth();
+  const { data: ytUrlData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "youtube_url"],
+    queryFn: () => apiFetch("/api/admin/settings/youtube_url"),
+  });
+  const ytUrl = ytUrlData?.value || "https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g";
   return (
     <section id="nagrania" className="relative bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-nagrania" aria-label="Nagrania">
       <SectionReorderControls sectionId="nagrania" />
@@ -120,11 +126,7 @@ export function SectionNagrania({ ytVideos, recordingsData }: { ytVideos: any[];
               asChild
               data-testid="button-recordings-youtube"
             >
-              <a
-                href="https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g"
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={ytUrl} target="_blank" rel="noreferrer">
                 <Youtube className="mr-2 h-4 w-4" />
                 YouTube
               </a>

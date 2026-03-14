@@ -80,6 +80,11 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 8. **Przelewy24 placeholder** — hidden donation section prepared for future P24 integration; visible only in admin mode
 9. **Database file storage** — uploaded images/videos are stored as base64 in PostgreSQL `files` table (not on disk), served via `GET /api/files/:id` with MIME allowlist and cache headers; survives ephemeral filesystem restarts
 10. **Accessibility panel** — floating bottom-left button opens panel with font size (normal/large/largest), high contrast, and underline links toggles; preferences saved to localStorage; CSS classes applied to `<html>` element
+11. **Dark mode** — moon/sun toggle in accessibility panel; persists to `localStorage("dark_mode")`; respects `prefers-color-scheme`; uses Tailwind `.dark` class on `<html>`
+12. **Gallery lightbox** — full-screen photo viewer with keyboard navigation (arrow keys, Escape); reusable `GalleryLightbox` component used on both homepage preview and `/galeria` subpage
+13. **Gallery multi-upload** — admin can upload multiple photos at once; homepage section and subpage both support batch uploading
+14. **Configurable social links** — Facebook and YouTube URLs stored as admin settings (`facebook_url`, `youtube_url`); editable from admin floating bar; used in Aktualności section, Nagrania section, contact section, and footer
+15. **Reduced motion support** — `useReducedMotion()` hook respects `prefers-reduced-motion` media query; used in lightbox animations
 
 ## External Dependencies
 

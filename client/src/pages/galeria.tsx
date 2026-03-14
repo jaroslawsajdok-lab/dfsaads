@@ -4,10 +4,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { GalleryLightbox } from "@/components/gallery-lightbox";
 import { ImageIcon, Plus, Trash2, Pencil, Save, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 
 type GalleryItem = {
   id: number;
@@ -35,11 +36,15 @@ export default function GaleriaPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const multiFileRef = useRef<HTMLInputElement>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
+
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -61,26 +66,19 @@ export default function GaleriaPage() {
   const handleAddPhoto = async () => {
     const file = fileRef.current?.files?.[0];
     if (!file || !newTitle.trim()) return;
-
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
       if (!uploadRes.ok) throw new Error("Upload failed");
       const { url } = await uploadRes.json();
-
       await apiRequest("POST", "/api/galleries", {
         title: newTitle.trim(),
         description: newDesc.trim() || null,
         image_url: url,
         sort_order: galleries.length,
       });
-
       qc.invalidateQueries({ queryKey: ["galleries"] });
       setNewTitle("");
       setNewDesc("");
@@ -93,28 +91,76 @@ export default function GaleriaPage() {
     }
   };
 
+  const handleMultiUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    let done = 0;
+    setUploadProgress(`0 / ${files.length}`);
+    try {
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+        if (!uploadRes.ok) { done++; continue; }
+        const { url } = await uploadRes.json();
+        await apiRequest("POST", "/api/galleries", {
+          title: file.name.replace(/\.[^.]+$/, ""),
+          image_url: url,
+          sort_order: galleries.length + done,
+        });
+        done++;
+        setUploadProgress(`${done} / ${files.length}`);
+      }
+      qc.invalidateQueries({ queryKey: ["galleries"] });
+    } finally {
+      setUploading(false);
+      setUploadProgress("");
+      if (multiFileRef.current) multiFileRef.current.value = "";
+    }
+  };
+
   const startEdit = (g: GalleryItem) => {
     setEditingId(g.id);
     setEditTitle(g.title);
     setEditDesc(g.description || "");
   };
 
+  const lightboxImages = galleries.map((g) => ({ id: g.id, url: g.image_url, title: g.title }));
+
+  const openLightbox = useCallback((idx: number) => {
+    if (!isEditMode) setLightboxIndex(idx);
+  }, [isEditMode]);
+
   return (
     <SubpageLayout title="Galeria" titleKey="subpage_galeria_title">
       {isEditMode && (
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           {!showAddForm ? (
-            <Button
-              onClick={() => setShowAddForm(true)}
-              variant="outline"
-              className="gap-2"
-              data-testid="button-add-gallery"
-            >
-              <Plus className="h-4 w-4" />
-              Dodaj zdjęcie
-            </Button>
+            <>
+              <Button
+                onClick={() => setShowAddForm(true)}
+                variant="outline"
+                className="gap-2"
+                data-testid="button-add-gallery"
+              >
+                <Plus className="h-4 w-4" />
+                Dodaj zdjęcie
+              </Button>
+              <Button
+                onClick={() => multiFileRef.current?.click()}
+                variant="outline"
+                className="gap-2"
+                disabled={uploading}
+                data-testid="button-multi-upload"
+              >
+                <Plus className="h-4 w-4" />
+                {uploading ? `Wgrywanie ${uploadProgress}` : "Wgraj wiele zdjęć"}
+              </Button>
+              <input ref={multiFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleMultiUpload} />
+            </>
           ) : (
-            <Card className="p-4 space-y-3" data-testid="form-add-gallery">
+            <Card className="w-full p-4 space-y-3" data-testid="form-add-gallery">
               <h3 className="font-semibold text-sm">Dodaj nowe zdjęcie</h3>
               <Input
                 placeholder="Tytuł zdjęcia"
@@ -137,20 +183,10 @@ export default function GaleriaPage() {
                 data-testid="input-gallery-file"
               />
               <div className="flex gap-2">
-                <Button
-                  onClick={handleAddPhoto}
-                  disabled={uploading || !newTitle.trim()}
-                  size="sm"
-                  data-testid="button-save-gallery"
-                >
+                <Button onClick={handleAddPhoto} disabled={uploading || !newTitle.trim()} size="sm" data-testid="button-save-gallery">
                   {uploading ? "Wgrywanie…" : "Zapisz"}
                 </Button>
-                <Button
-                  onClick={() => setShowAddForm(false)}
-                  variant="ghost"
-                  size="sm"
-                  data-testid="button-cancel-gallery"
-                >
+                <Button onClick={() => setShowAddForm(false)} variant="ghost" size="sm" data-testid="button-cancel-gallery">
                   Anuluj
                 </Button>
               </div>
@@ -169,11 +205,12 @@ export default function GaleriaPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="galeria-grid">
-          {galleries.map((g) => (
+          {galleries.map((g, idx) => (
             <Card
               key={g.id}
-              className="group overflow-hidden relative"
+              className="group overflow-hidden relative cursor-pointer"
               data-testid={`card-gallery-${g.id}`}
+              onClick={() => openLightbox(idx)}
             >
               {g.image_url ? (
                 <div className="aspect-[4/3] w-full overflow-hidden">
@@ -186,92 +223,37 @@ export default function GaleriaPage() {
                   />
                 </div>
               ) : (
-                <div
-                  className="flex aspect-[4/3] w-full items-center justify-center bg-muted"
-                  data-testid={`placeholder-gallery-${g.id}`}
-                >
+                <div className="flex aspect-[4/3] w-full items-center justify-center bg-muted" data-testid={`placeholder-gallery-${g.id}`}>
                   <ImageIcon className="h-12 w-12 text-muted-foreground/40" aria-hidden="true" />
                 </div>
               )}
               <div className="p-4">
                 {editingId === g.id ? (
-                  <div className="space-y-2">
-                    <Input
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="text-sm"
-                      autoFocus
-                      data-testid={`input-edit-title-${g.id}`}
-                    />
-                    <Textarea
-                      value={editDesc}
-                      onChange={(e) => setEditDesc(e.target.value)}
-                      className="min-h-[40px] text-sm"
-                      placeholder="Opis"
-                      data-testid={`input-edit-desc-${g.id}`}
-                    />
+                  <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                    <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" autoFocus data-testid={`input-edit-title-${g.id}`} />
+                    <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="min-h-[40px] text-sm" placeholder="Opis" data-testid={`input-edit-desc-${g.id}`} />
                     <div className="flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => updateMutation.mutate({ id: g.id, title: editTitle, description: editDesc })}
-                        className="rounded p-1 text-green-600 hover:bg-green-50"
-                        data-testid={`button-save-edit-${g.id}`}
-                        aria-label="Zapisz zmiany"
-                      >
+                      <button type="button" onClick={() => updateMutation.mutate({ id: g.id, title: editTitle, description: editDesc })} className="rounded p-1 text-green-600 hover:bg-green-50" data-testid={`button-save-edit-${g.id}`} aria-label="Zapisz zmiany">
                         <Save className="h-4 w-4" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(null)}
-                        className="rounded p-1 text-red-500 hover:bg-red-50"
-                        data-testid={`button-cancel-edit-${g.id}`}
-                        aria-label="Anuluj edycję"
-                      >
+                      <button type="button" onClick={() => setEditingId(null)} className="rounded p-1 text-red-500 hover:bg-red-50" data-testid={`button-cancel-edit-${g.id}`} aria-label="Anuluj edycję">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <h3
-                      className="font-display text-lg tracking-[-0.01em]"
-                      data-testid={`text-gallery-title-${g.id}`}
-                    >
-                      {g.title}
-                    </h3>
-                    {g.description && (
-                      <p
-                        className="mt-1 text-sm text-muted-foreground"
-                        data-testid={`text-gallery-desc-${g.id}`}
-                      >
-                        {g.description}
-                      </p>
-                    )}
+                    <h3 className="font-display text-lg tracking-[-0.01em]" data-testid={`text-gallery-title-${g.id}`}>{g.title}</h3>
+                    {g.description && <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap" data-testid={`text-gallery-desc-${g.id}`}>{g.description}</p>}
                   </>
                 )}
               </div>
               {isEditMode && editingId !== g.id && (
-                <div className="absolute top-2 right-2 flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(g)}
-                    className="rounded-full bg-white/90 p-1.5 shadow-sm hover:bg-white transition"
-                    data-testid={`button-edit-gallery-${g.id}`}
-                    aria-label={`Edytuj ${g.title}`}
-                  >
-                    <Pencil className="h-3.5 w-3.5 text-gray-600" />
+                <div className="absolute top-2 right-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" onClick={() => startEdit(g)} className="rounded-full bg-white/90 p-1.5 shadow-sm hover:bg-white transition dark:bg-card" data-testid={`button-edit-gallery-${g.id}`} aria-label={`Edytuj ${g.title}`}>
+                    <Pencil className="h-3.5 w-3.5 text-gray-600 dark:text-gray-300" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm("Czy na pewno chcesz usunąć to zdjęcie?")) {
-                        deleteMutation.mutate(g.id);
-                      }
-                    }}
-                    className="rounded-full bg-white/90 p-1.5 shadow-sm hover:bg-red-50 transition"
-                    data-testid={`button-delete-gallery-${g.id}`}
-                    aria-label={`Usuń ${g.title}`}
-                  >
+                  <button type="button" onClick={() => { if (confirm("Czy na pewno chcesz usunąć to zdjęcie?")) deleteMutation.mutate(g.id); }} className="rounded-full bg-white/90 p-1.5 shadow-sm hover:bg-red-50 transition dark:bg-card" data-testid={`button-delete-gallery-${g.id}`} aria-label={`Usuń ${g.title}`}>
                     <Trash2 className="h-3.5 w-3.5 text-red-500" />
                   </button>
                 </div>
@@ -279,6 +261,15 @@ export default function GaleriaPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {lightboxIndex !== null && (
+        <GalleryLightbox
+          images={lightboxImages}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
       )}
     </SubpageLayout>
   );

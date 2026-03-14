@@ -1,10 +1,17 @@
-import { PARISH_LOGO_SRC, scrollToId } from "@/lib/home-helpers";
+import { useQuery } from "@tanstack/react-query";
+import { PARISH_LOGO_SRC, scrollToId, apiFetch } from "@/lib/home-helpers";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
 import { FacebookFeed } from "@/components/sections/facebook-feed";
 import { Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function SectionAktualnosci() {
+  const { data: fbUrlData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "facebook_url"],
+    queryFn: () => apiFetch("/api/admin/settings/facebook_url"),
+  });
+  const fbUrl = fbUrlData?.value || "https://www.facebook.com/wislajawornik";
+
   return (
     <section id="aktualnosci" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-aktualnosci">
       <SectionReorderControls sectionId="aktualnosci" />
@@ -49,7 +56,7 @@ export function SectionAktualnosci() {
           </p>
         </div>
         <Button variant="secondary" className="rounded-xl" asChild data-testid="button-news-facebook">
-          <a href="https://www.facebook.com/wislajawornik" target="_blank" rel="noreferrer">
+          <a href={fbUrl} target="_blank" rel="noreferrer">
             <Facebook className="mr-2 h-4 w-4" />
             Facebook
           </a>

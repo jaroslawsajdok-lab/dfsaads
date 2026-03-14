@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
+import { apiFetch } from "@/lib/home-helpers";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
 import { Facebook, Heart, Mail, MapPin, Phone, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +9,16 @@ import { Separator } from "@/components/ui/separator";
 
 export function SectionKontakt({ contactData }: { contactData: { address: string; phone: string; email: string; hours: string } }) {
   const { isEditMode } = useAuth();
+  const { data: fbUrlData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "facebook_url"],
+    queryFn: () => apiFetch("/api/admin/settings/facebook_url"),
+  });
+  const { data: ytUrlData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "youtube_url"],
+    queryFn: () => apiFetch("/api/admin/settings/youtube_url"),
+  });
+  const fbUrl = fbUrlData?.value || "https://www.facebook.com/wislajawornik";
+  const ytUrl = ytUrlData?.value || "https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g";
   return (
     <section id="kontakt" className="relative bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-kontakt" aria-label="Kontakt">
       <SectionReorderControls sectionId="kontakt" />
@@ -74,7 +86,7 @@ export function SectionKontakt({ contactData }: { contactData: { address: string
                   asChild
                   data-testid="button-contact-facebook"
                 >
-                  <a href="https://www.facebook.com/wislajawornik" target="_blank" rel="noreferrer">
+                  <a href={fbUrl} target="_blank" rel="noreferrer">
                     <Facebook className="mr-2 h-4 w-4" />
                     Facebook
                   </a>
@@ -85,11 +97,7 @@ export function SectionKontakt({ contactData }: { contactData: { address: string
                   asChild
                   data-testid="button-contact-youtube"
                 >
-                  <a
-                    href="https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <a href={ytUrl} target="_blank" rel="noreferrer">
                     <Youtube className="mr-2 h-4 w-4" />
                     YouTube
                   </a>

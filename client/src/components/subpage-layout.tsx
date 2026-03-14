@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReactNode } from "react";
 import { EditableStaticText } from "@/pages/home";
+import { SiteFooter } from "@/components/sections/site-footer";
 
 export function SubpageLayout({
   title,
@@ -14,13 +15,15 @@ export function SubpageLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-white" data-testid="subpage-layout">
+    <div className="min-h-screen bg-background" data-testid="subpage-layout">
       <header className="mx-auto flex max-w-6xl items-center gap-4 px-5 pt-6 sm:px-8">
         <Link href="/">
           <img
             src="/parish-cross.svg"
             alt="Logo Parafii"
             className="h-20 w-auto object-contain"
+            loading="lazy"
+            decoding="async"
             data-testid="img-subpage-logo"
           />
         </Link>
@@ -53,9 +56,7 @@ export function SubpageLayout({
         {children}
       </main>
 
-      <footer className="border-t py-8 text-center text-sm text-muted-foreground" data-testid="subpage-footer" role="contentinfo">
-        © {new Date().getFullYear()} <EditableStaticText textKey="subpage_footer" defaultValue="Parafia Ewangelicko-Augsburska w Wiśle Jaworniku" />
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
