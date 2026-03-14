@@ -122,3 +122,24 @@ export const files = pgTable("files", {
   data: text("data").notNull(),
   created_at: timestamp("created_at").defaultNow(),
 });
+
+export const adminUsers = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  password_hash: text("password_hash").notNull(),
+  role: text("role").notNull().default("admin"),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, created_at: true });
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+export type AdminUser = typeof adminUsers.$inferSelect;
+
+export const verificationCodes = pgTable("verification_codes", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").notNull(),
+  code: text("code").notNull(),
+  expires_at: timestamp("expires_at").notNull(),
+  used: integer("used").notNull().default(0),
+  created_at: timestamp("created_at").defaultNow(),
+});

@@ -15,6 +15,7 @@ import GrupyPage from "@/pages/grupy";
 import NagraniaPage from "@/pages/nagrania";
 import GaleriaPage from "@/pages/galeria";
 import FaqPage from "@/pages/faq-page";
+import SecurityPage from "@/pages/security";
 
 const PARISH_LOGO_SRC = "/parish-cross.svg";
 
@@ -71,6 +72,7 @@ function Router() {
       <Route path="/nagrania" component={NagraniaPage} />
       <Route path="/galeria" component={GaleriaPage} />
       <Route path="/faq" component={FaqPage} />
+      <Route path="/bezpieczenstwo" component={SecurityPage} />
       <Route component={NotFound} />
     </Switch>
   );

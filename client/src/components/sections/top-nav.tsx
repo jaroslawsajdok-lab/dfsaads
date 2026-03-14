@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { cx, scrollToId, PARISH_LOGO_SRC, CROSS_H_DESKTOP } from "@/lib/home-helpers";
 import { EditableStaticText, useNavItems, useSectionOrder } from "@/components/admin-tools";
-import { ChevronDown, ChevronUp, LogIn, LogOut, Settings } from "lucide-react";
+import { ChevronDown, ChevronUp, LogIn, LogOut, Settings, Shield, Mail, ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -44,45 +45,145 @@ export function useStickyNavTrigger() {
 }
 
 function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { login } = useAuth();
+  const { login, verifyCode, resendCode } = useAuth();
+  const [step, setStep] = useState<"credentials" | "code">("credentials");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const resetForm = () => {
+    setStep("credentials");
+    setEmail("");
+    setPassword("");
+    setCode("");
+    setError("");
+    setLoading(false);
+    setResendMsg("");
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const ok = await login(password);
-    if (ok) { onOpenChange(false); setPassword(""); }
-    else setError("Nieprawidłowe hasło");
+    setLoading(true);
+    const result = await login(email, password);
+    setLoading(false);
+    if (result.ok && result.step === "verify_code") {
+      setStep("code");
+    } else if (!result.ok) {
+      setError(result.error || "Błąd logowania");
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const result = await verifyCode(code);
+    setLoading(false);
+    if (result.ok) {
+      resetForm();
+      onOpenChange(false);
+    } else {
+      setError(result.error || "Nieprawidłowy kod");
+    }
+  };
+
+  const handleResend = async () => {
+    setError("");
+    setResendMsg("");
+    const result = await resendCode();
+    if (result.ok) {
+      setResendMsg("Wysłano nowy kod");
+      setTimeout(() => setResendMsg(""), 3000);
+    } else {
+      setError(result.error || "Nie udało się wysłać kodu");
+    }
   };
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" data-testid="dialog-login-backdrop" onClick={() => onOpenChange(false)}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" data-testid="dialog-login-backdrop" onClick={() => { resetForm(); onOpenChange(false); }}>
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()} data-testid="dialog-login">
-        <h3 className="font-display text-xl" data-testid="text-login-title">Panel administracyjny</h3>
-        <p className="mt-1 text-sm text-muted-foreground" data-testid="text-login-subtitle">Zaloguj się, aby edytować treści.</p>
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <Input
-            type="password"
-            placeholder="Hasło"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoFocus
-            data-testid="input-login-password"
-          />
-          {error && <p className="text-sm text-red-500" data-testid="text-login-error">{error}</p>}
-          <div className="flex gap-2">
-            <Button type="submit" className="flex-1 rounded-xl" data-testid="button-login-submit">
-              <LogIn className="mr-2 h-4 w-4" />
-              Zaloguj
-            </Button>
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)} data-testid="button-login-cancel">
-              Anuluj
-            </Button>
-          </div>
-        </form>
+        {step === "credentials" ? (
+          <>
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="h-5 w-5 text-gray-600" />
+              <h3 className="font-display text-xl" data-testid="text-login-title">Panel administracyjny</h3>
+            </div>
+            <p className="text-sm text-muted-foreground" data-testid="text-login-subtitle">Zaloguj się, aby edytować treści.</p>
+            <form onSubmit={handleLogin} className="mt-4 space-y-3">
+              <Input
+                type="email"
+                placeholder="Adres email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+                data-testid="input-login-email"
+              />
+              <Input
+                type="password"
+                placeholder="Hasło"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                data-testid="input-login-password"
+              />
+              {error && <p className="text-sm text-red-500" data-testid="text-login-error">{error}</p>}
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1 rounded-xl" disabled={loading} data-testid="button-login-submit">
+                  {loading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                  {loading ? "Wysyłanie kodu..." : "Zaloguj"}
+                </Button>
+                <Button type="button" variant="outline" className="rounded-xl" onClick={() => { resetForm(); onOpenChange(false); }} data-testid="button-login-cancel">
+                  Anuluj
+                </Button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-1">
+              <Mail className="h-5 w-5 text-blue-500" />
+              <h3 className="font-display text-xl" data-testid="text-code-title">Weryfikacja</h3>
+            </div>
+            <p className="text-sm text-muted-foreground" data-testid="text-code-subtitle">
+              Wysłaliśmy 6-cyfrowy kod na <strong>{email}</strong>
+            </p>
+            <form onSubmit={handleVerify} className="mt-4 space-y-3">
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="Wpisz 6-cyfrowy kod"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                autoFocus
+                className="text-center text-2xl tracking-[0.3em] font-mono"
+                data-testid="input-login-code"
+              />
+              {error && <p className="text-sm text-red-500" data-testid="text-code-error">{error}</p>}
+              {resendMsg && <p className="text-sm text-green-600" data-testid="text-code-resent">{resendMsg}</p>}
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1 rounded-xl" disabled={loading || code.length !== 6} data-testid="button-code-submit">
+                  {loading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                  {loading ? "Weryfikacja..." : "Potwierdź"}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <button type="button" onClick={() => { setStep("credentials"); setCode(""); setError(""); }} className="text-gray-500 hover:text-gray-700 flex items-center gap-1" data-testid="button-code-back">
+                  <ArrowLeft className="h-3 w-3" /> Wróć
+                </button>
+                <button type="button" onClick={handleResend} className="text-blue-500 hover:text-blue-700 flex items-center gap-1" data-testid="button-code-resend">
+                  <RefreshCw className="h-3 w-3" /> Wyślij ponownie
+                </button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
@@ -134,6 +235,7 @@ export function TopNav({ shown }: { shown: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const { isAdmin, isEditMode, setEditMode, logout } = useAuth();
+  const [, setLocation] = useLocation();
   const NAV_ITEMS = useNavItems();
 
   const desktopBarH = Math.round(CROSS_H_DESKTOP * 0.2752);
@@ -345,6 +447,15 @@ export function TopNav({ shown }: { shown: boolean }) {
                     >
                       <Settings className="h-3.5 w-3.5" />
                       {isEditMode ? "Wyłącz edycję" : "Włącz edycję"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setLocation("/bezpieczenstwo"); setMenuOpen(false); }}
+                      className="flex items-center gap-2 px-5 py-3 text-left text-[13px] text-gray-500 transition-colors hover:bg-gray-100"
+                      data-testid="link-dropdown-security"
+                    >
+                      <Shield className="h-3.5 w-3.5" />
+                      Bezpieczeństwo
                     </button>
                     <button
                       type="button"

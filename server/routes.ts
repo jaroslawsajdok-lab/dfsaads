@@ -14,11 +14,28 @@ import multer from "multer";
 import RssParser from "rss-parser";
 import crypto from "crypto";
 import ical from "node-ical";
+import { sendVerificationCode } from "./email";
 
 declare module "express-session" {
   interface SessionData {
     isAdmin?: boolean;
+    adminUserId?: number;
+    adminRole?: string;
+    adminEmail?: string;
+    pendingUserId?: number;
   }
+}
+
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+function rateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + 60000 });
+    return false;
+  }
+  entry.count++;
+  return entry.count > 5;
 }
 
 const BNCD_API_KEY = process.env.BNCD_API_KEY || "";
@@ -337,6 +354,7 @@ async function seedIfEmpty() {
     const defaultHash = await bcrypt.hash("admin123", 10);
     await storage.setAdminSetting("admin_password_hash", defaultHash);
   }
+
 }
 
 async function clearStaleUploads() {
@@ -361,14 +379,21 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   res.status(401).json({ message: "Unauthorized" });
 }
 
+function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.session?.isAdmin && req.session?.adminRole === "super_admin") {
+    return next();
+  }
+  res.status(403).json({ message: "Forbidden" });
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  const MemoryStore = (await import("memorystore")).default(session);
+  const PgSession = (await import("connect-pg-simple")).default(session);
   app.use(
     session({
-      store: new MemoryStore({ checkPeriod: 86400000 }),
+      store: new PgSession({ pool, tableName: "session", createTableIfMissing: false }),
       secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
       resave: false,
       saveUninitialized: false,
@@ -385,42 +410,202 @@ export async function registerRoutes(
   await seedIfEmpty();
   await clearStaleUploads();
 
-  // ── Auth ──
+  const existingUsers = await storage.getAdminUsers();
+  if (existingUsers.length === 0) {
+    const defaultHash = await bcrypt.hash("admin123", 10);
+    await storage.createAdminUser({ email: "jaroslawsajdok@gmail.com", password_hash: defaultHash, role: "super_admin" });
+    await storage.createAdminUser({ email: "marcin.podzorski@gmail.com", password_hash: defaultHash, role: "admin" });
+    console.log("Seeded admin users: jaroslawsajdok@gmail.com (super_admin), marcin.podzorski@gmail.com (admin)");
+  }
+
+  // ── Auth (2FA with email code) ──
   app.post("/api/admin/login", async (req, res) => {
-    const { password } = req.body;
-    if (!password || typeof password !== "string") {
-      return res.status(400).json({ message: "Password required" });
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    if (rateLimit(ip)) {
+      return res.status(429).json({ message: "Zbyt wiele prób. Spróbuj za minutę." });
     }
 
-    let hash = await storage.getAdminSetting("admin_password_hash");
-    if (!hash) {
-      hash = await bcrypt.hash(password, 10);
-      await storage.setAdminSetting("admin_password_hash", hash);
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email i hasło są wymagane" });
     }
 
-    const match = await bcrypt.compare(password, hash);
+    const user = await storage.getAdminUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ message: "Nieprawidłowy email lub hasło" });
+    }
+
+    const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
-      return res.status(401).json({ message: "Invalid password" });
+      return res.status(401).json({ message: "Nieprawidłowy email lub hasło" });
     }
 
-    req.session.isAdmin = true;
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    await storage.invalidateUserCodes(user.id);
+    await storage.createVerificationCode(user.id, code, expiresAt);
+
+    const sent = await sendVerificationCode(user.email, code);
+    if (!sent) {
+      return res.status(500).json({ message: "Nie udało się wysłać kodu. Sprawdź konfigurację SMTP." });
+    }
+
+    req.session.pendingUserId = user.id;
     req.session.save((err) => {
       if (err) {
-        console.error("Session save error:", err);
         return res.status(500).json({ message: "Session save failed" });
       }
-      res.json({ ok: true });
+      res.json({ ok: true, step: "verify_code", email: user.email });
     });
   });
 
+  app.post("/api/admin/verify-code", async (req, res) => {
+    const { code } = req.body;
+    const pendingUserId = req.session.pendingUserId;
+
+    if (!pendingUserId || !code) {
+      return res.status(400).json({ message: "Brak sesji logowania lub kodu" });
+    }
+
+    const valid = await storage.getValidVerificationCode(pendingUserId, code);
+    if (!valid) {
+      return res.status(401).json({ message: "Nieprawidłowy lub wygasły kod" });
+    }
+
+    const user = await storage.getAdminUserById(pendingUserId);
+    if (!user) {
+      return res.status(401).json({ message: "Użytkownik nie istnieje" });
+    }
+
+    req.session.isAdmin = true;
+    req.session.adminUserId = user.id;
+    req.session.adminRole = user.role;
+    req.session.adminEmail = user.email;
+    delete req.session.pendingUserId;
+
+    req.session.save((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Session save failed" });
+      }
+      res.json({ ok: true, role: user.role, email: user.email });
+    });
+  });
+
+  app.post("/api/admin/resend-code", async (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    if (rateLimit(ip)) {
+      return res.status(429).json({ message: "Zbyt wiele prób. Spróbuj za minutę." });
+    }
+
+    const pendingUserId = req.session.pendingUserId;
+    if (!pendingUserId) {
+      return res.status(400).json({ message: "Brak sesji logowania" });
+    }
+
+    const user = await storage.getAdminUserById(pendingUserId);
+    if (!user) {
+      return res.status(400).json({ message: "Użytkownik nie istnieje" });
+    }
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    await storage.invalidateUserCodes(user.id);
+    await storage.createVerificationCode(user.id, code, expiresAt);
+
+    const sent = await sendVerificationCode(user.email, code);
+    if (!sent) {
+      return res.status(500).json({ message: "Nie udało się wysłać kodu" });
+    }
+
+    res.json({ ok: true });
+  });
+
   app.get("/api/admin/session", (req, res) => {
-    res.json({ authenticated: !!req.session?.isAdmin });
+    res.json({
+      authenticated: !!req.session?.isAdmin,
+      role: req.session?.adminRole || null,
+      email: req.session?.adminEmail || null,
+    });
   });
 
   app.post("/api/admin/logout", (req, res) => {
     req.session.destroy(() => {
       res.json({ ok: true });
     });
+  });
+
+  // ── Admin user management (super_admin only) ──
+  app.get("/api/admin/users", requireSuperAdmin, async (_req, res) => {
+    const users = await storage.getAdminUsers();
+    res.json(users.map(u => ({ id: u.id, email: u.email, role: u.role, created_at: u.created_at })));
+  });
+
+  app.post("/api/admin/users", requireSuperAdmin, async (req, res) => {
+    const { email, password, role } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email i hasło są wymagane" });
+    }
+
+    const existing = await storage.getAdminUserByEmail(email);
+    if (existing) {
+      return res.status(409).json({ message: "Użytkownik z tym emailem już istnieje" });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const user = await storage.createAdminUser({
+      email,
+      password_hash: hash,
+      role: role || "admin",
+    });
+    res.json({ id: user.id, email: user.email, role: user.role });
+  });
+
+  app.put("/api/admin/users/:id", requireSuperAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { email, password, role } = req.body;
+    const updates: any = {};
+    if (email) updates.email = email;
+    if (password) updates.password_hash = await bcrypt.hash(password, 10);
+    if (role) updates.role = role;
+
+    const user = await storage.updateAdminUser(id, updates);
+    if (!user) return res.status(404).json({ message: "Nie znaleziono użytkownika" });
+    res.json({ id: user.id, email: user.email, role: user.role });
+  });
+
+  app.delete("/api/admin/users/:id", requireSuperAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const user = await storage.getAdminUserById(id);
+    if (!user) return res.status(404).json({ message: "Nie znaleziono użytkownika" });
+    if (user.role === "super_admin") {
+      const allUsers = await storage.getAdminUsers();
+      const superAdmins = allUsers.filter(u => u.role === "super_admin");
+      if (superAdmins.length <= 1) {
+        return res.status(400).json({ message: "Nie można usunąć ostatniego super admina" });
+      }
+    }
+    await storage.deleteAdminUser(id);
+    res.json({ ok: true });
+  });
+
+  app.put("/api/admin/change-password", requireAdmin, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Oba hasła są wymagane" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Nowe hasło musi mieć minimum 6 znaków" });
+    }
+
+    const user = await storage.getAdminUserById(req.session.adminUserId!);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const match = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!match) return res.status(401).json({ message: "Nieprawidłowe obecne hasło" });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await storage.updateAdminUser(user.id, { password_hash: hash });
+    res.json({ ok: true });
   });
 
   // ── Manual verse ──

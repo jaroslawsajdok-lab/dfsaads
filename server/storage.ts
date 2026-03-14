@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
   news, events, groups, recordings, faq, contactInfo, galleries, adminSettings, posters, galleryAlbums,
+  adminUsers, verificationCodes,
   type News, type InsertNews,
   type Event, type InsertEvent,
   type Group, type InsertGroup,
@@ -12,6 +13,7 @@ import {
   type Gallery, type InsertGallery,
   type Poster, type InsertPoster,
   type GalleryAlbum, type InsertGalleryAlbum,
+  type AdminUser, type InsertAdminUser,
 } from "@shared/schema";
 
 export const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -92,6 +94,28 @@ export async function initializeDatabase() {
       data TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'admin',
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS verification_codes (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS session (
+      sid VARCHAR NOT NULL COLLATE "default",
+      sess JSON NOT NULL,
+      expire TIMESTAMP(6) NOT NULL,
+      PRIMARY KEY (sid)
+    );
+    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON session ("expire");
   `);
 }
 
@@ -134,6 +158,15 @@ export interface IStorage {
   getAdminSetting(key: string): Promise<string | null>;
   setAdminSetting(key: string, value: string): Promise<void>;
   getAllAdminSettings(prefix: string): Promise<{ key: string; value: string }[]>;
+  getAdminUsers(): Promise<AdminUser[]>;
+  getAdminUserByEmail(email: string): Promise<AdminUser | null>;
+  getAdminUserById(id: number): Promise<AdminUser | null>;
+  createAdminUser(user: InsertAdminUser): Promise<AdminUser>;
+  updateAdminUser(id: number, data: Partial<InsertAdminUser>): Promise<AdminUser | null>;
+  deleteAdminUser(id: number): Promise<boolean>;
+  createVerificationCode(userId: number, code: string, expiresAt: Date): Promise<void>;
+  getValidVerificationCode(userId: number, code: string): Promise<boolean>;
+  invalidateUserCodes(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -294,6 +327,46 @@ export class DatabaseStorage implements IStorage {
   async getAllAdminSettings(prefix: string) {
     const rows = await db.select().from(adminSettings);
     return rows.filter(r => r.key.startsWith(prefix)).map(r => ({ key: r.key, value: r.value }));
+  }
+
+  async getAdminUsers() {
+    return db.select().from(adminUsers).orderBy(asc(adminUsers.email));
+  }
+  async getAdminUserByEmail(email: string) {
+    const [row] = await db.select().from(adminUsers).where(eq(adminUsers.email, email.toLowerCase()));
+    return row ?? null;
+  }
+  async getAdminUserById(id: number) {
+    const [row] = await db.select().from(adminUsers).where(eq(adminUsers.id, id));
+    return row ?? null;
+  }
+  async createAdminUser(user: InsertAdminUser) {
+    const [row] = await db.insert(adminUsers).values({ ...user, email: user.email.toLowerCase() }).returning();
+    return row;
+  }
+  async updateAdminUser(id: number, data: Partial<InsertAdminUser>) {
+    if (data.email) data.email = data.email.toLowerCase();
+    const [row] = await db.update(adminUsers).set(data).where(eq(adminUsers.id, id)).returning();
+    return row ?? null;
+  }
+  async deleteAdminUser(id: number) {
+    const result = await db.delete(adminUsers).where(eq(adminUsers.id, id)).returning();
+    return result.length > 0;
+  }
+  async createVerificationCode(userId: number, code: string, expiresAt: Date) {
+    await db.insert(verificationCodes).values({ user_id: userId, code, expires_at: expiresAt });
+  }
+  async getValidVerificationCode(userId: number, code: string) {
+    const [row] = await db.select().from(verificationCodes)
+      .where(eq(verificationCodes.user_id, userId));
+    const valid = row && row.code === code && !row.used && new Date(row.expires_at) > new Date();
+    if (valid) {
+      await db.update(verificationCodes).set({ used: 1 }).where(eq(verificationCodes.id, row.id));
+    }
+    return !!valid;
+  }
+  async invalidateUserCodes(userId: number) {
+    await db.delete(verificationCodes).where(eq(verificationCodes.user_id, userId));
   }
 }
 

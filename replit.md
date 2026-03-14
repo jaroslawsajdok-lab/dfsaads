@@ -35,23 +35,29 @@ The app uses a multi-page layout with wouter routing. The homepage (`client/src/
   - `GET/POST/PUT/DELETE /api/faq` — frequently asked questions
   - `GET/POST/PUT/DELETE /api/contact` — contact information
   - `GET/POST/PUT/DELETE /api/galleries` — photo galleries
-  - `POST /api/admin/login` — admin password authentication
-  - `GET /api/admin/session` — check admin session
+  - `POST /api/admin/login` — step 1: email+password → sends 6-digit code to email
+  - `POST /api/admin/verify-code` — step 2: verify email code → authenticated session
+  - `POST /api/admin/resend-code` — resend verification code
+  - `GET /api/admin/session` — check admin session (includes role, email)
   - `POST /api/admin/logout` — admin logout
+  - `GET/POST/PUT/DELETE /api/admin/users` — admin user management (super_admin only)
+  - `PUT /api/admin/change-password` — change own password
   - `GET/PUT/DELETE /api/admin/manual-verse` — manual weekly verse override
   - `POST /api/upload` — file upload for images (10 MB limit)
   - `POST /api/upload-video` — video upload for hero section (200 MB limit)
   - `GET/PUT /api/admin/settings/:key` — generic admin settings read/write
-- **Auth:** Session-based with bcrypt password hashing, connect-pg-simple session store
-- **Default admin password:** `admin123` (auto-seeded on first run)
-- **Seeding:** The server auto-seeds sample data and default admin password on first run if the database is empty
+- **Auth:** Two-factor authentication with email verification codes. Session-based with bcrypt password hashing, PostgreSQL session store (connect-pg-simple). Rate limited: 5 login attempts per minute per IP.
+- **Admin Roles:** `super_admin` (jaroslawsajdok@gmail.com) has full access including user management; `admin` (marcin.podzorski@gmail.com) can edit content only
+- **Default admin password:** `admin123` (auto-seeded on first run for both users)
+- **Email:** Verification codes sent via Gmail SMTP using `SMTP_USER` and `SMTP_APP_PASSWORD` secrets (nodemailer)
+- **Seeding:** The server auto-seeds sample data, default admin password, and admin users on first run if the database is empty
 
 ### Data Storage
 - **Database:** PostgreSQL (required, via `DATABASE_URL` environment variable)
 - **ORM:** Drizzle ORM with `drizzle-zod` for schema validation
 - **Schema location:** `shared/schema.ts` — shared between client and server
 - **Migration tool:** Drizzle Kit (`npm run db:push` for schema push)
-- **Tables:** `news`, `events`, `groups`, `recordings`, `faq`, `contact_info`, `galleries`, `admin_settings`, `files`
+- **Tables:** `news`, `events`, `groups`, `recordings`, `faq`, `contact_info`, `galleries`, `admin_settings`, `files`, `admin_users`, `verification_codes`, `session`
 - **Connection:** `pg` (node-postgres) pool
 
 ### Shared Code
@@ -97,5 +103,6 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 - **Radix UI** — accessible UI primitives (via shadcn/ui)
 - **Wouter** — client-side routing
 - **Zod** — schema validation
-- **connect-pg-simple** — PostgreSQL session store (available but sessions not currently used)
+- **connect-pg-simple** — PostgreSQL session store for persistent admin sessions
+- **nodemailer** — sends verification code emails via Gmail SMTP
 - **node-ical** — iCal/ICS parser for Google Calendar event feed
