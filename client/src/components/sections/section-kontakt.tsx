@@ -20,7 +20,7 @@ export function SectionKontakt({ contactData }: { contactData: { address: string
   const fbUrl = fbUrlData?.value || "https://www.facebook.com/wislajawornik";
   const ytUrl = ytUrlData?.value || "https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g";
   return (
-    <section id="kontakt" className="relative bg-[linear-gradient(180deg,transparent,hsl(var(--muted)))]" data-testid="section-kontakt" aria-label="Kontakt">
+    <section id="kontakt" className="relative bg-muted" data-testid="section-kontakt" aria-label="Kontakt">
       <SectionReorderControls sectionId="kontakt" />
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
         <div>

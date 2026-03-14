@@ -84,7 +84,7 @@ export function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: 
   return (
     <section
       id="polecamy"
-      className="relative bg-[linear-gradient(180deg,hsl(var(--muted)),transparent)]"
+      className="relative bg-muted"
       data-testid="section-kalendarz"
     >
       <SectionReorderControls sectionId="polecamy" />
