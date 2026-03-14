@@ -84,7 +84,7 @@ export function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: 
   return (
     <section
       id="polecamy"
-      className="relative bg-muted"
+      className="relative"
       data-testid="section-kalendarz"
     >
       <SectionReorderControls sectionId="polecamy" />

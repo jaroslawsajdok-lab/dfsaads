@@ -77,11 +77,11 @@ export default function HomePage() {
 
         <MotionConfig transition={{ layout: { duration: 0.4, ease: "easeInOut" } }}>
           <AnimatePresence mode="popLayout">
-            {sectionOrder.map(id => {
+            {sectionOrder.map((id, i) => {
               const el = renderSection(id);
               if (!el) return null;
               return (
-                <motion.div key={id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                <motion.div key={id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className={i % 2 === 1 ? "bg-muted" : "bg-background"}>
                   {el}
                 </motion.div>
               );

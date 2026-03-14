@@ -291,7 +291,7 @@ export function SectionONas() {
   const [openModal, setOpenModal] = useState<"kim" | "naboz" | "grupy" | null>(null);
 
   return (
-    <section id="onas" className="relative bg-muted" data-testid="section-onas" aria-label="O nas">
+    <section id="onas" className="relative" data-testid="section-onas" aria-label="O nas">
       <SectionReorderControls sectionId="onas" />
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
         <div>
