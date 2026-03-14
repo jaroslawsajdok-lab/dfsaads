@@ -140,7 +140,7 @@ function AdminUserRow({ user: u, onDelete, onUpdate }: { user: AdminUser; onDele
       <div className="flex items-center justify-between">
         <div>
           <span className="font-medium text-sm">{u.email}</span>
-          <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${u.role === "super_admin" ? "bg-yellow-100 text-yellow-800" : "bg-blue-100 text-blue-800"}`}>
+          <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${u.role === "super_admin" ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300" : "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"}`}>
             {u.role === "super_admin" ? "Super Admin" : "Admin"}
           </span>
         </div>
@@ -148,7 +148,7 @@ function AdminUserRow({ user: u, onDelete, onUpdate }: { user: AdminUser; onDele
           <button
             type="button"
             onClick={() => { setResetting(!resetting); setNewPw(""); setMsg(null); }}
-            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-blue-50 hover:text-blue-500"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-500"
             title="Resetuj hasło"
             data-testid={`button-reset-pw-${u.id}`}
           >
@@ -159,7 +159,7 @@ function AdminUserRow({ user: u, onDelete, onUpdate }: { user: AdminUser; onDele
             onClick={() => {
               if (confirm(`Czy na pewno chcesz usunąć ${u.email}?`)) onDelete(u.id);
             }}
-            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500"
             data-testid={`button-delete-user-${u.id}`}
           >
             <Trash2 className="h-4 w-4" />
@@ -189,7 +189,7 @@ function AdminUserRow({ user: u, onDelete, onUpdate }: { user: AdminUser; onDele
           <button
             type="button"
             onClick={() => { setResetting(false); setNewPw(""); setMsg(null); }}
-            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted"
             data-testid={`button-cancel-reset-${u.id}`}
           >
             <X className="h-4 w-4" />
@@ -333,8 +333,8 @@ export default function SecurityPage() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <Shield className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-          <p className="text-gray-500">Musisz być zalogowany, aby zobaczyć tę stronę.</p>
+          <Shield className="mx-auto h-12 w-12 text-muted-foreground/40 mb-4" />
+          <p className="text-muted-foreground">Musisz być zalogowany, aby zobaczyć tę stronę.</p>
         </div>
       </div>
     );

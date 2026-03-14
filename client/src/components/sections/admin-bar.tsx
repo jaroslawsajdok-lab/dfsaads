@@ -60,7 +60,7 @@ function SocialLinksEditor() {
         <Youtube className="h-3.5 w-3.5 text-red-600" />
         <Input value={ytVal} onChange={(e) => setYtVal(e.target.value)} placeholder="URL YouTube" className="h-7 w-40 text-xs" data-testid="input-youtube-url" />
       </div>
-      <button type="button" onClick={() => saveMutation.mutate()} className="rounded p-1 text-green-600 hover:bg-green-50" data-testid="button-save-social">
+      <button type="button" onClick={() => saveMutation.mutate()} className="rounded p-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-400/10" data-testid="button-save-social">
         <Save className="h-4 w-4" />
       </button>
       <button type="button" onClick={() => setOpen(false)} className="rounded p-1 text-muted-foreground hover:bg-muted" data-testid="button-cancel-social">

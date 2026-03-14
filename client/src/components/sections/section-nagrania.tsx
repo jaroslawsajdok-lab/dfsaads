@@ -95,7 +95,7 @@ export function SectionNagrania({ ytVideos, recordingsData }: { ytVideos: any[];
   });
   const ytUrl = ytUrlData?.value || "https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g";
   return (
-    <section id="nagrania" className="relative bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-nagrania" aria-label="Nagrania">
+    <section id="nagrania" className="relative bg-[linear-gradient(180deg,transparent,hsl(var(--muted)))]" data-testid="section-nagrania" aria-label="Nagrania">
       <SectionReorderControls sectionId="nagrania" />
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

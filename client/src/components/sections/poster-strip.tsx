@@ -232,7 +232,7 @@ export function PosterBannerStrip() {
           <div className="relative mx-auto mt-2 flex max-w-6xl items-center justify-center gap-2 px-5">
             <button
               onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-full border border-dashed border-yellow-400 bg-white/80 px-4 py-2 text-sm text-yellow-600 transition hover:bg-yellow-50"
+              className="flex items-center gap-1.5 rounded-full border border-dashed border-yellow-400 bg-white/80 dark:bg-card/80 px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400 transition hover:bg-yellow-50 dark:hover:bg-yellow-400/10"
               disabled={uploading}
               data-testid="button-add-poster"
             >
