@@ -605,6 +605,42 @@ function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
   );
 }
 
+function NavReorderButtons({ sectionId, index, total }: { sectionId: string; index: number; total: number }) {
+  const order = useSectionOrder();
+  const qc = useQueryClient();
+
+  const move = async (dir: -1 | 1) => {
+    const newOrder = [...order];
+    const idx = newOrder.indexOf(sectionId);
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= newOrder.length) return;
+    [newOrder[idx], newOrder[newIdx]] = [newOrder[newIdx], newOrder[idx]];
+    await apiRequest("PUT", "/api/admin/settings/section_order", { value: JSON.stringify(newOrder) });
+    qc.invalidateQueries({ queryKey: ["admin-setting", "section_order"] });
+  };
+
+  return (
+    <div className="flex flex-col mr-2 gap-0.5" data-testid={`nav-reorder-${sectionId}`}>
+      <button
+        onClick={(e) => { e.stopPropagation(); move(-1); }}
+        disabled={index === 0}
+        className="rounded p-0.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-20 transition"
+        data-testid={`button-nav-up-${sectionId}`}
+      >
+        <ChevronUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); move(1); }}
+        disabled={index === total - 1}
+        className="rounded p-0.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-20 transition"
+        data-testid={`button-nav-down-${sectionId}`}
+      >
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function TopNav({ shown }: { shown: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -779,20 +815,24 @@ function TopNav({ shown }: { shown: boolean }) {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className="absolute z-50 rounded-b-xl bg-white shadow-lg left-0 right-0 top-14 md:left-[3px] md:right-auto md:w-[240px] md:top-[197px]"
+              className="absolute z-50 rounded-b-xl bg-white shadow-lg left-0 right-0 top-14 md:left-[3px] md:right-auto md:w-[280px] md:top-[197px]"
               data-testid="nav-dropdown"
             >
               <div className="flex flex-col py-2">
-                {NAV_ITEMS.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => { scrollToId(item.id); setMenuOpen(false); }}
-                    className="px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
-                    data-testid={`link-dropdown-${item.id}`}
-                  >
-                    <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
-                  </button>
+                {NAV_ITEMS.map((item, idx) => (
+                  <div key={item.id} className="flex items-center group">
+                    <button
+                      type="button"
+                      onClick={() => { scrollToId(item.id); setMenuOpen(false); }}
+                      className="flex-1 px-5 py-3 text-left text-[15px] font-semibold tracking-widest text-gray-700 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      data-testid={`link-dropdown-${item.id}`}
+                    >
+                      <EditableStaticText textKey={`nav_${item.id}`} defaultValue={item.label} />
+                    </button>
+                    {isEditMode && (
+                      <NavReorderButtons sectionId={item.id} index={idx} total={NAV_ITEMS.length} />
+                    )}
+                  </div>
                 ))}
                 <Separator className="my-1" />
                 {!isAdmin && (
@@ -1623,6 +1663,16 @@ function EditableText({
 
 type SiteTexts = Record<string, string>;
 
+const FONT_SIZE_OPTIONS = [
+  { label: "XS", value: "text-xs" },
+  { label: "S", value: "text-sm" },
+  { label: "M", value: "text-base" },
+  { label: "L", value: "text-lg" },
+  { label: "XL", value: "text-xl" },
+  { label: "2XL", value: "text-2xl" },
+  { label: "3XL", value: "text-3xl" },
+];
+
 export function EditableStaticText({
   textKey, defaultValue, multiline = false, className = ""
 }: {
@@ -1634,16 +1684,23 @@ export function EditableStaticText({
     queryFn: () => apiFetch("/api/site-texts"),
   });
   const displayValue = siteTexts[textKey] || defaultValue;
+  const fontSizeKey = `${textKey}__fontSize`;
+  const savedFontSize = siteTexts[fontSizeKey] || "";
 
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(displayValue);
+  const [fontSize, setFontSize] = useState(savedFontSize);
   const qc = useQueryClient();
 
   useEffect(() => { setText(siteTexts[textKey] || defaultValue); }, [siteTexts, textKey, defaultValue]);
+  useEffect(() => { setFontSize(siteTexts[fontSizeKey] || ""); }, [siteTexts, fontSizeKey]);
 
   const mutation = useMutation({
-    mutationFn: async (newVal: string) => {
+    mutationFn: async ({ newVal, newSize }: { newVal: string; newSize: string }) => {
       await apiRequest("PUT", `/api/site-texts/${textKey}`, { value: newVal });
+      if (newSize !== savedFontSize) {
+        await apiRequest("PUT", `/api/site-texts/${fontSizeKey}`, { value: newSize });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["site-texts"] });
@@ -1651,16 +1708,18 @@ export function EditableStaticText({
     },
   });
 
-  if (!isEditMode) return <span className={className}>{displayValue}</span>;
+  const appliedClass = cx(className, savedFontSize);
+
+  if (!isEditMode) return <span className={appliedClass}>{displayValue}</span>;
 
   if (editing) {
     return (
-      <span className={cx("inline-flex items-center gap-1", className)} data-testid={`editable-static-${textKey}`}>
+      <span className={cx("inline-flex flex-wrap items-center gap-1", className)} data-testid={`editable-static-${textKey}`}>
         {multiline ? (
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="min-h-[60px] text-sm"
+            className="min-h-[60px] text-sm w-full"
             autoFocus
             data-testid={`input-static-${textKey}`}
           />
@@ -1673,10 +1732,27 @@ export function EditableStaticText({
             data-testid={`input-static-${textKey}`}
           />
         )}
-        <button type="button" onClick={() => mutation.mutate(text)} className="rounded p-1 text-green-600 hover:bg-green-50" data-testid={`button-save-static-${textKey}`}>
+        <div className="flex items-center gap-0.5 rounded-md border border-gray-200 bg-gray-50 px-1 py-0.5" data-testid={`font-size-picker-${textKey}`}>
+          {FONT_SIZE_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFontSize(fontSize === opt.value ? "" : opt.value)}
+              className={cx(
+                "rounded px-1.5 py-0.5 text-[10px] font-bold transition",
+                fontSize === opt.value ? "bg-yellow-400 text-yellow-900" : "text-gray-400 hover:text-gray-700 hover:bg-gray-200"
+              )}
+              title={`Rozmiar: ${opt.label}`}
+              data-testid={`button-fontsize-${opt.label}-${textKey}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={() => mutation.mutate({ newVal: text, newSize: fontSize })} className="rounded p-1 text-green-600 hover:bg-green-50" data-testid={`button-save-static-${textKey}`}>
           <Save className="h-3.5 w-3.5" />
         </button>
-        <button type="button" onClick={() => { setText(displayValue); setEditing(false); }} className="rounded p-1 text-red-500 hover:bg-red-50" data-testid={`button-cancel-static-${textKey}`}>
+        <button type="button" onClick={() => { setText(displayValue); setFontSize(savedFontSize); setEditing(false); }} className="rounded p-1 text-red-500 hover:bg-red-50" data-testid={`button-cancel-static-${textKey}`}>
           <X className="h-3.5 w-3.5" />
         </button>
       </span>
@@ -1685,7 +1761,7 @@ export function EditableStaticText({
 
   return (
     <span
-      className={cx("group/edit inline cursor-pointer border-b border-dashed border-transparent hover:border-yellow-400", className)}
+      className={cx("group/edit inline cursor-pointer border-b border-dashed border-transparent hover:border-yellow-400", appliedClass)}
       onClick={() => setEditing(true)}
       data-testid={`editable-static-trigger-${textKey}`}
     >
@@ -1803,6 +1879,107 @@ function AdminAddButton({ entityType, queryKey, defaultValues, fields }: {
         </div>
       )}
     </>
+  );
+}
+
+function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
+  poster: any; index: number; total: number; onClose: () => void; onPrev: () => void; onNext: () => void;
+}) {
+  const { isEditMode } = useAuth();
+  const qc = useQueryClient();
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [desc, setDesc] = useState(poster.description || "");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [title, setTitle] = useState(poster.title || "");
+
+  useEffect(() => {
+    setDesc(poster.description || "");
+    setTitle(poster.title || "");
+    setEditingDesc(false);
+    setEditingTitle(false);
+  }, [poster]);
+
+  const saveField = async (field: string, value: string) => {
+    await apiRequest("PUT", `/api/posters/${poster.id}`, { [field]: value });
+    qc.invalidateQueries({ queryKey: ["posters"] });
+    if (field === "description") setEditingDesc(false);
+    if (field === "title") setEditingTitle(false);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+      data-testid="poster-lightbox"
+    >
+      <button
+        className="absolute top-4 right-4 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+        onClick={onClose}
+        data-testid="button-close-lightbox"
+      >
+        <X className="h-6 w-6" />
+      </button>
+      <button
+        className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+        onClick={(e) => { e.stopPropagation(); onPrev(); }}
+        data-testid="button-lightbox-prev"
+      >
+        <ChevronLeft className="h-6 w-6" />
+      </button>
+      <div className="flex flex-col items-center max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+        <img
+          src={poster.image_url}
+          alt={poster.title}
+          className="max-h-[70vh] max-w-full rounded-2xl object-contain shadow-2xl"
+          data-testid="img-lightbox-poster"
+        />
+        <div className="mt-3 w-full max-w-xl text-center">
+          {isEditMode ? (
+            <div className="space-y-2">
+              {editingTitle ? (
+                <div className="flex items-center gap-1 justify-center">
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-7 text-sm bg-white/10 text-white border-white/30 max-w-xs" autoFocus data-testid="input-poster-title" />
+                  <button onClick={() => saveField("title", title)} className="rounded p-1 text-green-400 hover:bg-green-900/30"><Save className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => { setTitle(poster.title || ""); setEditingTitle(false); }} className="rounded p-1 text-red-400 hover:bg-red-900/30"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                <p className="text-sm font-semibold text-white/90 cursor-pointer hover:text-yellow-300 transition" onClick={() => setEditingTitle(true)} data-testid="poster-lightbox-title">
+                  {poster.title || "Kliknij, aby dodać tytuł"}
+                  <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
+                </p>
+              )}
+              {editingDesc ? (
+                <div className="flex items-start gap-1 justify-center">
+                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="min-h-[60px] text-sm bg-white/10 text-white border-white/30 max-w-sm" autoFocus data-testid="input-poster-desc" />
+                  <button onClick={() => saveField("description", desc)} className="rounded p-1 text-green-400 hover:bg-green-900/30"><Save className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => { setDesc(poster.description || ""); setEditingDesc(false); }} className="rounded p-1 text-red-400 hover:bg-red-900/30"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                <p className="text-sm text-white/70 cursor-pointer hover:text-yellow-300 transition whitespace-pre-wrap" onClick={() => setEditingDesc(true)} data-testid="poster-lightbox-desc">
+                  {poster.description || "Kliknij, aby dodać opis"}
+                  <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              {poster.title && <p className="text-sm font-semibold text-white/90" data-testid="poster-lightbox-title">{poster.title}</p>}
+              {poster.description && <p className="mt-1 text-sm text-white/70 whitespace-pre-wrap" data-testid="poster-lightbox-desc">{poster.description}</p>}
+            </>
+          )}
+        </div>
+      </div>
+      <button
+        className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+        onClick={(e) => { e.stopPropagation(); onNext(); }}
+        data-testid="button-lightbox-next"
+      >
+        <ChevronRight className="h-6 w-6" />
+      </button>
+      <div className="absolute bottom-4 text-center text-sm text-white/70">
+        {index + 1} / {total}
+      </div>
+    </div>
   );
 }
 
@@ -1935,43 +2112,14 @@ function PosterBannerStrip() {
       </div>
 
       {lightboxIdx !== null && postersData.length > 0 && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setLightboxIdx(null)}
-          data-testid="poster-lightbox"
-        >
-          <button
-            className="absolute top-4 right-4 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
-            onClick={() => setLightboxIdx(null)}
-            data-testid="button-close-lightbox"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          <button
-            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
-            onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx - 1 + postersData.length) % postersData.length); }}
-            data-testid="button-lightbox-prev"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <img
-            src={postersData[lightboxIdx].image_url}
-            alt={postersData[lightboxIdx].title}
-            className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-            data-testid="img-lightbox-poster"
-          />
-          <button
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
-            onClick={(e) => { e.stopPropagation(); setLightboxIdx((lightboxIdx + 1) % postersData.length); }}
-            data-testid="button-lightbox-next"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
-          <div className="absolute bottom-4 text-center text-sm text-white/70">
-            {lightboxIdx + 1} / {postersData.length}
-          </div>
-        </div>
+        <PosterLightbox
+          poster={postersData[lightboxIdx]}
+          index={lightboxIdx}
+          total={postersData.length}
+          onClose={() => setLightboxIdx(null)}
+          onPrev={() => setLightboxIdx((lightboxIdx - 1 + postersData.length) % postersData.length)}
+          onNext={() => setLightboxIdx((lightboxIdx + 1) % postersData.length)}
+        />
       )}
     </>
   );
