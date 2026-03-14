@@ -1,6 +1,4 @@
-import { Link } from "wouter";
 import { useAuth } from "@/lib/auth";
-import { scrollToId } from "@/lib/home-helpers";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
 import { Facebook, Heart, Mail, MapPin, Phone, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -154,20 +152,6 @@ export function SectionKontakt({ contactData }: { contactData: { address: string
           />
         </div>
 
-        <footer className="mt-10 flex flex-col gap-2 border-t pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between" data-testid="footer">
-          <div data-testid="text-footer-left">© {new Date().getFullYear()} <EditableStaticText textKey="footer_text" defaultValue="jawornik.eu" /></div>
-          <div className="flex items-center gap-4" data-testid="row-footer-links">
-            <Link href="/" data-testid="link-footer-home">Strona główna</Link>
-            <button
-              type="button"
-              onClick={() => scrollToId("top")}
-              className="text-muted-foreground hover:text-foreground"
-              data-testid="button-footer-top"
-            >
-              Do góry
-            </button>
-          </div>
-        </footer>
       </div>
     </section>
   );

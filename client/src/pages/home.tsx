@@ -1,9 +1,10 @@
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { useAuth } from "@/lib/auth";
-import { apiFetch } from "@/lib/home-helpers";
+import { apiFetch, scrollToId } from "@/lib/home-helpers";
 import type { RecordingItem, YtApiResponse, ContactMap } from "@/lib/home-helpers";
-import { useSectionOrder } from "@/components/admin-tools";
+import { useSectionOrder, EditableStaticText as EST } from "@/components/admin-tools";
 
 export { EditableStaticText } from "@/components/admin-tools";
 
@@ -64,29 +65,48 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen" data-testid="page-home">
-      <WeeklyVerseBanner />
-      <TopNav shown={stickyShown} />
-      <div className="relative">
-        <VideoHero />
-        <PosterBannerStrip />
-      </div>
+    <div className="flex min-h-screen flex-col" data-testid="page-home">
+      <main className="flex-1">
+        <WeeklyVerseBanner />
+        <TopNav shown={stickyShown} />
+        <div className="relative">
+          <VideoHero />
+          <PosterBannerStrip />
+        </div>
 
-      <MotionConfig transition={{ layout: { duration: 0.4, ease: "easeInOut" } }}>
-        <AnimatePresence mode="popLayout">
-          {sectionOrder.map(id => {
-            const el = renderSection(id);
-            if (!el) return null;
-            return (
-              <motion.div key={id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                {el}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </MotionConfig>
+        <MotionConfig transition={{ layout: { duration: 0.4, ease: "easeInOut" } }}>
+          <AnimatePresence mode="popLayout">
+            {sectionOrder.map(id => {
+              const el = renderSection(id);
+              if (!el) return null;
+              return (
+                <motion.div key={id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  {el}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </MotionConfig>
 
-      <AdminFloatingBar />
-    </main>
+        <AdminFloatingBar />
+      </main>
+
+      <footer className="border-t bg-background px-6 py-6 text-sm text-muted-foreground" data-testid="footer">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div data-testid="text-footer-left">© {new Date().getFullYear()} <EST textKey="footer_text" defaultValue="jawornik.eu" /></div>
+          <div className="flex items-center gap-4" data-testid="row-footer-links">
+            <Link href="/" data-testid="link-footer-home">Strona główna</Link>
+            <button
+              type="button"
+              onClick={() => scrollToId("top")}
+              className="text-muted-foreground hover:text-foreground"
+              data-testid="button-footer-top"
+            >
+              Do góry
+            </button>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }

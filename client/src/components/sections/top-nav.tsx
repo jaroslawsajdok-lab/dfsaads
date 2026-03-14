@@ -99,7 +99,13 @@ function NavReorderButtons({ sectionId, index, total }: { sectionId: string; ind
     if (newIdx < 0 || newIdx >= newOrder.length) return;
     [newOrder[idx], newOrder[newIdx]] = [newOrder[newIdx], newOrder[idx]];
     await apiRequest("PUT", "/api/admin/settings/section_order", { value: JSON.stringify(newOrder) });
-    qc.invalidateQueries({ queryKey: ["admin-setting", "section_order"] });
+    await qc.invalidateQueries({ queryKey: ["admin-setting", "section_order"] });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(sectionId);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
   };
 
   return (

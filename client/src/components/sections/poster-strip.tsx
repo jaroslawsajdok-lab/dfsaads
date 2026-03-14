@@ -199,7 +199,7 @@ export function PosterBannerStrip() {
               <div
                 key={`${p.id}-${i}`}
                 className="relative flex-shrink-0 cursor-pointer transition hover:scale-105"
-                onClick={() => !isEditMode && setLightboxIdx(i % postersData.length)}
+                onClick={() => setLightboxIdx(i % postersData.length)}
                 data-testid={`poster-item-${p.id}-${i}`}
               >
                 <img
