@@ -58,7 +58,7 @@ export function SectionGaleria() {
   }, [isEditMode]);
 
   return (
-    <section id="galeria" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-galeria" aria-label="Galeria">
+    <section id="galeria" className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8" data-testid="section-galeria" aria-label="Galeria">
       <SectionReorderControls sectionId="galeria" />
       <div>
         <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-gallery-title">

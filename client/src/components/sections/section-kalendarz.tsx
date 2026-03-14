@@ -88,7 +88,7 @@ export function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: 
       data-testid="section-kalendarz"
     >
       <SectionReorderControls sectionId="polecamy" />
-      <div id="kalendarz" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+      <div id="kalendarz" className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
           <div>
             <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-calendar-title">
               <EditableStaticText textKey="calendar_title" defaultValue="Kalendarz" />

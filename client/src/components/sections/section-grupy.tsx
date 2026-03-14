@@ -111,7 +111,7 @@ function GroupModal({ group, open, onClose }: { group: GroupItem; open: boolean;
 export function SectionGrupy({ groupsData, selectedGroup, setSelectedGroup }: { groupsData: GroupItem[]; selectedGroup: GroupItem | null; setSelectedGroup: (g: GroupItem | null) => void }) {
   const { isEditMode } = useAuth();
   return (
-    <section id="grupy" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-grupy" aria-label="Grupy parafialne">
+    <section id="grupy" className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8" data-testid="section-grupy" aria-label="Grupy parafialne">
       <SectionReorderControls sectionId="grupy" />
       <div className="flex items-start justify-between gap-4">
         <div>

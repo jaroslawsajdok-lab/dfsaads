@@ -13,7 +13,7 @@ export function SectionAktualnosci() {
   const fbUrl = fbUrlData?.value || "https://www.facebook.com/wislajawornik";
 
   return (
-    <section id="aktualnosci" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-aktualnosci">
+    <section id="aktualnosci" className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8" data-testid="section-aktualnosci">
       <SectionReorderControls sectionId="aktualnosci" />
       <div className="mb-8">
         <div className="glass rounded-3xl p-5" data-testid="card-afterband">

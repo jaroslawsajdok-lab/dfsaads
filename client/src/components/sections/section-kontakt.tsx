@@ -22,7 +22,7 @@ export function SectionKontakt({ contactData }: { contactData: { address: string
   return (
     <section id="kontakt" className="relative bg-[linear-gradient(180deg,transparent,hsl(214_25%_96%))]" data-testid="section-kontakt" aria-label="Kontakt">
       <SectionReorderControls sectionId="kontakt" />
-      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+      <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
         <div>
           <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-contact-title">
             <EditableStaticText textKey="contact_title" defaultValue="Kontakt" />

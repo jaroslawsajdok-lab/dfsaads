@@ -293,7 +293,7 @@ export function SectionONas() {
   return (
     <section id="onas" className="relative bg-[linear-gradient(180deg,hsl(214_25%_96%),transparent)]" data-testid="section-onas" aria-label="O nas">
       <SectionReorderControls sectionId="onas" />
-      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+      <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
         <div>
           <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-onas-title">
             <EditableStaticText textKey="onas_title" defaultValue="O nas" />

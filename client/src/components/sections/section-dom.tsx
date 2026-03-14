@@ -108,7 +108,7 @@ function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
 export function SectionDomGoscinny() {
   return (
-    <section id="dom" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8" data-testid="section-dom" aria-label="Dom gościnny">
+    <section id="dom" className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8" data-testid="section-dom" aria-label="Dom gościnny">
       <SectionReorderControls sectionId="dom" />
       <div>
         <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-dom-title">
