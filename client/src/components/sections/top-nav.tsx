@@ -302,6 +302,15 @@ export function TopNav({ shown }: { shown: boolean }) {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setLocation("/bezpieczenstwo")}
+                  className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                  data-testid="button-nav-security-mobile"
+                  aria-label="Bezpieczeństwo"
+                >
+                  <Shield className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
                   onClick={logout}
                   className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100"
                   data-testid="button-nav-logout-mobile"
@@ -378,6 +387,15 @@ export function TopNav({ shown }: { shown: boolean }) {
                   >
                     <Settings className="mr-1 inline h-3 w-3" />
                     {isEditMode ? "Edycja ON" : "Edycja OFF"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/bezpieczenstwo")}
+                    className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/20 hover:text-white"
+                    data-testid="button-nav-security"
+                    aria-label="Bezpieczeństwo"
+                  >
+                    <Shield className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
