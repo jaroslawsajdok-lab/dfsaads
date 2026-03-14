@@ -28,6 +28,7 @@ export function SectionGaleria() {
       const fd = new FormData();
       fd.append("file", file);
       const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      if (!uploadRes.ok) throw new Error("Błąd wysyłania pliku");
       const { url } = await uploadRes.json();
       await apiRequest("POST", "/api/galleries", { title: file.name, image_url: url, sort_order: galleries.length });
       qc.invalidateQueries({ queryKey: ["galleries"] });
