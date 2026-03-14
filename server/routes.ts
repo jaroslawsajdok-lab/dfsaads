@@ -77,7 +77,7 @@ async function fetchWeeklyVerse() {
 }
 
 const FB_PAGE_SLUG = process.env.FB_PAGE_SLUG || "wislajawornik";
-const FB_CACHE_TTL = 5 * 60 * 1000;
+const FB_CACHE_TTL = 30 * 60 * 1000;
 let fbCache: { data: any; ts: number } | null = null;
 let resolvedPageToken: { pageId: string; token: string; slug: string } | null = null;
 let lastKnownFbSlug: string = FB_PAGE_SLUG;
