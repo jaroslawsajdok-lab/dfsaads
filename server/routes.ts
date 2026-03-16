@@ -428,26 +428,29 @@ async function clearStaleUploads() {
 const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_VIDEO_MIMES = ["video/mp4", "video/webm"];
 
-const IMAGE_SIGNATURES: Array<{ mime: string; bytes: number[] }> = [
-  { mime: "image/jpeg", bytes: [0xFF, 0xD8, 0xFF] },
-  { mime: "image/png", bytes: [0x89, 0x50, 0x4E, 0x47] },
-  { mime: "image/webp", bytes: [0x52, 0x49, 0x46, 0x46] },
-  { mime: "image/gif", bytes: [0x47, 0x49, 0x46, 0x38] },
-];
-
-const VIDEO_SIGNATURES: Array<{ mime: string; check: (buf: Buffer) => boolean }> = [
-  { mime: "video/mp4", check: (buf) => buf.length >= 8 && buf.toString("ascii", 4, 8) === "ftyp" },
-  { mime: "video/webm", check: (buf) => buf.length >= 4 && buf[0] === 0x1A && buf[1] === 0x45 && buf[2] === 0xDF && buf[3] === 0xA3 },
-];
-
 function validateImageMagicBytes(buffer: Buffer): boolean {
-  return IMAGE_SIGNATURES.some(sig =>
-    sig.bytes.every((byte, i) => buffer.length > i && buffer[i] === byte)
-  );
+  if (buffer.length < 12) return false;
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return true;
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return true;
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) return true;
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) return true;
+  return false;
 }
 
+const MP4_BRANDS = new Set(["isom", "iso2", "iso3", "iso4", "iso5", "iso6", "mp41", "mp42", "mp71", "avc1", "M4V ", "M4A ", "dash", "msdh", "msix"]);
+
 function validateVideoMagicBytes(buffer: Buffer): boolean {
-  return VIDEO_SIGNATURES.some(sig => sig.check(buffer));
+  if (buffer.length < 12) return false;
+  if (buffer.toString("ascii", 4, 8) === "ftyp") {
+    const brand = buffer.toString("ascii", 8, 12);
+    return MP4_BRANDS.has(brand);
+  }
+  if (buffer[0] === 0x1A && buffer[1] === 0x45 && buffer[2] === 0xDF && buffer[3] === 0xA3) {
+    const headerStr = buffer.toString("binary", 0, Math.min(64, buffer.length));
+    return headerStr.includes("webm");
+  }
+  return false;
 }
 
 const memStorage = multer.memoryStorage();
