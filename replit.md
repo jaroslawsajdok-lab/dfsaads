@@ -21,7 +21,7 @@ Preferred communication style: Simple, everyday language.
 - **Build Tool:** Vite with React plugin
 - **Path aliases:** `@/*` maps to `client/src/*`, `@shared/*` maps to `shared/*`, `@assets` maps to `attached_assets/`
 
-The app uses a multi-page layout with wouter routing. The homepage (`client/src/pages/home.tsx`) shows shortened previews (3-4 items) of each section with "Więcej" buttons linking to dedicated subpages. Full subpages exist at `/kalendarz`, `/grupy`, `/nagrania`, `/galeria`, `/faq`. Navigation uses anchor scrolling within the homepage and links to subpages.
+The app is a true single-page application. All content lives on the homepage (`client/src/pages/home.tsx`). "Więcej" buttons open full-screen modals instead of navigating to separate pages. The only routes are `/` (homepage), `/bezpieczenstwo` (admin panel), and a 404 fallback. Each section component fetches its own data via TanStack Query (no prop drilling from home.tsx). The footer navigation uses `scrollToId()` to scroll to sections on the homepage. PosterBannerStrip is rendered inside VideoHero. Old subpage files (`kalendarz.tsx`, `grupy.tsx`, `nagrania.tsx`, `galeria.tsx`, `faq-page.tsx`) are no longer routed but kept as reference.
 
 ### Backend
 - **Runtime:** Node.js with TypeScript (tsx for dev, esbuild for production)
