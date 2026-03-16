@@ -14,7 +14,6 @@ import multer from "multer";
 import RssParser from "rss-parser";
 import crypto from "crypto";
 import ical from "node-ical";
-import { sendVerificationCode } from "./email";
 import rateLimit from "express-rate-limit";
 import sharp from "sharp";
 
@@ -24,7 +23,6 @@ declare module "express-session" {
     adminUserId?: number;
     adminRole?: string;
     adminEmail?: string;
-    pendingUserId?: number;
   }
 }
 
@@ -427,6 +425,31 @@ async function clearStaleUploads() {
   }
 }
 
+const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ALLOWED_VIDEO_MIMES = ["video/mp4", "video/webm"];
+
+const IMAGE_SIGNATURES: Array<{ mime: string; bytes: number[] }> = [
+  { mime: "image/jpeg", bytes: [0xFF, 0xD8, 0xFF] },
+  { mime: "image/png", bytes: [0x89, 0x50, 0x4E, 0x47] },
+  { mime: "image/webp", bytes: [0x52, 0x49, 0x46, 0x46] },
+  { mime: "image/gif", bytes: [0x47, 0x49, 0x46, 0x38] },
+];
+
+const VIDEO_SIGNATURES: Array<{ mime: string; check: (buf: Buffer) => boolean }> = [
+  { mime: "video/mp4", check: (buf) => buf.length >= 8 && buf.toString("ascii", 4, 8) === "ftyp" },
+  { mime: "video/webm", check: (buf) => buf.length >= 4 && buf[0] === 0x1A && buf[1] === 0x45 && buf[2] === 0xDF && buf[3] === 0xA3 },
+];
+
+function validateImageMagicBytes(buffer: Buffer): boolean {
+  return IMAGE_SIGNATURES.some(sig =>
+    sig.bytes.every((byte, i) => buffer.length > i && buffer[i] === byte)
+  );
+}
+
+function validateVideoMagicBytes(buffer: Buffer): boolean {
+  return VIDEO_SIGNATURES.some(sig => sig.check(buffer));
+}
+
 const memStorage = multer.memoryStorage();
 const upload = multer({ storage: memStorage, limits: { fileSize: 10 * 1024 * 1024 } });
 const uploadVideo = multer({ storage: memStorage, limits: { fileSize: 50 * 1024 * 1024 } });
@@ -479,7 +502,7 @@ export async function registerRoutes(
     console.log("Seeded admin users: jaroslawsajdok@gmail.com (super_admin), marcin.podzorski@gmail.com (admin)");
   }
 
-  // ── Auth (2FA with email code) ──
+  // ── Auth (password only) ──
   app.post("/api/admin/login", async (req, res) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     if (rateLimitLogin(ip)) {
@@ -501,48 +524,10 @@ export async function registerRoutes(
       return res.status(401).json({ message: "Nieprawidłowy email lub hasło" });
     }
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-    await storage.invalidateUserCodes(user.id);
-    await storage.createVerificationCode(user.id, code, expiresAt);
-
-    const sent = await sendVerificationCode(user.email, code);
-    if (!sent) {
-      return res.status(500).json({ message: "Nie udało się wysłać kodu. Sprawdź konfigurację SMTP." });
-    }
-
-    req.session.pendingUserId = user.id;
-    req.session.save((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Session save failed" });
-      }
-      res.json({ ok: true, step: "verify_code", email: user.email });
-    });
-  });
-
-  app.post("/api/admin/verify-code", async (req, res) => {
-    const { code } = req.body;
-    const pendingUserId = req.session.pendingUserId;
-
-    if (!pendingUserId || !code) {
-      return res.status(400).json({ message: "Brak sesji logowania lub kodu" });
-    }
-
-    const valid = await storage.getValidVerificationCode(pendingUserId, code);
-    if (!valid) {
-      return res.status(401).json({ message: "Nieprawidłowy lub wygasły kod" });
-    }
-
-    const user = await storage.getAdminUserById(pendingUserId);
-    if (!user) {
-      return res.status(401).json({ message: "Użytkownik nie istnieje" });
-    }
-
     req.session.isAdmin = true;
     req.session.adminUserId = user.id;
     req.session.adminRole = user.role;
     req.session.adminEmail = user.email;
-    delete req.session.pendingUserId;
 
     req.session.save((err) => {
       if (err) {
@@ -550,35 +535,6 @@ export async function registerRoutes(
       }
       res.json({ ok: true, role: user.role, email: user.email });
     });
-  });
-
-  app.post("/api/admin/resend-code", async (req, res) => {
-    const ip = req.ip || req.socket.remoteAddress || "unknown";
-    if (rateLimitLogin(ip)) {
-      return res.status(429).json({ message: "Zbyt wiele prób. Spróbuj za minutę." });
-    }
-
-    const pendingUserId = req.session.pendingUserId;
-    if (!pendingUserId) {
-      return res.status(400).json({ message: "Brak sesji logowania" });
-    }
-
-    const user = await storage.getAdminUserById(pendingUserId);
-    if (!user) {
-      return res.status(400).json({ message: "Użytkownik nie istnieje" });
-    }
-
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-    await storage.invalidateUserCodes(user.id);
-    await storage.createVerificationCode(user.id, code, expiresAt);
-
-    const sent = await sendVerificationCode(user.email, code);
-    if (!sent) {
-      return res.status(500).json({ message: "Nie udało się wysłać kodu" });
-    }
-
-    res.json({ ok: true });
   });
 
   app.get("/api/admin/session", (req, res) => {
@@ -730,6 +686,12 @@ export async function registerRoutes(
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
+    if (!ALLOWED_IMAGE_MIMES.includes(req.file.mimetype)) {
+      return res.status(400).json({ message: "Niedozwolony typ pliku. Dozwolone: JPEG, PNG, WebP, GIF." });
+    }
+    if (!validateImageMagicBytes(req.file.buffer)) {
+      return res.status(400).json({ message: "Plik nie jest prawidłowym obrazem (nieprawidłowa sygnatura pliku)." });
+    }
     const { buffer: compressedBuf, mime: compressedMime } = await compressImage(req.file.buffer, req.file.mimetype);
     const base64Data = compressedBuf.toString("base64");
     const filename = compressedMime === "image/webp" ? req.file.originalname.replace(/\.\w+$/, ".webp") : req.file.originalname;
@@ -744,6 +706,12 @@ export async function registerRoutes(
   app.post("/api/upload-video", requireAdmin, uploadVideo.single("file"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
+    }
+    if (!ALLOWED_VIDEO_MIMES.includes(req.file.mimetype)) {
+      return res.status(400).json({ message: "Niedozwolony typ pliku. Dozwolone: MP4, WebM." });
+    }
+    if (!validateVideoMagicBytes(req.file.buffer)) {
+      return res.status(400).json({ message: "Plik nie jest prawidłowym wideo (nieprawidłowa sygnatura pliku)." });
     }
     const base64Data = req.file.buffer.toString("base64");
     const result = await pool.query(
@@ -778,6 +746,8 @@ export async function registerRoutes(
           "Cache-Control": "public, max-age=604800, must-revalidate",
           "ETag": cached.etag,
           "Content-Disposition": `${isMediaType ? "inline" : "attachment"}; filename="${cached.filename}"`,
+          "Content-Security-Policy": "sandbox",
+          "X-Content-Type-Options": "nosniff",
         });
         return res.send(cached.buffer);
       }
@@ -807,6 +777,8 @@ export async function registerRoutes(
         "Cache-Control": "public, max-age=604800, must-revalidate",
         "ETag": etag,
         "Content-Disposition": `${isMediaType ? "inline" : "attachment"}; filename="${file.filename}"`,
+        "Content-Security-Policy": "sandbox",
+        "X-Content-Type-Options": "nosniff",
       });
       res.send(buffer);
     } catch (err) {

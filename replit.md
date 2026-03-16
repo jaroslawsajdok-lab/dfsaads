@@ -35,21 +35,19 @@ The app is a true single-page application. All content lives on the homepage (`c
   - `GET/POST/PUT/DELETE /api/faq` — frequently asked questions
   - `GET/POST/PUT/DELETE /api/contact` — contact information
   - `GET/POST/PUT/DELETE /api/galleries` — photo galleries
-  - `POST /api/admin/login` — step 1: email+password → sends 6-digit code to email
-  - `POST /api/admin/verify-code` — step 2: verify email code → authenticated session
-  - `POST /api/admin/resend-code` — resend verification code
+  - `POST /api/admin/login` — email+password → authenticated session (password-only, no 2FA)
   - `GET /api/admin/session` — check admin session (includes role, email)
   - `POST /api/admin/logout` — admin logout
   - `GET/POST/PUT/DELETE /api/admin/users` — admin user management (super_admin only)
   - `PUT /api/admin/change-password` — change own password
   - `GET/PUT/DELETE /api/admin/manual-verse` — manual weekly verse override
-  - `POST /api/upload` — file upload for images (10 MB limit)
-  - `POST /api/upload-video` — video upload for hero section (200 MB limit)
+  - `POST /api/upload` — file upload for images (10 MB limit, MIME+magic bytes validated: JPEG/PNG/WebP/GIF)
+  - `POST /api/upload-video` — video upload for hero section (50 MB limit, MIME+magic bytes validated: MP4/WebM)
   - `GET/PUT /api/admin/settings/:key` — generic admin settings read/write
-- **Auth:** Two-factor authentication with email verification codes. Session-based with bcrypt password hashing, PostgreSQL session store (connect-pg-simple). Rate limited: 5 login attempts per minute per IP.
+- **Auth:** Password-only login with bcrypt hashing. Session-based with PostgreSQL session store (connect-pg-simple). Rate limited: 5 login attempts per minute per IP. No 2FA (email verification removed).
 - **Admin Roles:** `super_admin` (jaroslawsajdok@gmail.com) has full access including user management; `admin` (marcin.podzorski@gmail.com) can edit content only
 - **Default admin password:** `admin123` (auto-seeded on first run for both users)
-- **Email:** Verification codes sent via Gmail SMTP using `SMTP_USER` and `SMTP_APP_PASSWORD` secrets (nodemailer)
+- **Upload security:** MIME type whitelist + magic bytes validation for all uploads. Files served with `Content-Security-Policy: sandbox` and `X-Content-Type-Options: nosniff` headers.
 - **Seeding:** The server auto-seeds sample data, default admin password, and admin users on first run if the database is empty
 
 ### Data Storage
@@ -85,7 +83,7 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 13. **Gallery multi-upload** — admin can upload multiple photos at once; homepage section and subpage both support batch uploading
 14. **Configurable social links** — Facebook and YouTube URLs stored as admin settings (`facebook_url`, `youtube_url`); editable from admin floating bar; used in Aktualności section, Nagrania section, contact section, and footer
 15. **Reduced motion support** — `useReducedMotion()` hook respects `prefers-reduced-motion` media query; used in lightbox animations
-16. **Security hardening** — Helmet middleware (XSS, clickjacking, MIME sniffing protection), global API rate limiting (120 req/min per IP via express-rate-limit), upload rate limiting (10 req/min), 1MB JSON body limit, robots.txt blocking admin/file paths
+16. **Security hardening** — Helmet middleware (XSS, clickjacking, MIME sniffing protection), global API rate limiting (120 req/min per IP via express-rate-limit), upload rate limiting (10 req/min), 1MB JSON body limit, robots.txt blocking admin/file paths, MIME+magic bytes upload validation, CSP sandbox on served files
 17. **Performance optimization** — gzip compression middleware, sharp image compression (auto WebP at upload, quality 80, max 1920px), LRU file cache in RAM (50MB, 80 files max), ETag + 304 Not Modified for zero-transfer cache revalidation, 7-day Cache-Control with must-revalidate
 
 ## External Dependencies

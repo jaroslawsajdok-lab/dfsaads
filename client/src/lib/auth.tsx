@@ -6,9 +6,7 @@ type AuthContextType = {
   adminEmail: string | null;
   isEditMode: boolean;
   setEditMode: (v: boolean) => void;
-  login: (email: string, password: string) => Promise<{ ok: boolean; step?: string; error?: string }>;
-  verifyCode: (code: string) => Promise<{ ok: boolean; error?: string }>;
-  resendCode: () => Promise<{ ok: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   loading: boolean;
 };
@@ -44,36 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (res.ok && data.ok) {
-      return { ok: true, step: data.step };
-    }
-    return { ok: false, error: data.message || "Błąd logowania" };
-  };
-
-  const verifyCode = async (code: string) => {
-    const res = await fetch("/api/admin/verify-code", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-      credentials: "include",
-    });
-    const data = await res.json();
-    if (res.ok && data.ok) {
       setIsAdmin(true);
       setIsSuperAdmin(data.role === "super_admin");
       setAdminEmail(data.email || null);
       return { ok: true };
     }
-    return { ok: false, error: data.message || "Nieprawidłowy kod" };
-  };
-
-  const resendCode = async () => {
-    const res = await fetch("/api/admin/resend-code", {
-      method: "POST",
-      credentials: "include",
-    });
-    const data = await res.json();
-    if (res.ok && data.ok) return { ok: true };
-    return { ok: false, error: data.message || "Nie udało się wysłać kodu" };
+    return { ok: false, error: data.message || "Błąd logowania" };
   };
 
   const logout = async () => {
@@ -85,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isAdmin, isSuperAdmin, adminEmail, isEditMode, setEditMode, login, verifyCode, resendCode, logout, loading }}>
+    <AuthContext.Provider value={{ isAdmin, isSuperAdmin, adminEmail, isEditMode, setEditMode, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

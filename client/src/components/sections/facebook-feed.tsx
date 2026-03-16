@@ -120,7 +120,7 @@ function FbPostCard({ post, onSelect }: { post: FbPost; onSelect: () => void }) 
         <div className="mb-2 text-xs text-muted-foreground">{timeAgo(post.created_time)}</div>
 
         {post.message && (
-          <p className="mb-3 flex-1 text-sm leading-relaxed text-foreground/90">
+          <p className="mb-3 flex-1 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
             {displayMsg}
           </p>
         )}
