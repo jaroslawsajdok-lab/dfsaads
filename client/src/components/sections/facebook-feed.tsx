@@ -276,7 +276,7 @@ export function FacebookFeed() {
   const { data, isLoading } = useQuery<FbApiResponse>({
     queryKey: ["facebook-posts"],
     queryFn: () => apiFetch("/api/facebook-posts"),
-    refetchInterval: 5 * 60 * 1000,
+    refetchInterval: 30 * 60 * 1000,
   });
 
   const posts = data?.posts ?? [];

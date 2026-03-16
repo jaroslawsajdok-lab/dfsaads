@@ -15,6 +15,8 @@ import RssParser from "rss-parser";
 import crypto from "crypto";
 import ical from "node-ical";
 import { sendVerificationCode } from "./email";
+import rateLimit from "express-rate-limit";
+import sharp from "sharp";
 
 declare module "express-session" {
   interface SessionData {
@@ -27,7 +29,7 @@ declare module "express-session" {
 }
 
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
-function rateLimit(ip: string): boolean {
+function rateLimitLogin(ip: string): boolean {
   const now = Date.now();
   const entry = loginAttempts.get(ip);
   if (!entry || now > entry.resetAt) {
@@ -36,6 +38,63 @@ function rateLimit(ip: string): boolean {
   }
   entry.count++;
   return entry.count > 5;
+}
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." },
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { message: "Too many uploads, please try again later." },
+});
+
+const FILE_CACHE_MAX = 80;
+const FILE_CACHE_MAX_BYTES = 50 * 1024 * 1024;
+const fileCache = new Map<number, { buffer: Buffer; mime: string; filename: string; etag: string; ts: number }>();
+let fileCacheBytes = 0;
+
+function evictFileCache() {
+  while (fileCacheBytes > FILE_CACHE_MAX_BYTES || fileCache.size > FILE_CACHE_MAX) {
+    const oldest = fileCache.keys().next().value;
+    if (oldest === undefined) break;
+    const entry = fileCache.get(oldest);
+    if (entry) fileCacheBytes -= entry.buffer.length;
+    fileCache.delete(oldest);
+  }
+}
+
+function addToFileCache(id: number, buffer: Buffer, mime: string, filename: string, etag: string) {
+  if (buffer.length > 10 * 1024 * 1024) return;
+  if (fileCache.has(id)) {
+    const old = fileCache.get(id)!;
+    fileCacheBytes -= old.buffer.length;
+    fileCache.delete(id);
+  }
+  fileCacheBytes += buffer.length;
+  fileCache.set(id, { buffer, mime, filename, etag, ts: Date.now() });
+  evictFileCache();
+}
+
+async function compressImage(inputBuffer: Buffer, mimeType: string): Promise<{ buffer: Buffer; mime: string }> {
+  const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/tiff", "image/avif"];
+  if (!imageTypes.includes(mimeType)) {
+    return { buffer: inputBuffer, mime: mimeType };
+  }
+  try {
+    const compressed = await sharp(inputBuffer)
+      .resize(1920, 1920, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    return { buffer: compressed, mime: "image/webp" };
+  } catch {
+    return { buffer: inputBuffer, mime: mimeType };
+  }
 }
 
 const BNCD_API_KEY = process.env.BNCD_API_KEY || "";
@@ -370,7 +429,7 @@ async function clearStaleUploads() {
 
 const memStorage = multer.memoryStorage();
 const upload = multer({ storage: memStorage, limits: { fileSize: 10 * 1024 * 1024 } });
-const uploadVideo = multer({ storage: memStorage, limits: { fileSize: 200 * 1024 * 1024 } });
+const uploadVideo = multer({ storage: memStorage, limits: { fileSize: 50 * 1024 * 1024 } });
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.session?.isAdmin) {
@@ -406,6 +465,8 @@ export async function registerRoutes(
     })
   );
 
+  app.use("/api/", apiLimiter);
+
   await initializeDatabase();
   await seedIfEmpty();
   await clearStaleUploads();
@@ -421,7 +482,7 @@ export async function registerRoutes(
   // ── Auth (2FA with email code) ──
   app.post("/api/admin/login", async (req, res) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    if (rateLimit(ip)) {
+    if (rateLimitLogin(ip)) {
       return res.status(429).json({ message: "Zbyt wiele prób. Spróbuj za minutę." });
     }
 
@@ -493,7 +554,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/resend-code", async (req, res) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    if (rateLimit(ip)) {
+    if (rateLimitLogin(ip)) {
       return res.status(429).json({ message: "Zbyt wiele prób. Spróbuj za minutę." });
     }
 
@@ -665,14 +726,16 @@ export async function registerRoutes(
   });
 
   // ── Upload ──
-  app.post("/api/upload", requireAdmin, upload.single("file"), async (req, res) => {
+  app.post("/api/upload", requireAdmin, uploadLimiter, upload.single("file"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-    const base64Data = req.file.buffer.toString("base64");
+    const { buffer: compressedBuf, mime: compressedMime } = await compressImage(req.file.buffer, req.file.mimetype);
+    const base64Data = compressedBuf.toString("base64");
+    const filename = compressedMime === "image/webp" ? req.file.originalname.replace(/\.\w+$/, ".webp") : req.file.originalname;
     const result = await pool.query(
       "INSERT INTO files (filename, mime_type, data) VALUES ($1, $2, $3) RETURNING id",
-      [req.file.originalname, req.file.mimetype, base64Data]
+      [filename, compressedMime, base64Data]
     );
     const fileId = result.rows[0].id;
     res.json({ url: `/api/files/${fileId}` });
@@ -701,8 +764,26 @@ export async function registerRoutes(
       if (isNaN(fileId)) {
         return res.status(400).json({ message: "Invalid file ID" });
       }
+
+      const cached = fileCache.get(fileId);
+      if (cached) {
+        const clientEtag = req.headers["if-none-match"];
+        if (clientEtag === cached.etag) {
+          return res.status(304).end();
+        }
+        const isMediaType = ALLOWED_MIME_PREFIXES.some(p => cached.mime.startsWith(p));
+        res.set({
+          "Content-Type": isMediaType ? cached.mime : "application/octet-stream",
+          "Content-Length": cached.buffer.length.toString(),
+          "Cache-Control": "public, max-age=604800, must-revalidate",
+          "ETag": cached.etag,
+          "Content-Disposition": `${isMediaType ? "inline" : "attachment"}; filename="${cached.filename}"`,
+        });
+        return res.send(cached.buffer);
+      }
+
       const result = await pool.query(
-        "SELECT filename, mime_type, data FROM files WHERE id = $1",
+        "SELECT filename, mime_type, data, created_at FROM files WHERE id = $1",
         [fileId]
       );
       if (result.rows.length === 0) {
@@ -710,11 +791,21 @@ export async function registerRoutes(
       }
       const file = result.rows[0];
       const buffer = Buffer.from(file.data, "base64");
+      const etag = `"${fileId}-${new Date(file.created_at).getTime()}"`;
+
+      addToFileCache(fileId, buffer, file.mime_type, file.filename, etag);
+
+      const clientEtag = req.headers["if-none-match"];
+      if (clientEtag === etag) {
+        return res.status(304).end();
+      }
+
       const isMediaType = ALLOWED_MIME_PREFIXES.some(p => file.mime_type.startsWith(p));
       res.set({
         "Content-Type": isMediaType ? file.mime_type : "application/octet-stream",
         "Content-Length": buffer.length.toString(),
-        "Cache-Control": "public, max-age=86400, immutable",
+        "Cache-Control": "public, max-age=604800, must-revalidate",
+        "ETag": etag,
         "Content-Disposition": `${isMediaType ? "inline" : "attachment"}; filename="${file.filename}"`,
       });
       res.send(buffer);
