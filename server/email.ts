@@ -1,14 +1,34 @@
 import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_APP_PASSWORD,
-  },
-});
+function createTransporter() {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_APP_PASSWORD;
+
+  if (!user || !pass) {
+    console.warn("SMTP credentials not configured (SMTP_USER / SMTP_APP_PASSWORD missing)");
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  });
+}
+
+let transporter = createTransporter();
 
 export async function sendVerificationCode(to: string, code: string): Promise<boolean> {
+  if (!transporter) {
+    transporter = createTransporter();
+  }
+  if (!transporter) {
+    console.error("Cannot send email: SMTP not configured");
+    return false;
+  }
+
   try {
     await transporter.sendMail({
       from: `"Parafia Jawornik" <${process.env.SMTP_USER}>`,
@@ -25,6 +45,7 @@ export async function sendVerificationCode(to: string, code: string): Promise<bo
         </div>
       `,
     });
+    console.log(`Verification code sent to ${to}`);
     return true;
   } catch (err) {
     console.error("Failed to send verification email:", err);
