@@ -135,11 +135,3 @@ export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: t
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 export type AdminUser = typeof adminUsers.$inferSelect;
 
-export const verificationCodes = pgTable("verification_codes", {
-  id: serial("id").primaryKey(),
-  user_id: integer("user_id").notNull(),
-  code: text("code").notNull(),
-  expires_at: timestamp("expires_at").notNull(),
-  used: integer("used").notNull().default(0),
-  created_at: timestamp("created_at").defaultNow(),
-});

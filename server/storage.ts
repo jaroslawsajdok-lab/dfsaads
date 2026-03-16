@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
   news, events, groups, recordings, faq, contactInfo, galleries, adminSettings, posters, galleryAlbums,
-  adminUsers, verificationCodes,
+  adminUsers,
   type News, type InsertNews,
   type Event, type InsertEvent,
   type Group, type InsertGroup,
@@ -101,14 +101,6 @@ export async function initializeDatabase() {
       role TEXT NOT NULL DEFAULT 'admin',
       created_at TIMESTAMP DEFAULT NOW()
     );
-    CREATE TABLE IF NOT EXISTS verification_codes (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL,
-      code TEXT NOT NULL,
-      expires_at TIMESTAMP NOT NULL,
-      used INTEGER NOT NULL DEFAULT 0,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
     CREATE TABLE IF NOT EXISTS session (
       sid VARCHAR NOT NULL COLLATE "default",
       sess JSON NOT NULL,
@@ -164,9 +156,6 @@ export interface IStorage {
   createAdminUser(user: InsertAdminUser): Promise<AdminUser>;
   updateAdminUser(id: number, data: Partial<InsertAdminUser>): Promise<AdminUser | null>;
   deleteAdminUser(id: number): Promise<boolean>;
-  createVerificationCode(userId: number, code: string, expiresAt: Date): Promise<void>;
-  getValidVerificationCode(userId: number, code: string): Promise<boolean>;
-  invalidateUserCodes(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -352,21 +341,6 @@ export class DatabaseStorage implements IStorage {
   async deleteAdminUser(id: number) {
     const result = await db.delete(adminUsers).where(eq(adminUsers.id, id)).returning();
     return result.length > 0;
-  }
-  async createVerificationCode(userId: number, code: string, expiresAt: Date) {
-    await db.insert(verificationCodes).values({ user_id: userId, code, expires_at: expiresAt });
-  }
-  async getValidVerificationCode(userId: number, code: string) {
-    const [row] = await db.select().from(verificationCodes)
-      .where(eq(verificationCodes.user_id, userId));
-    const valid = row && row.code === code && !row.used && new Date(row.expires_at) > new Date();
-    if (valid) {
-      await db.update(verificationCodes).set({ used: 1 }).where(eq(verificationCodes.id, row.id));
-    }
-    return !!valid;
-  }
-  async invalidateUserCodes(userId: number) {
-    await db.delete(verificationCodes).where(eq(verificationCodes.user_id, userId));
   }
 }
 

@@ -55,7 +55,7 @@ The app is a true single-page application. All content lives on the homepage (`c
 - **ORM:** Drizzle ORM with `drizzle-zod` for schema validation
 - **Schema location:** `shared/schema.ts` — shared between client and server
 - **Migration tool:** Drizzle Kit (`npm run db:push` for schema push)
-- **Tables:** `news`, `events`, `groups`, `recordings`, `faq`, `contact_info`, `galleries`, `admin_settings`, `files`, `admin_users`, `verification_codes`, `session`
+- **Tables:** `news`, `events`, `groups`, `recordings`, `faq`, `contact_info`, `galleries`, `admin_settings`, `files`, `admin_users`, `session`
 - **Connection:** `pg` (node-postgres) pool
 
 ### Shared Code
