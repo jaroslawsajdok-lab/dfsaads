@@ -1,37 +1,28 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-function createTransporter() {
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_APP_PASSWORD;
+let resend: Resend | null = null;
 
-  if (!user || !pass) {
-    console.warn("SMTP credentials not configured (SMTP_USER / SMTP_APP_PASSWORD missing)");
+function getResend(): Resend | null {
+  if (resend) return resend;
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    console.warn("RESEND_API_KEY not configured");
     return null;
   }
-
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
+  resend = new Resend(key);
+  return resend;
 }
 
-let transporter = createTransporter();
-
 export async function sendVerificationCode(to: string, code: string): Promise<boolean> {
-  if (!transporter) {
-    transporter = createTransporter();
-  }
-  if (!transporter) {
-    console.error("Cannot send email: SMTP not configured");
+  const client = getResend();
+  if (!client) {
+    console.error("Cannot send email: RESEND_API_KEY missing");
     return false;
   }
 
   try {
-    await transporter.sendMail({
-      from: `"Parafia Jawornik" <${process.env.SMTP_USER}>`,
+    const { error } = await client.emails.send({
+      from: "Parafia Jawornik <onboarding@resend.dev>",
       to,
       subject: `Kod weryfikacyjny: ${code}`,
       html: `
@@ -45,6 +36,12 @@ export async function sendVerificationCode(to: string, code: string): Promise<bo
         </div>
       `,
     });
+
+    if (error) {
+      console.error("Resend error:", error);
+      return false;
+    }
+
     console.log(`Verification code sent to ${to}`);
     return true;
   } catch (err) {
