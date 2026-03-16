@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
 import { Facebook, Youtube, MapPin, Phone, Mail, ArrowUp } from "lucide-react";
 import { EditableStaticText } from "@/components/admin-tools";
-import { apiFetch } from "@/lib/home-helpers";
+import { apiFetch, scrollToId } from "@/lib/home-helpers";
 
 type ContactMap = { address?: string; phone?: string; email?: string; hours?: string };
 
-export function SiteFooter({ contactData }: { contactData?: ContactMap }) {
+export function SiteFooter() {
+  const { data: contactData } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
   const { data: fbUrlData } = useQuery<{ value: string | null }>({
     queryKey: ["admin-setting", "facebook_url"],
     queryFn: () => apiFetch("/api/admin/settings/facebook_url"),
@@ -19,6 +19,15 @@ export function SiteFooter({ contactData }: { contactData?: ContactMap }) {
   const ytUrl = ytUrlData?.value || "https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g";
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  const navItems = [
+    { label: "Aktualności", id: "aktualnosci" },
+    { label: "Kalendarz", id: "polecamy" },
+    { label: "Nagrania", id: "nagrania" },
+    { label: "Galeria", id: "galeria" },
+    { label: "O nas", id: "onas" },
+    { label: "Kontakt", id: "kontakt" },
+  ];
 
   return (
     <footer className="border-t border-border bg-muted/40 px-6 py-10 text-sm text-muted-foreground" data-testid="footer" role="contentinfo">
@@ -63,11 +72,18 @@ export function SiteFooter({ contactData }: { contactData?: ContactMap }) {
           <div>
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-widest text-foreground/60">Nawigacja</h4>
             <ul className="space-y-1.5">
-              <li><Link href="/" className="hover:text-foreground transition" data-testid="link-footer-home">Strona główna</Link></li>
-              <li><Link href="/kalendarz" className="hover:text-foreground transition" data-testid="link-footer-kalendarz">Kalendarz</Link></li>
-              <li><Link href="/nagrania" className="hover:text-foreground transition" data-testid="link-footer-nagrania">Nagrania</Link></li>
-              <li><Link href="/galeria" className="hover:text-foreground transition" data-testid="link-footer-galeria">Galeria</Link></li>
-              <li><Link href="/faq" className="hover:text-foreground transition" data-testid="link-footer-faq">FAQ</Link></li>
+              {navItems.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => scrollToId(item.id)}
+                    className="hover:text-foreground transition"
+                    data-testid={`link-footer-${item.id}`}
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
 

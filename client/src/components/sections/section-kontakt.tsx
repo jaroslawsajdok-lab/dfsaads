@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-export function SectionKontakt({ contactData }: { contactData: { address: string; phone: string; email: string; hours: string } }) {
+type ContactMap = { address?: string; phone?: string; email?: string; hours?: string };
+
+export function SectionKontakt() {
   const { isEditMode } = useAuth();
+  const { data: contactData = {} as ContactMap } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
   const { data: fbUrlData } = useQuery<{ value: string | null }>({
     queryKey: ["admin-setting", "facebook_url"],
     queryFn: () => apiFetch("/api/admin/settings/facebook_url"),

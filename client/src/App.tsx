@@ -10,11 +10,6 @@ import { AccessibilityPanel } from "@/components/accessibility-panel";
 import { ChatWidget } from "@/components/chat-widget";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
-import KalendarzPage from "@/pages/kalendarz";
-import GrupyPage from "@/pages/grupy";
-import NagraniaPage from "@/pages/nagrania";
-import GaleriaPage from "@/pages/galeria";
-import FaqPage from "@/pages/faq-page";
 import SecurityPage from "@/pages/security";
 
 const PARISH_LOGO_SRC = "/parish-cross.svg";
@@ -67,11 +62,6 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
-      <Route path="/kalendarz" component={KalendarzPage} />
-      <Route path="/grupy" component={GrupyPage} />
-      <Route path="/nagrania" component={NagraniaPage} />
-      <Route path="/galeria" component={GaleriaPage} />
-      <Route path="/faq" component={FaqPage} />
       <Route path="/bezpieczenstwo" component={SecurityPage} />
       <Route component={NotFound} />
     </Switch>

@@ -87,8 +87,13 @@ function YtScrollRow({ videos }: { videos: YtVideo[] }) {
   );
 }
 
-export function SectionNagrania({ ytVideos, recordingsData }: { ytVideos: any[]; recordingsData: RecordingItem[] }) {
+type YtApiResponse = { error: string | null; videos: { title: string; url: string; thumbnail: string; published: string }[] };
+
+export function SectionNagrania() {
   const { isEditMode } = useAuth();
+  const { data: recordingsData = [] } = useQuery<RecordingItem[]>({ queryKey: ["recordings"], queryFn: () => apiFetch("/api/recordings") });
+  const { data: ytData } = useQuery<YtApiResponse>({ queryKey: ["youtube-videos"], queryFn: () => apiFetch("/api/youtube-videos"), refetchInterval: 30 * 60 * 1000 });
+  const ytVideos = ytData?.videos ?? [];
   const { data: ytUrlData } = useQuery<{ value: string | null }>({
     queryKey: ["admin-setting", "youtube_url"],
     queryFn: () => apiFetch("/api/admin/settings/youtube_url"),

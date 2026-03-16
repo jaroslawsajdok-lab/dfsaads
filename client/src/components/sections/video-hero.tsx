@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch, scrollToId } from "@/lib/home-helpers";
 import { EditableStaticText } from "@/components/admin-tools";
+import { PosterBannerStrip } from "@/components/sections/poster-strip";
 import { ArrowDown, ChevronRight, Play, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -273,6 +274,8 @@ export function VideoHero() {
           </button>
         </div>
       </div>
+
+      <PosterBannerStrip />
 
       {isEditMode && (
         <div className="absolute bottom-72 right-6 z-20 flex flex-col items-end gap-2">

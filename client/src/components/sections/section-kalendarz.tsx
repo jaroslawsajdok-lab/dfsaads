@@ -74,7 +74,21 @@ function FeaturedEventPoster() {
   );
 }
 
-export function SectionKalendarz({ gcalEvents, googleCalendarSrc, isEditMode }: { gcalEvents: any[]; googleCalendarSrc: string; isEditMode: boolean }) {
+export function SectionKalendarz() {
+  const { isEditMode } = useAuth();
+  const { data: calendarUrlData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "google_calendar_url"],
+    queryFn: () => apiFetch("/api/admin/settings/google_calendar_url"),
+  });
+  const baseCalendarUrl = calendarUrlData?.value || "https://calendar.google.com/calendar/embed?src=peajawornik%40gmail.com&ctz=Europe%2FWarsaw";
+  const googleCalendarSrc = baseCalendarUrl + (baseCalendarUrl.includes("bgcolor") ? "" : "&bgcolor=%23ffffff&showTitle=0&showPrint=0&showTabs=1&showCalendars=0");
+
+  const { data: gcalEventsData } = useQuery<{ error: string | null; events: any[] }>({
+    queryKey: ["calendar-events"],
+    queryFn: () => apiFetch("/api/calendar-events"),
+  });
+  const gcalEvents = gcalEventsData?.events ?? [];
+
   const [calView, setCalView] = useState<"week" | "month">("week");
   const calMode = calView === "week" ? "AGENDA" : "MONTH";
   const calSrc = googleCalendarSrc.includes("mode=")

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
+import { apiFetch } from "@/lib/home-helpers";
 import type { GroupItem } from "@/lib/home-helpers";
 import { EditableStaticText, EditableText, AdminAddButton, SectionReorderControls } from "@/components/admin-tools";
 import { ChevronRight, ImagePlus, X } from "lucide-react";
@@ -108,8 +108,87 @@ function GroupModal({ group, open, onClose }: { group: GroupItem; open: boolean;
   );
 }
 
-export function SectionGrupy({ groupsData, selectedGroup, setSelectedGroup }: { groupsData: GroupItem[]; selectedGroup: GroupItem | null; setSelectedGroup: (g: GroupItem | null) => void }) {
+function AllGroupsModal({ open, onClose, groups }: { open: boolean; onClose: () => void; groups: GroupItem[] }) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeBtnRef.current?.focus();
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+        onClick={onClose}
+        data-testid="all-groups-modal-backdrop"
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Wszystkie grupy"
+          className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+          onClick={(e) => e.stopPropagation()}
+          data-testid="all-groups-modal"
+        >
+          <button
+            ref={closeBtnRef}
+            onClick={onClose}
+            aria-label="Zamknij"
+            className="absolute right-3 top-3 z-10 rounded-full bg-white/80 dark:bg-card/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white dark:hover:bg-card hover:text-foreground"
+            data-testid="all-groups-modal-close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          <div className="p-6">
+            <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">Wszystkie grupy</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {groups.map(g => (
+                <Card
+                  key={g.id}
+                  className="rounded-2xl border overflow-hidden cursor-pointer transition hover:shadow-md"
+                  onClick={() => setSelectedGroup(g)}
+                  data-testid={`all-groups-card-${g.id}`}
+                >
+                  {g.image_url && (
+                    <img src={g.image_url} alt={g.name} className="w-full h-36 object-cover" loading="lazy" />
+                  )}
+                  <div className="p-4">
+                    <div className="font-display text-lg">{g.name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{g.lead}</div>
+                    <Badge variant="secondary" className="mt-2">{g.when_text}</Badge>
+                    {g.description && (
+                      <p className="mt-2 text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">{g.description}</p>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      {selectedGroup && (
+        <GroupModal group={selectedGroup} open={true} onClose={() => setSelectedGroup(null)} />
+      )}
+    </>
+  );
+}
+
+export function SectionGrupy() {
   const { isEditMode } = useAuth();
+  const { data: groupsData = [] } = useQuery<GroupItem[]>({ queryKey: ["groups"], queryFn: () => apiFetch("/api/groups") });
+  const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
   return (
     <section id="grupy" className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8" data-testid="section-grupy" aria-label="Grupy parafialne">
       <SectionReorderControls sectionId="grupy" />
@@ -173,14 +252,18 @@ export function SectionGrupy({ groupsData, selectedGroup, setSelectedGroup }: { 
         <GroupModal group={selectedGroup} open={true} onClose={() => setSelectedGroup(null)} />
       )}
 
-      <div className="mt-6 text-center">
-        <Button variant="outline" className="rounded-xl" asChild data-testid="button-more-groups">
-          <Link href="/grupy">
+      {groupsData.length > 3 && (
+        <div className="mt-6 text-center">
+          <Button variant="outline" className="rounded-xl" onClick={() => setShowAll(true)} data-testid="button-more-groups">
             <EditableStaticText textKey="btn_more_groups" defaultValue="Więcej grup" />
             <ChevronRight className="ml-1 h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
+          </Button>
+        </div>
+      )}
+
+      {showAll && (
+        <AllGroupsModal open={true} onClose={() => setShowAll(false)} groups={groupsData} />
+      )}
     </section>
   );
 }
