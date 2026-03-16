@@ -80,11 +80,13 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 8. **Przelewy24 placeholder** — hidden donation section prepared for future P24 integration; visible only in admin mode
 9. **Database file storage** — uploaded images/videos are stored as base64 in PostgreSQL `files` table (not on disk), served via `GET /api/files/:id` with MIME allowlist and cache headers; survives ephemeral filesystem restarts
 10. **Accessibility panel** — floating bottom-left button opens panel with font size (normal/large/largest), high contrast, and underline links toggles; preferences saved to localStorage; CSS classes applied to `<html>` element
-11. **Dark mode** — moon/sun toggle in accessibility panel; persists to `localStorage("dark_mode")`; respects `prefers-color-scheme`; uses Tailwind `.dark` class on `<html>`
+11. **Dark mode** — moon/sun toggle in accessibility panel; persists to `localStorage("dark_mode")`; defaults to light mode (dark only when manually toggled); uses Tailwind `.dark` class on `<html>`; all components use semantic tokens (`bg-card`, `bg-muted`, `text-foreground`, etc.) for full dark mode support; sections use alternating `bg-background`/`bg-muted` backgrounds applied dynamically in `home.tsx`
 12. **Gallery lightbox** — full-screen photo viewer with keyboard navigation (arrow keys, Escape); reusable `GalleryLightbox` component used on both homepage preview and `/galeria` subpage
 13. **Gallery multi-upload** — admin can upload multiple photos at once; homepage section and subpage both support batch uploading
 14. **Configurable social links** — Facebook and YouTube URLs stored as admin settings (`facebook_url`, `youtube_url`); editable from admin floating bar; used in Aktualności section, Nagrania section, contact section, and footer
 15. **Reduced motion support** — `useReducedMotion()` hook respects `prefers-reduced-motion` media query; used in lightbox animations
+16. **Security hardening** — Helmet middleware (XSS, clickjacking, MIME sniffing protection), global API rate limiting (120 req/min per IP via express-rate-limit), upload rate limiting (10 req/min), 1MB JSON body limit, robots.txt blocking admin/file paths
+17. **Performance optimization** — gzip compression middleware, sharp image compression (auto WebP at upload, quality 80, max 1920px), LRU file cache in RAM (50MB, 80 files max), ETag + 304 Not Modified for zero-transfer cache revalidation, 7-day Cache-Control with must-revalidate
 
 ## External Dependencies
 
@@ -111,3 +113,7 @@ The `shared/` directory contains the database schema and Zod validation schemas 
 - **connect-pg-simple** — PostgreSQL session store for persistent admin sessions
 - **nodemailer** — sends verification code emails via Gmail SMTP
 - **node-ical** — iCal/ICS parser for Google Calendar event feed
+- **helmet** — security headers middleware
+- **compression** — gzip compression middleware
+- **express-rate-limit** — API rate limiting
+- **sharp** — image compression (WebP conversion at upload)
