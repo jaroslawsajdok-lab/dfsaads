@@ -39,29 +39,30 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-sm"
       onClick={onClose}
       data-testid="poster-lightbox"
     >
+      <div className="flex min-h-full items-center justify-center p-4">
       <button
-        className="absolute top-4 right-4 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+        className="fixed top-4 right-4 z-10 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
         onClick={onClose}
         data-testid="button-close-lightbox"
       >
         <X className="h-6 w-6" />
       </button>
       <button
-        className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+        className="fixed left-4 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
         onClick={(e) => { e.stopPropagation(); onPrev(); }}
         data-testid="button-lightbox-prev"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
-      <div className="flex flex-col items-center max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-col items-center max-w-[90vw] py-8" onClick={(e) => e.stopPropagation()}>
         <img
           src={poster.image_url}
           alt={realTitle || "Plakat"}
-          className="max-h-[70vh] max-w-full rounded-2xl object-contain shadow-2xl"
+          className="max-h-[75vh] max-w-full rounded-2xl object-contain shadow-2xl"
           data-testid="img-lightbox-poster"
         />
         {hasContent && (
@@ -103,14 +104,15 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
         )}
       </div>
       <button
-        className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
+        className="fixed right-4 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/20 p-2 text-white hover:bg-white/40 transition"
         onClick={(e) => { e.stopPropagation(); onNext(); }}
         data-testid="button-lightbox-next"
       >
         <ChevronRight className="h-6 w-6" />
       </button>
-      <div className="absolute bottom-4 text-center text-sm text-white/70">
+      <div className="fixed bottom-4 left-0 right-0 text-center text-sm text-white/70">
         {index + 1} / {total}
+      </div>
       </div>
     </div>
   );
