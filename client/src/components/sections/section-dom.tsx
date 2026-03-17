@@ -7,6 +7,7 @@ import { EditableStaticText, SectionReorderControls } from "@/components/admin-t
 import { BookOpen, ChevronRight, Heart, ImagePlus, MapPin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { SiteTexts } from "@/lib/home-helpers";
 
 function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -98,7 +99,7 @@ function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           <div className="font-display text-2xl tracking-[-0.02em]" data-testid="remont-modal-title">
             <EditableStaticText textKey="afterband_cta_title" defaultValue="Remont Domu Gościnnego" />
           </div>
-          <div className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-foreground/80" data-testid="remont-modal-desc">
+          <div className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-foreground/80 break-words [overflow-wrap:anywhere]" data-testid="remont-modal-desc">
             <EditableStaticText textKey="remont_description" defaultValue="Tutaj pojawi się opis remontu Domu Gościnnego. Admin może edytować ten tekst w trybie edycji." multiline />
           </div>
         </div>
@@ -108,7 +109,104 @@ function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   );
 }
 
+function DomCardModal({ open, onClose, titleKey, defaultTitle, descKey, defaultDesc }: {
+  open: boolean; onClose: () => void;
+  titleKey: string; defaultTitle: string;
+  descKey: string; defaultDesc: string;
+}) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeBtnRef.current?.focus();
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] overflow-y-auto bg-black/50 p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      data-testid={`dom-card-modal-backdrop-${descKey}`}
+    >
+      <div className="flex min-h-full items-center justify-center">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={defaultTitle}
+        className="relative w-full max-w-2xl rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+        data-testid={`dom-card-modal-${descKey}`}
+      >
+        <button
+          ref={closeBtnRef}
+          onClick={onClose}
+          aria-label="Zamknij"
+          className="absolute right-3 top-3 z-10 rounded-full bg-white/80 dark:bg-card/80 p-1.5 text-foreground/60 backdrop-blur transition hover:bg-white dark:hover:bg-card hover:text-foreground"
+          data-testid={`dom-card-modal-close-${descKey}`}
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="p-6">
+          <h2 className="font-display text-2xl tracking-[-0.02em]" data-testid={`dom-card-modal-title-${descKey}`}>
+            <EditableStaticText textKey={titleKey} defaultValue={defaultTitle} />
+          </h2>
+          <div className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-foreground/80 break-words [overflow-wrap:anywhere]" data-testid={`dom-card-modal-desc-${descKey}`}>
+            <EditableStaticText textKey={descKey} defaultValue={defaultDesc} multiline />
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+const CARDS = [
+  {
+    id: "pokoje",
+    titleKey: "dom_pokoje_title",
+    defaultTitle: "Pokoje gościnne",
+    descKey: "dom_pokoje_desc",
+    defaultDesc: "Komfortowe pokoje w otoczeniu gór. Idealne na wypoczynek i rekolekcje.",
+    icon: MapPin,
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-600",
+    testId: "card-dom-pokoje",
+  },
+  {
+    id: "kuchnia",
+    titleKey: "dom_kuchnia_title",
+    defaultTitle: "Kuchnia parafialna",
+    descKey: "dom_kuchnia_desc",
+    defaultDesc: "Ciasteczka świąteczne, catering na wydarzenia. Zamówienia w kancelarii.",
+    icon: Heart,
+    iconBg: "bg-amber-100",
+    iconColor: "text-amber-600",
+    testId: "card-dom-kuchnia",
+  },
+  {
+    id: "wspomnienia",
+    titleKey: "dom_wspomnienia_title",
+    defaultTitle: "Wspomnienia",
+    descKey: "dom_wspomnienia_desc",
+    defaultDesc: "Gości i odwiedzających zapraszamy do dzielenia się wspomnieniami z pobytów.",
+    icon: BookOpen,
+    iconBg: "bg-green-100",
+    iconColor: "text-green-600",
+    testId: "card-dom-wspomnienia",
+  },
+];
+
 export function SectionDomGoscinny() {
+  const [openCard, setOpenCard] = useState<string | null>(null);
+  const { data: siteTexts = {} } = useQuery<SiteTexts>({ queryKey: ["site-texts"], queryFn: () => apiFetch("/api/site-texts") });
+
   return (
     <section id="dom" className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8" data-testid="section-dom" aria-label="Dom gościnny">
       <SectionReorderControls sectionId="dom" />
@@ -122,42 +220,44 @@ export function SectionDomGoscinny() {
       </div>
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
-        <Card className="min-w-0 rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-pokoje">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 mb-4">
-            <MapPin className="h-6 w-6 text-blue-600" />
-          </div>
-          <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
-            <EditableStaticText textKey="dom_pokoje_title" defaultValue="Pokoje gościnne" />
-          </h3>
-          <div className="mt-2 text-sm text-muted-foreground break-words [overflow-wrap:anywhere] ">
-            <EditableStaticText textKey="dom_pokoje_desc" defaultValue="Komfortowe pokoje w otoczeniu gór. Idealne na wypoczynek i rekolekcje." multiline />
-          </div>
-        </Card>
-
-        <Card className="min-w-0 rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-kuchnia">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 mb-4">
-            <Heart className="h-6 w-6 text-amber-600" />
-          </div>
-          <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
-            <EditableStaticText textKey="dom_kuchnia_title" defaultValue="Kuchnia parafialna" />
-          </h3>
-          <div className="mt-2 text-sm text-muted-foreground break-words [overflow-wrap:anywhere] ">
-            <EditableStaticText textKey="dom_kuchnia_desc" defaultValue="Ciasteczka świąteczne, catering na wydarzenia. Zamówienia w kancelarii." multiline />
-          </div>
-        </Card>
-
-        <Card className="min-w-0 rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-wspomnienia">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 mb-4">
-            <BookOpen className="h-6 w-6 text-green-600" />
-          </div>
-          <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
-            <EditableStaticText textKey="dom_wspomnienia_title" defaultValue="Wspomnienia" />
-          </h3>
-          <div className="mt-2 text-sm text-muted-foreground break-words [overflow-wrap:anywhere] ">
-            <EditableStaticText textKey="dom_wspomnienia_desc" defaultValue="Gości i odwiedzających zapraszamy do dzielenia się wspomnieniami z pobytów." multiline />
-          </div>
-        </Card>
+        {CARDS.map((card) => {
+          const Icon = card.icon;
+          const descText = siteTexts[card.descKey] || card.defaultDesc;
+          return (
+            <Card
+              key={card.id}
+              className="min-w-0 rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur cursor-pointer transition hover:shadow-lg hover:scale-[1.02]"
+              onClick={() => setOpenCard(card.id)}
+              data-testid={card.testId}
+            >
+              <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${card.iconBg} mb-4`}>
+                <Icon className={`h-6 w-6 ${card.iconColor}`} />
+              </div>
+              <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
+                {siteTexts[card.titleKey] || card.defaultTitle}
+              </h3>
+              <div className="mt-2 text-sm text-muted-foreground break-words [overflow-wrap:anywhere] line-clamp-[7]">
+                {descText}
+              </div>
+              {descText.length > 150 && (
+                <span className="mt-2 inline-block text-xs font-medium text-primary">Czytaj więcej →</span>
+              )}
+            </Card>
+          );
+        })}
       </div>
+
+      {CARDS.map((card) => (
+        <DomCardModal
+          key={card.id}
+          open={openCard === card.id}
+          onClose={() => setOpenCard(null)}
+          titleKey={card.titleKey}
+          defaultTitle={card.defaultTitle}
+          descKey={card.descKey}
+          defaultDesc={card.defaultDesc}
+        />
+      ))}
 
       <div className="mt-6 flex flex-col items-center gap-2">
         <Button
