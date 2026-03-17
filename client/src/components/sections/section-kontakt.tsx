@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/home-helpers";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
-import { Facebook, Heart, Mail, MapPin, Phone, Youtube } from "lucide-react";
+import { Banknote, Clock, Facebook, Heart, Mail, MapPin, Phone, Smartphone, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -71,11 +71,37 @@ export function SectionKontakt() {
               <Separator />
 
               <div className="flex items-start gap-3" data-testid="row-contact-hours">
-                <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                <Clock className="mt-0.5 h-5 w-5 text-primary" />
                 <div>
-                  <div className="text-sm font-medium" data-testid="text-contact-hours-title"><EditableStaticText textKey="contact_hours_label" defaultValue="Godziny" /></div>
+                  <div className="text-sm font-medium" data-testid="text-contact-hours-title"><EditableStaticText textKey="contact_hours_label" defaultValue="Kancelaria czynna" /></div>
                   <div className="text-sm text-muted-foreground" data-testid="text-contact-hours">
                     <EditableStaticText textKey="contact_hours" defaultValue={contactData.hours || "(uzupełnij godziny)"} />
+                  </div>
+                  <div className="mt-1 text-sm font-medium" data-testid="text-contact-hours-sunday-title"><EditableStaticText textKey="contact_hours_sunday_label" defaultValue="Niedziela" /></div>
+                  <div className="text-sm text-muted-foreground" data-testid="text-contact-hours-sunday">
+                    <EditableStaticText textKey="contact_hours_sunday" defaultValue="(uzupełnij godziny niedzielne)" />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-start gap-3" data-testid="row-contact-bank">
+                <Banknote className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm font-medium" data-testid="text-contact-bank-title"><EditableStaticText textKey="contact_bank_label" defaultValue="Numer konta" /></div>
+                  <div className="text-sm text-muted-foreground font-mono" data-testid="text-contact-bank">
+                    <EditableStaticText textKey="contact_bank_account" defaultValue="(uzupełnij numer konta)" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3" data-testid="row-contact-blik">
+                <Smartphone className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm font-medium" data-testid="text-contact-blik-title"><EditableStaticText textKey="contact_blik_label" defaultValue="Blik" /></div>
+                  <div className="text-sm text-muted-foreground font-mono" data-testid="text-contact-blik">
+                    <EditableStaticText textKey="contact_blik_phone" defaultValue="(uzupełnij numer telefonu na Blik)" />
                   </div>
                 </div>
               </div>

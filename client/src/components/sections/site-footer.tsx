@@ -90,7 +90,7 @@ export function SiteFooter() {
           <div>
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-widest text-foreground/60">Numer konta</h4>
             <p className="font-mono text-xs leading-relaxed" data-testid="text-footer-bank">
-              <EditableStaticText textKey="footer_bank_account" defaultValue="(uzupełnij numer konta)" />
+              <EditableStaticText textKey="contact_bank_account" defaultValue="(uzupełnij numer konta)" />
             </p>
             <div className="mt-4 flex items-center gap-3">
               <a href={fbUrl} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary" data-testid="link-footer-facebook" aria-label="Facebook">

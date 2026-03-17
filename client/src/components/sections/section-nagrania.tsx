@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight, Play, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-function YtScrollRow({ videos }: { videos: YtVideo[] }) {
+function YtScrollRow({ videos, title = "Starsze transmisje" }: { videos: YtVideo[]; title?: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -40,7 +40,7 @@ function YtScrollRow({ videos }: { videos: YtVideo[] }) {
   return (
     <div className="mt-8" data-testid="yt-scroll-row">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-display text-2xl tracking-tight">Starsze transmisje</h3>
+        <h3 className="font-display text-2xl tracking-tight">{title}</h3>
         <div className="flex gap-1">
           {canScrollLeft && (
             <button onClick={() => scroll(-1)} className="rounded-full border bg-card p-1.5 text-muted-foreground transition hover:bg-muted" aria-label="Przewiń w lewo">
@@ -141,7 +141,7 @@ export function SectionNagrania() {
 
         {ytVideos.length > 0 ? (
           <>
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="mt-8 hidden md:grid md:grid-cols-3 gap-4">
               {ytVideos.slice(0, 6).map((v) => (
                 <a
                   key={v.id}
@@ -166,7 +166,12 @@ export function SectionNagrania() {
                 </a>
               ))}
             </div>
-            <YtScrollRow videos={ytVideos.slice(6)} />
+            <div className="mt-8 md:hidden">
+              <YtScrollRow videos={ytVideos.slice(0, 6)} title="Transmisje" />
+            </div>
+            <div className="hidden md:block">
+              <YtScrollRow videos={ytVideos.slice(6)} />
+            </div>
           </>
         ) : (
           <div className="mt-8 grid gap-4 md:grid-cols-3">
