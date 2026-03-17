@@ -116,9 +116,9 @@ export function SectionDomGoscinny() {
         <h2 className="font-display text-3xl tracking-[-0.02em]" data-testid="text-dom-title">
           <EditableStaticText textKey="guesthouse_title" defaultValue="Dom Gościnny" />
         </h2>
-        <p className="mt-2 max-w-2xl text-muted-foreground" data-testid="text-dom-subtitle">
+        <div className="mt-2 max-w-2xl text-muted-foreground break-words [overflow-wrap:anywhere]" data-testid="text-dom-subtitle">
           <EditableStaticText textKey="guesthouse_subtitle" defaultValue="Ośrodek wypoczynkowy i miejsce spotkań w sercu Wisły Jawornika." multiline />
-        </p>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -129,7 +129,7 @@ export function SectionDomGoscinny() {
           <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_pokoje_title" defaultValue="Pokoje gościnne" />
           </h3>
-          <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+          <div className="mt-2 text-sm text-muted-foreground break-words [overflow-wrap:anywhere] line-clamp-[7]">
             <EditableStaticText textKey="dom_pokoje_desc" defaultValue="Komfortowe pokoje w otoczeniu gór. Idealne na wypoczynek i rekolekcje." multiline />
           </div>
         </Card>
@@ -141,7 +141,7 @@ export function SectionDomGoscinny() {
           <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_kuchnia_title" defaultValue="Kuchnia parafialna" />
           </h3>
-          <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+          <div className="mt-2 text-sm text-muted-foreground break-words [overflow-wrap:anywhere] line-clamp-[7]">
             <EditableStaticText textKey="dom_kuchnia_desc" defaultValue="Ciasteczka świąteczne, catering na wydarzenia. Zamówienia w kancelarii." multiline />
           </div>
         </Card>
@@ -153,7 +153,7 @@ export function SectionDomGoscinny() {
           <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_wspomnienia_title" defaultValue="Wspomnienia" />
           </h3>
-          <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+          <div className="mt-2 text-sm text-muted-foreground break-words [overflow-wrap:anywhere] line-clamp-[7]">
             <EditableStaticText textKey="dom_wspomnienia_desc" defaultValue="Gości i odwiedzających zapraszamy do dzielenia się wspomnieniami z pobytów." multiline />
           </div>
         </Card>
