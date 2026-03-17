@@ -52,15 +52,16 @@ function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-black/50 p-4 animate-in fade-in duration-200"
       onClick={onClose}
       data-testid="remont-modal-backdrop"
     >
+      <div className="flex min-h-full items-center justify-center">
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Remont Domu Gościnnego"
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        className="relative w-full max-w-2xl rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
         data-testid="remont-modal"
       >
@@ -102,6 +103,7 @@ function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -124,10 +126,10 @@ export function SectionDomGoscinny() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 mb-4">
             <MapPin className="h-6 w-6 text-blue-600" />
           </div>
-          <h3 className="font-display text-lg break-words">
+          <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_pokoje_title" defaultValue="Pokoje gościnne" />
           </h3>
-          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words overflow-hidden">
+          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-hidden">
             <EditableStaticText textKey="dom_pokoje_desc" defaultValue="Komfortowe pokoje w otoczeniu gór. Idealne na wypoczynek i rekolekcje." multiline />
           </p>
         </Card>
@@ -136,10 +138,10 @@ export function SectionDomGoscinny() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 mb-4">
             <Heart className="h-6 w-6 text-amber-600" />
           </div>
-          <h3 className="font-display text-lg break-words">
+          <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_kuchnia_title" defaultValue="Kuchnia parafialna" />
           </h3>
-          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words overflow-hidden">
+          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-hidden">
             <EditableStaticText textKey="dom_kuchnia_desc" defaultValue="Ciasteczka świąteczne, catering na wydarzenia. Zamówienia w kancelarii." multiline />
           </p>
         </Card>
@@ -148,10 +150,10 @@ export function SectionDomGoscinny() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 mb-4">
             <BookOpen className="h-6 w-6 text-green-600" />
           </div>
-          <h3 className="font-display text-lg break-words">
+          <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_wspomnienia_title" defaultValue="Wspomnienia" />
           </h3>
-          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words overflow-hidden">
+          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-hidden">
             <EditableStaticText textKey="dom_wspomnienia_desc" defaultValue="Gości i odwiedzających zapraszamy do dzielenia się wspomnieniami z pobytów." multiline />
           </p>
         </Card>

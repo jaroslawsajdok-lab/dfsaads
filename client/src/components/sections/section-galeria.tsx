@@ -90,15 +90,16 @@ function AllGalleryModal({ open, onClose }: { open: boolean; onClose: () => void
   return (
     <>
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 z-[100] overflow-y-auto bg-black/50 p-4 animate-in fade-in duration-200"
         onClick={onClose}
         data-testid="all-gallery-modal-backdrop"
       >
+        <div className="flex min-h-full items-center justify-center">
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Galeria"
-          className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+          className="relative w-full max-w-4xl rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
           onClick={(e) => e.stopPropagation()}
           data-testid="all-gallery-modal"
         >
@@ -195,6 +196,7 @@ function AllGalleryModal({ open, onClose }: { open: boolean; onClose: () => void
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
 

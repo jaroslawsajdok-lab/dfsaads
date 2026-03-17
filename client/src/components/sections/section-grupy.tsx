@@ -48,15 +48,16 @@ function GroupModal({ group, open, onClose }: { group: GroupItem; open: boolean;
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-black/50 p-4 animate-in fade-in duration-200"
       onClick={onClose}
       data-testid={`group-modal-backdrop-${group.id}`}
     >
+      <div className="flex min-h-full items-center justify-center">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={group.name}
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        className="relative w-full max-w-2xl rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
         data-testid={`group-modal-${group.id}`}
       >
@@ -104,6 +105,7 @@ function GroupModal({ group, open, onClose }: { group: GroupItem; open: boolean;
           </p>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -127,15 +129,16 @@ function AllGroupsModal({ open, onClose, groups }: { open: boolean; onClose: () 
   return (
     <>
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 z-[100] overflow-y-auto bg-black/50 p-4 animate-in fade-in duration-200"
         onClick={onClose}
         data-testid="all-groups-modal-backdrop"
       >
+        <div className="flex min-h-full items-center justify-center">
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Wszystkie grupy"
-          className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+          className="relative w-full max-w-3xl rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
           onClick={(e) => e.stopPropagation()}
           data-testid="all-groups-modal"
         >
@@ -174,6 +177,7 @@ function AllGroupsModal({ open, onClose, groups }: { open: boolean; onClose: () 
               ))}
             </div>
           </div>
+        </div>
         </div>
       </div>
       {selectedGroup && (

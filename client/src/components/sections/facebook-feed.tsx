@@ -23,15 +23,16 @@ function FbPostModal({ post, open, onClose }: { post: FbPost; open: boolean; onC
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-black/50 p-4 animate-in fade-in duration-200"
       onClick={onClose}
       data-testid={`fb-modal-backdrop-${post.id}`}
     >
+      <div className="flex min-h-full items-center justify-center">
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Post z Facebooka"
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+        className="relative w-full max-w-2xl rounded-2xl bg-card shadow-2xl animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
         data-testid={`fb-modal-${post.id}`}
       >
@@ -87,6 +88,7 @@ function FbPostModal({ post, open, onClose }: { post: FbPost; open: boolean; onC
             </a>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
