@@ -122,40 +122,40 @@ export function SectionDomGoscinny() {
       </div>
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
-        <Card className="overflow-hidden rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-pokoje">
+        <Card className="min-w-0 rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-pokoje">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 mb-4">
             <MapPin className="h-6 w-6 text-blue-600" />
           </div>
           <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_pokoje_title" defaultValue="Pokoje gościnne" />
           </h3>
-          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-hidden">
+          <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_pokoje_desc" defaultValue="Komfortowe pokoje w otoczeniu gór. Idealne na wypoczynek i rekolekcje." multiline />
-          </p>
+          </div>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-kuchnia">
+        <Card className="min-w-0 rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-kuchnia">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 mb-4">
             <Heart className="h-6 w-6 text-amber-600" />
           </div>
           <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_kuchnia_title" defaultValue="Kuchnia parafialna" />
           </h3>
-          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-hidden">
+          <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_kuchnia_desc" defaultValue="Ciasteczka świąteczne, catering na wydarzenia. Zamówienia w kancelarii." multiline />
-          </p>
+          </div>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-wspomnienia">
+        <Card className="min-w-0 rounded-2xl border bg-white/80 dark:bg-card/80 p-6 backdrop-blur" data-testid="card-dom-wspomnienia">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 mb-4">
             <BookOpen className="h-6 w-6 text-green-600" />
           </div>
           <h3 className="font-display text-lg break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_wspomnienia_title" defaultValue="Wspomnienia" />
           </h3>
-          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-hidden">
+          <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
             <EditableStaticText textKey="dom_wspomnienia_desc" defaultValue="Gości i odwiedzających zapraszamy do dzielenia się wspomnieniami z pobytów." multiline />
-          </p>
+          </div>
         </Card>
       </div>
 
