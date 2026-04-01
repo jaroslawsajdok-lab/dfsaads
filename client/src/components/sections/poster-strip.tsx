@@ -195,7 +195,7 @@ export function PosterBannerStrip() {
     let raf: number;
     let paused = false;
     const step = () => {
-      if (!paused) {
+      if (!paused && window.innerWidth >= 768) {
         pos += speed;
         if (pos >= el.scrollWidth / 2) pos = 0;
         el.scrollLeft = pos;
@@ -258,9 +258,9 @@ export function PosterBannerStrip() {
             ref={scrollRef}
             className={cx(
               "relative flex gap-4 px-4",
-              needsCarousel ? "overflow-hidden" : "justify-center overflow-visible"
+              needsCarousel ? "overflow-x-auto md:overflow-hidden" : "justify-center overflow-visible"
             )}
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
             data-testid="poster-scroll-container"
           >
             {displayPosters.map((p: any, i: number) => {
@@ -276,7 +276,7 @@ export function PosterBannerStrip() {
                   <img
                     src={p.image_url}
                     alt={p.title}
-                    className="h-48 w-auto rounded-xl object-cover shadow-lg ring-1 ring-white/20"
+                    className="h-[134px] md:h-48 w-auto rounded-xl object-cover shadow-lg ring-1 ring-white/20"
                     loading="lazy"
                   />
                   {hasLink && (
