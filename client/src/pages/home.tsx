@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { useSectionOrder } from "@/components/admin-tools";
+import { scrollToId } from "@/lib/home-helpers";
 
 export { EditableStaticText } from "@/components/admin-tools";
 
@@ -20,6 +22,13 @@ import { SiteFooter } from "@/components/sections/site-footer";
 export default function HomePage() {
   const stickyShown = useStickyNavTrigger();
   const sectionOrder = useSectionOrder();
+
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    const timer = setTimeout(() => scrollToId(hash), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const renderSection = (sectionId: string) => {
     switch (sectionId) {

@@ -255,11 +255,31 @@ async function fetchGoogleCalendarEvents(): Promise<any[]> {
       const comp = parsed[key];
       if (comp.type !== "VEVENT") continue;
 
+      // Skip cancelled events (deleted from Google Calendar)
+      if (comp.status === "CANCELLED") continue;
+
+      // Collect EXDATE exclusions (specific occurrences deleted from recurring events)
+      const exdates = new Set<string>();
+      if (comp.exdate) {
+        const exdateList = Array.isArray(comp.exdate) ? comp.exdate : Object.values(comp.exdate);
+        for (const ex of exdateList as any[]) {
+          try {
+            let d: Date | null = null;
+            if (ex instanceof Date) d = ex;
+            else if (ex && typeof ex === "object" && ex.val) d = new Date(ex.val);
+            else if (typeof ex === "string") d = new Date(ex);
+            if (d && !isNaN(d.getTime())) exdates.add(d.toISOString().slice(0, 10));
+          } catch { /* ignore */ }
+        }
+      }
+
       if (comp.rrule) {
         try {
           const occurrences = comp.rrule.between(now, rangeEnd, true);
           for (const occ of occurrences) {
             const dt = new Date(occ);
+            // Skip occurrences excluded by EXDATE
+            if (exdates.has(dt.toISOString().slice(0, 10))) continue;
             if (dt >= now) {
               upcoming.push({
                 title: comp.summary || "Wydarzenie",

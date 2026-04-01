@@ -4,39 +4,79 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { apiFetch } from "@/lib/home-helpers";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
-import { BookOpen, ChevronRight, Heart, ImagePlus, MapPin, X } from "lucide-react";
+import { BookOpen, ChevronRight, Heart, ImagePlus, MapPin, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { SiteTexts } from "@/lib/home-helpers";
+
+type RemontBlock = { type: "text"; content: string } | { type: "image"; url: string };
+
+const DEFAULT_REMONT_BLOCKS: RemontBlock[] = [
+  { type: "text", content: "Tutaj pojawi się opis remontu Domu Gościnnego. Admin może edytować ten tekst w trybie edycji." }
+];
+
+function parseRemontBlocks(raw: string | null): RemontBlock[] {
+  if (!raw) return DEFAULT_REMONT_BLOCKS;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    return DEFAULT_REMONT_BLOCKS;
+  } catch {
+    // Legacy: treat as plain text
+    if (raw.trim()) return [{ type: "text", content: raw }];
+    return DEFAULT_REMONT_BLOCKS;
+  }
+}
 
 function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const { isEditMode } = useAuth();
   const qc = useQueryClient();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const fileRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const { data: imgData } = useQuery<{ value: string | null }>({
-    queryKey: ["admin-setting", "remont_image"],
-    queryFn: () => apiFetch("/api/admin/settings/remont_image"),
+  const { data: blocksData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "remont_content"],
+    queryFn: () => apiFetch("/api/admin/settings/remont_content"),
   });
-  const remontImage = imgData?.value || null;
+  const blocks = parseRemontBlocks(blocksData?.value ?? null);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
+  const saveBlocks = async (newBlocks: RemontBlock[]) => {
+    await apiRequest("PUT", "/api/admin/settings/remont_content", { value: JSON.stringify(newBlocks) });
+    qc.invalidateQueries({ queryKey: ["admin-setting", "remont_content"] });
+  };
+
+  const handleInsertImage = async (afterIdx: number, file: File) => {
+    setUploadingIdx(afterIdx);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
       const { url } = await uploadRes.json();
-      await apiRequest("PUT", "/api/admin/settings/remont_image", { value: url });
-      qc.invalidateQueries({ queryKey: ["admin-setting", "remont_image"] });
+      const newBlocks = [...blocks];
+      newBlocks.splice(afterIdx + 1, 0, { type: "image", url });
+      await saveBlocks(newBlocks);
     } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
+      setUploadingIdx(null);
     }
+  };
+
+  const handleRemoveBlock = async (idx: number) => {
+    const newBlocks = blocks.filter((_, i) => i !== idx);
+    await saveBlocks(newBlocks.length > 0 ? newBlocks : DEFAULT_REMONT_BLOCKS);
+  };
+
+  const handleTextBlur = async (idx: number, newContent: string) => {
+    const current = blocks[idx];
+    if (current?.type === "text" && current.content === newContent) return;
+    const newBlocks = blocks.map((b, i) => i === idx ? { ...b, content: newContent } as RemontBlock : b);
+    await saveBlocks(newBlocks);
+  };
+
+  const handleAddTextBlock = async (afterIdx: number) => {
+    const newBlocks = [...blocks];
+    newBlocks.splice(afterIdx + 1, 0, { type: "text", content: "" });
+    await saveBlocks(newBlocks);
   };
 
   useEffect(() => {
@@ -76,31 +116,97 @@ function RemontModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           <X className="h-4 w-4" />
         </button>
 
-        {remontImage && (
-          <img src={remontImage} alt="Remont Domu Gościnnego" className="w-full object-cover max-h-[400px]" data-testid="remont-modal-image" />
-        )}
-
-        {isEditMode && (
-          <div className="px-6 pt-4">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-full bg-black/10 px-3 py-1.5 text-xs transition hover:bg-black/20"
-              disabled={uploading}
-              data-testid="button-upload-remont-image"
-            >
-              <ImagePlus className="h-3.5 w-3.5" />
-              {uploading ? "Wysyłanie…" : remontImage ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} data-testid="input-remont-image" />
-          </div>
-        )}
-
         <div className="p-6">
-          <div className="font-display text-2xl tracking-[-0.02em]" data-testid="remont-modal-title">
+          <div className="font-display text-2xl tracking-[-0.02em] mb-5" data-testid="remont-modal-title">
             <EditableStaticText textKey="afterband_cta_title" defaultValue="Remont Domu Gościnnego" />
           </div>
-          <div className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-foreground/80 break-words [overflow-wrap:anywhere]" data-testid="remont-modal-desc">
-            <EditableStaticText textKey="remont_description" defaultValue="Tutaj pojawi się opis remontu Domu Gościnnego. Admin może edytować ten tekst w trybie edycji." multiline />
+
+          <div className="space-y-4" data-testid="remont-modal-blocks">
+            {blocks.map((block, idx) => (
+              <div key={idx}>
+                {block.type === "text" ? (
+                  <div className="relative group">
+                    {isEditMode ? (
+                      <div className="relative">
+                        <textarea
+                          className="w-full min-h-[80px] text-base leading-relaxed text-foreground/80 bg-transparent border border-dashed border-muted-foreground/30 rounded-lg p-2 focus:outline-none focus:border-primary resize-none break-words"
+                          defaultValue={block.content}
+                          onBlur={(e) => handleTextBlur(idx, e.target.value)}
+                          placeholder="Wpisz tekst…"
+                          data-testid={`remont-block-text-${idx}`}
+                        />
+                        {blocks.length > 1 && (
+                          <button
+                            onClick={() => handleRemoveBlock(idx)}
+                            className="absolute -right-2 -top-2 rounded-full bg-destructive p-0.5 text-white opacity-0 group-hover:opacity-100 transition"
+                            aria-label="Usuń blok"
+                            data-testid={`button-remove-block-${idx}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="whitespace-pre-wrap text-base leading-relaxed text-foreground/80 break-words [overflow-wrap:anywhere]" data-testid={`remont-block-text-${idx}`}>
+                        {block.content}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <img
+                      src={block.url}
+                      alt="Zdjęcie remontu"
+                      className="w-full rounded-xl object-cover max-h-[400px]"
+                      data-testid={`remont-block-image-${idx}`}
+                    />
+                    {isEditMode && (
+                      <button
+                        onClick={() => handleRemoveBlock(idx)}
+                        className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-white opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
+                        aria-label="Usuń zdjęcie"
+                        data-testid={`button-remove-image-${idx}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {isEditMode && (
+                  <div className="flex justify-center gap-2 py-1.5" data-testid={`remont-insert-row-${idx}`}>
+                    <input
+                      ref={(el) => { fileRefs.current[idx] = el; }}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleInsertImage(idx, file);
+                        e.target.value = "";
+                      }}
+                      data-testid={`input-insert-image-${idx}`}
+                    />
+                    <button
+                      onClick={() => fileRefs.current[idx]?.click()}
+                      disabled={uploadingIdx !== null}
+                      className="flex items-center gap-1 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground hover:bg-muted transition"
+                      data-testid={`button-insert-image-${idx}`}
+                    >
+                      <ImagePlus className="h-3 w-3" />
+                      {uploadingIdx === idx ? "Wysyłanie…" : "Dodaj zdjęcie"}
+                    </button>
+                    <button
+                      onClick={() => handleAddTextBlock(idx)}
+                      className="flex items-center gap-1 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground hover:bg-muted transition"
+                      data-testid={`button-add-text-${idx}`}
+                    >
+                      + Akapit
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -205,7 +311,11 @@ const CARDS = [
 
 export function SectionDomGoscinny() {
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const [remontOpen, setRemontOpen] = useState(false);
   const { data: siteTexts = {} } = useQuery<SiteTexts>({ queryKey: ["site-texts"], queryFn: () => apiFetch("/api/site-texts") });
+
+  const remontTitle = siteTexts["afterband_cta_title"] || "Remont Domu Gościnnego";
+  const remontSubtitle = siteTexts["afterband_cta_subtitle"] || "Trwają prace remontowe. Kliknij, by dowiedzieć się więcej.";
 
   return (
     <section id="dom" className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8" data-testid="section-dom" aria-label="Dom gościnny">
@@ -246,6 +356,24 @@ export function SectionDomGoscinny() {
           );
         })}
       </div>
+
+      <Card
+        className="mt-4 min-w-0 rounded-2xl border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 p-6 backdrop-blur cursor-pointer transition hover:shadow-lg hover:scale-[1.01]"
+        onClick={() => setRemontOpen(true)}
+        data-testid="card-dom-remont"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/50 flex-shrink-0">
+            <ChevronRight className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-lg break-words [overflow-wrap:anywhere] text-amber-800 dark:text-amber-300">{remontTitle}</h3>
+            <div className="mt-1 text-sm text-amber-700/70 dark:text-amber-400/70 break-words [overflow-wrap:anywhere] line-clamp-2">{remontSubtitle}</div>
+          </div>
+        </div>
+      </Card>
+
+      <RemontModal open={remontOpen} onClose={() => setRemontOpen(false)} />
 
       {CARDS.map((card) => (
         <DomCardModal

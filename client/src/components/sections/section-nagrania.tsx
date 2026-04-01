@@ -140,39 +140,7 @@ export function SectionNagrania() {
         </div>
 
         {ytVideos.length > 0 ? (
-          <>
-            <div className="mt-8 hidden md:grid md:grid-cols-3 gap-4">
-              {ytVideos.slice(0, 6).map((v) => (
-                <a
-                  key={v.id}
-                  href={`https://www.youtube.com/watch?v=${v.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group"
-                  data-testid={`card-yt-video-${v.id}`}
-                >
-                  <Card className="overflow-hidden rounded-2xl border bg-white/80 dark:bg-card/80 backdrop-blur transition hover:shadow-md">
-                    <div className="relative aspect-video w-full overflow-hidden bg-muted">
-                      <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
-                        <div className="rounded-full bg-white/90 dark:bg-card/90 p-3"><Play className="h-5 w-5 text-red-600" /></div>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <div className="text-xs text-muted-foreground">{formatDatePL(v.date.slice(0, 10))}</div>
-                      <h3 className="mt-1 line-clamp-2 font-display text-base leading-snug">{v.title}</h3>
-                    </div>
-                  </Card>
-                </a>
-              ))}
-            </div>
-            <div className="mt-8 md:hidden">
-              <YtScrollRow videos={ytVideos.slice(0, 6)} title="Transmisje" />
-            </div>
-            <div className="hidden md:block">
-              <YtScrollRow videos={ytVideos.slice(6)} />
-            </div>
-          </>
+          <YtScrollRow videos={ytVideos} title="Transmisje" />
         ) : (
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {recordingsData.slice(0, 3).map((r) => (

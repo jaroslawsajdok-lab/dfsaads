@@ -177,6 +177,7 @@ export function TopNav({ shown }: { shown: boolean }) {
           shown ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none",
         )}
         data-testid="nav-wrap"
+        data-sticky-nav
         role="navigation"
         aria-label="Nawigacja główna"
       >

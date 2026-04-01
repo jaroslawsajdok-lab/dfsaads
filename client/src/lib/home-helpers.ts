@@ -90,11 +90,26 @@ export function cx(...classes: Array<string | false | undefined | null>) {
 
 export function eventTypeColor(type: string) {
   const t = type.toLowerCase();
-  if (t.includes("nabożeństwo") || t.includes("nabożeń")) return { badge: "bg-blue-100 text-blue-700", card: "bg-blue-50/80 border-blue-200/60" };
-  if (t.includes("spotkanie")) return { badge: "bg-amber-100 text-amber-700", card: "bg-amber-50/80 border-amber-200/60" };
-  if (t.includes("koncert") || t.includes("muzyk")) return { badge: "bg-purple-100 text-purple-700", card: "bg-purple-50/80 border-purple-200/60" };
-  if (t.includes("konferencja")) return { badge: "bg-emerald-100 text-emerald-700", card: "bg-emerald-50/80 border-emerald-200/60" };
-  return { badge: "bg-rose-100 text-rose-700", card: "bg-white/75 border-rose-200/40" };
+  if (t.includes("nabożeństwo") || t.includes("nabożeń")) return {
+    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+    card: "bg-blue-50/80 border-blue-200/60 dark:bg-blue-900/20 dark:border-blue-700/40",
+  };
+  if (t.includes("spotkanie")) return {
+    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+    card: "bg-amber-50/80 border-amber-200/60 dark:bg-amber-900/20 dark:border-amber-700/40",
+  };
+  if (t.includes("koncert") || t.includes("muzyk")) return {
+    badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+    card: "bg-purple-50/80 border-purple-200/60 dark:bg-purple-900/20 dark:border-purple-700/40",
+  };
+  if (t.includes("konferencja")) return {
+    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+    card: "bg-emerald-50/80 border-emerald-200/60 dark:bg-emerald-900/20 dark:border-emerald-700/40",
+  };
+  return {
+    badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
+    card: "bg-white/75 border-rose-200/40 dark:bg-rose-900/20 dark:border-rose-700/40",
+  };
 }
 
 export function formatDatePL(isoDate: string) {
@@ -113,7 +128,10 @@ export function formatDatePL(isoDate: string) {
 export function scrollToId(id: string) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const headerEl = document.querySelector("[data-sticky-nav]") as HTMLElement | null;
+  const offset = headerEl ? headerEl.offsetHeight + 8 : 72;
+  const top = el.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top, behavior: "smooth" });
 }
 
 export async function apiFetch<T>(url: string): Promise<T> {
