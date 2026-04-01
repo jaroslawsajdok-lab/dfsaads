@@ -129,7 +129,7 @@ export function scrollToId(id: string) {
   const el = document.getElementById(id);
   if (!el) return;
   const headerEl = document.querySelector("[data-sticky-nav]") as HTMLElement | null;
-  const offset = headerEl ? headerEl.offsetHeight + 8 : 72;
+  const offset = headerEl ? headerEl.offsetHeight + 20 : 84;
   const top = el.getBoundingClientRect().top + window.scrollY - offset;
   window.scrollTo({ top, behavior: "smooth" });
 }

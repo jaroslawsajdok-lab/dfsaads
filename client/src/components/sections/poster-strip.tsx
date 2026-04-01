@@ -4,9 +4,10 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { cx, apiFetch } from "@/lib/home-helpers";
 import { EditableStaticText } from "@/components/admin-tools";
-import { ChevronLeft, ChevronRight, ImagePlus, Pencil, Save, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, ImagePlus, Link, Pencil, Save, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 const isFilename = (t: string) => /\.\w{2,5}$/.test(t.trim());
 
@@ -19,12 +20,16 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
   const [desc, setDesc] = useState(poster.description || "");
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState(poster.title || "");
+  const [editingLink, setEditingLink] = useState(false);
+  const [linkInput, setLinkInput] = useState(poster.link_url || "");
 
   useEffect(() => {
     setDesc(poster.description || "");
     setTitle(poster.title || "");
     setEditingDesc(false);
     setEditingTitle(false);
+    setEditingLink(false);
+    setLinkInput(poster.link_url || "");
   }, [poster]);
 
   const saveField = async (field: string, value: string) => {
@@ -32,6 +37,7 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
     qc.invalidateQueries({ queryKey: ["posters"] });
     if (field === "description") setEditingDesc(false);
     if (field === "title") setEditingTitle(false);
+    if (field === "link_url") setEditingLink(false);
   };
 
   const realTitle = poster.title && !isFilename(poster.title) ? poster.title : "";
@@ -93,11 +99,60 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
                     <Pencil className="ml-1 inline h-3 w-3 opacity-60" />
                   </p>
                 )}
+                {editingLink ? (
+                  <div className="space-y-1.5 border-t pt-2 mt-1">
+                    <p className="text-xs text-muted-foreground text-left">Link do wydarzenia (FB, strona itp.)</p>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="url"
+                        value={linkInput}
+                        onChange={(e) => setLinkInput(e.target.value)}
+                        placeholder="https://www.facebook.com/events/..."
+                        className="h-7 text-sm"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === "Enter") saveField("link_url", linkInput); if (e.key === "Escape") setEditingLink(false); }}
+                        data-testid="input-poster-link"
+                      />
+                      <button onClick={() => saveField("link_url", linkInput)} className="rounded p-1 text-green-600 hover:bg-green-100"><Save className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setEditingLink(false)} className="rounded p-1 text-red-500 hover:bg-red-100"><X className="h-3.5 w-3.5" /></button>
+                    </div>
+                    {poster.link_url && (
+                      <button
+                        onClick={() => saveField("link_url", "")}
+                        className="text-xs text-red-500 hover:underline"
+                        data-testid="button-remove-poster-link"
+                      >
+                        Usuń link
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setLinkInput(poster.link_url || ""); setEditingLink(true); }}
+                    className="flex items-center gap-1 mt-1 mx-auto text-xs text-muted-foreground hover:text-blue-600 transition border-t pt-2 w-full justify-center"
+                    data-testid="button-edit-poster-link"
+                  >
+                    <Link className="h-3 w-3" />
+                    {poster.link_url ? "Zmień link" : "Dodaj link"}
+                  </button>
+                )}
               </div>
             ) : (
               <>
                 {realTitle && <p className="text-sm font-semibold text-foreground" data-testid="poster-lightbox-title">{realTitle}</p>}
                 {poster.description && <p className={cx("text-sm text-muted-foreground whitespace-pre-wrap", realTitle ? "mt-1" : "")} data-testid="poster-lightbox-desc">{poster.description}</p>}
+                {poster.link_url && (
+                  <a
+                    href={poster.link_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cx("inline-flex items-center gap-1.5 mt-2 text-xs text-primary hover:underline", (realTitle || poster.description) ? "mt-2" : "")}
+                    data-testid="button-poster-lightbox-link"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Przejdź do strony
+                  </a>
+                )}
               </>
             )}
           </div>
@@ -186,6 +241,14 @@ export function PosterBannerStrip() {
     qc.invalidateQueries({ queryKey: ["posters"] });
   };
 
+  const handlePosterClick = (p: any, realIdx: number) => {
+    if (!isEditMode && p.link_url) {
+      window.open(p.link_url, "_blank", "noopener,noreferrer");
+    } else {
+      setLightboxIdx(realIdx);
+    }
+  };
+
   if (postersData.length === 0 && !isEditMode) return null;
 
   const displayPosters = needsCarousel ? [...postersData, ...postersData] : postersData;
@@ -204,30 +267,40 @@ export function PosterBannerStrip() {
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             data-testid="poster-scroll-container"
           >
-            {displayPosters.map((p: any, i: number) => (
-              <div
-                key={`${p.id}-${i}`}
-                className="relative flex-shrink-0 cursor-pointer transition hover:scale-105"
-                onClick={() => setLightboxIdx(i % postersData.length)}
-                data-testid={`poster-item-${p.id}-${i}`}
-              >
-                <img
-                  src={p.image_url}
-                  alt={p.title}
-                  className="h-48 w-auto rounded-xl object-cover shadow-lg ring-1 ring-white/20"
-                  loading="lazy"
-                />
-                {isEditMode && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                    className="absolute top-1 right-1 rounded-full bg-red-500/80 p-1 text-white backdrop-blur hover:bg-red-600"
-                    data-testid={`button-delete-poster-${p.id}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            ))}
+            {displayPosters.map((p: any, i: number) => {
+              const realIdx = i % postersData.length;
+              const hasLink = !isEditMode && !!p.link_url;
+              return (
+                <div
+                  key={`${p.id}-${i}`}
+                  className="relative flex-shrink-0 cursor-pointer transition hover:scale-105"
+                  onClick={() => handlePosterClick(p, realIdx)}
+                  data-testid={`poster-item-${p.id}-${i}`}
+                >
+                  <img
+                    src={p.image_url}
+                    alt={p.title}
+                    className="h-48 w-auto rounded-xl object-cover shadow-lg ring-1 ring-white/20"
+                    loading="lazy"
+                  />
+                  {hasLink && (
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white/90 pointer-events-none">
+                      <ExternalLink className="h-2.5 w-2.5" />
+                      Link
+                    </div>
+                  )}
+                  {isEditMode && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                      className="absolute top-1 right-1 rounded-full bg-red-500/80 p-1 text-white backdrop-blur hover:bg-red-600"
+                      data-testid={`button-delete-poster-${p.id}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
         {isEditMode && (

@@ -1,142 +1,10 @@
-import { useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { apiRequest } from "@/lib/queryClient";
 import { cx, apiFetch, eventTypeColor, formatDatePL } from "@/lib/home-helpers";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
-import { Calendar as CalendarIcon, ExternalLink, ImagePlus, Link, MapPin } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-
-function FeaturedEventPoster() {
-  const { isEditMode } = useAuth();
-  const qc = useQueryClient();
-  const { data } = useQuery<{ value: string | null }>({
-    queryKey: ["admin-setting", "featured_event_poster"],
-    queryFn: () => apiFetch("/api/admin/settings/featured_event_poster"),
-  });
-  const { data: linkData } = useQuery<{ value: string | null }>({
-    queryKey: ["admin-setting", "featured_event_poster_url"],
-    queryFn: () => apiFetch("/api/admin/settings/featured_event_poster_url"),
-  });
-  const posterUrl = data?.value || null;
-  const posterLinkUrl = linkData?.value || null;
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [editingUrl, setEditingUrl] = useState(false);
-  const [urlInput, setUrlInput] = useState("");
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-      const { url } = await uploadRes.json();
-      await apiRequest("PUT", "/api/admin/settings/featured_event_poster", { value: url });
-      qc.invalidateQueries({ queryKey: ["admin-setting", "featured_event_poster"] });
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  };
-
-  const handleSaveUrl = async () => {
-    await apiRequest("PUT", "/api/admin/settings/featured_event_poster_url", { value: urlInput.trim() || null });
-    qc.invalidateQueries({ queryKey: ["admin-setting", "featured_event_poster_url"] });
-    setEditingUrl(false);
-  };
-
-  const handleEditUrl = () => {
-    setUrlInput(posterLinkUrl || "");
-    setEditingUrl(true);
-  };
-
-  return (
-    <div className="glass rounded-3xl overflow-hidden relative h-full min-h-[200px] flex items-center justify-center" data-testid="card-featured-event-poster">
-      {posterUrl ? (
-        <img
-          src={posterUrl}
-          alt="Plakat najbliższego wydarzenia"
-          className="h-full w-full object-cover"
-          data-testid="img-featured-event-poster"
-        />
-      ) : (
-        <div className="flex flex-col items-center gap-2 text-muted-foreground p-6 text-center">
-          <ImagePlus className="h-10 w-10" />
-          <span className="text-sm">Plakat wydarzenia</span>
-        </div>
-      )}
-
-      {posterLinkUrl && !isEditMode && (
-        <a
-          href={posterLinkUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-black/70 px-4 py-2 text-xs text-white backdrop-blur transition hover:bg-black/90"
-          data-testid="button-poster-external-link"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Przejdź do wydarzenia
-        </a>
-      )}
-
-      {isEditMode && (
-        <>
-          <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-2 justify-between">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white backdrop-blur transition hover:bg-black/90"
-              disabled={uploading}
-              data-testid="button-upload-poster"
-            >
-              <ImagePlus className="h-3.5 w-3.5" />
-              {uploading ? "Wysyłanie…" : "Zmień plakat"}
-            </button>
-            <button
-              onClick={handleEditUrl}
-              className="flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white backdrop-blur transition hover:bg-black/90"
-              data-testid="button-edit-poster-link"
-            >
-              <Link className="h-3.5 w-3.5" />
-              {posterLinkUrl ? "Zmień link" : "Dodaj link"}
-            </button>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleUpload}
-          />
-          {editingUrl && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4 rounded-3xl z-10" data-testid="poster-url-edit-overlay">
-              <div className="w-full max-w-sm bg-card rounded-xl p-4 shadow-xl">
-                <div className="text-sm font-medium mb-2">Link do wydarzenia (FB, strona itp.)</div>
-                <input
-                  type="url"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder="https://www.facebook.com/events/..."
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-primary"
-                  autoFocus
-                  data-testid="input-poster-url"
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSaveUrl(); if (e.key === "Escape") setEditingUrl(false); }}
-                />
-                <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="ghost" onClick={() => setEditingUrl(false)}>Anuluj</Button>
-                  <Button size="sm" onClick={handleSaveUrl}>Zapisz</Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
 
 export function SectionKalendarz() {
   const { isEditMode } = useAuth();
@@ -209,10 +77,6 @@ export function SectionKalendarz() {
               })}
             </div>
           )}
-
-          <div className="mt-8">
-            <FeaturedEventPoster />
-          </div>
 
           <div className="mt-8 overflow-hidden rounded-2xl border border-border/50 bg-white shadow-sm" data-testid="google-calendar-embed">
             <div className="flex items-center justify-between bg-blue-600 px-4 py-2.5 text-white">

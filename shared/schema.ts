@@ -93,6 +93,7 @@ export const posters = pgTable("posters", {
   description: text("description"),
   image_url: text("image_url").notNull(),
   sort_order: integer("sort_order").notNull().default(0),
+  link_url: text("link_url"),
 });
 
 export const insertPosterSchema = createInsertSchema(posters).omit({ id: true });
