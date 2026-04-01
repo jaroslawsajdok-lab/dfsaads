@@ -358,6 +358,7 @@ export function SectionDomGoscinny() {
       </div>
 
       <Card
+        id="remont"
         className="mt-4 min-w-0 rounded-2xl border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 p-6 backdrop-blur cursor-pointer transition hover:shadow-lg hover:scale-[1.01]"
         onClick={() => setRemontOpen(true)}
         data-testid="card-dom-remont"
