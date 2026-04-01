@@ -181,6 +181,12 @@ export function TopNav({ shown }: { shown: boolean }) {
         role="navigation"
         aria-label="Nawigacja główna"
       >
+        {/* Hidden spacer so offsetHeight reflects the true blocking height on desktop */}
+        <div
+          className="hidden md:block pointer-events-none"
+          style={{ height: desktopBarTop + desktopBarH + 4 }}
+          aria-hidden="true"
+        />
         <div className="md:hidden flex items-center h-14 bg-white/95 dark:bg-card/95 backdrop-blur-sm shadow-sm px-4">
           <button
             type="button"
