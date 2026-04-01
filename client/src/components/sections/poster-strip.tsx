@@ -64,6 +64,19 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
         <ChevronLeft className="h-6 w-6" />
       </button>
       <div className="flex flex-col items-center max-w-[90vw] py-8" onClick={(e) => e.stopPropagation()}>
+        {!isEditMode && poster.link_url && isSafeUrl(poster.link_url) && (
+          <a
+            href={poster.link_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-4 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 shadow-lg transition hover:bg-white/90 hover:scale-105"
+            data-testid="button-poster-event-link"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="h-4 w-4 text-primary" />
+            Przejdź do wydarzenia
+          </a>
+        )}
         <img
           src={poster.image_url}
           alt={realTitle || "Plakat"}
@@ -140,18 +153,6 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
               <>
                 {realTitle && <p className="text-sm font-semibold text-foreground" data-testid="poster-lightbox-title">{realTitle}</p>}
                 {poster.description && <p className={cx("text-sm text-muted-foreground whitespace-pre-wrap", realTitle ? "mt-1" : "")} data-testid="poster-lightbox-desc">{poster.description}</p>}
-                {poster.link_url && (
-                  <a
-                    href={poster.link_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cx("inline-flex items-center gap-1.5 mt-2 text-xs text-primary hover:underline", (realTitle || poster.description) ? "mt-2" : "")}
-                    data-testid="button-poster-lightbox-link"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Przejdź do strony
-                  </a>
-                )}
               </>
             )}
           </div>
@@ -240,12 +241,8 @@ export function PosterBannerStrip() {
     qc.invalidateQueries({ queryKey: ["posters"] });
   };
 
-  const handlePosterClick = (p: any, realIdx: number) => {
-    if (!isEditMode && p.link_url && isSafeUrl(p.link_url)) {
-      window.open(p.link_url, "_blank", "noopener,noreferrer");
-    } else {
-      setLightboxIdx(realIdx);
-    }
+  const handlePosterClick = (_p: any, realIdx: number) => {
+    setLightboxIdx(realIdx);
   };
 
   if (postersData.length === 0 && !isEditMode) return null;
