@@ -125,13 +125,21 @@ export function formatDatePL(isoDate: string) {
   }
 }
 
-export function scrollToId(id: string) {
+export function scrollToId(id: string, updateHash = true) {
   const el = document.getElementById(id);
   if (!el) return;
   const headerEl = document.querySelector("[data-sticky-nav]") as HTMLElement | null;
   const offset = headerEl ? headerEl.offsetHeight + 20 : 84;
   const top = el.getBoundingClientRect().top + window.scrollY - offset;
   window.scrollTo({ top, behavior: "smooth" });
+  if (updateHash) {
+    history.pushState(null, "", `#${id}`);
+  }
+}
+
+export function sectionUrl(id: string): string {
+  const base = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+  return `${base}#${id}`;
 }
 
 export async function apiFetch<T>(url: string): Promise<T> {

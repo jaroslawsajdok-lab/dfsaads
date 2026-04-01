@@ -2,11 +2,66 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
-import { apiFetch } from "@/lib/home-helpers";
-import { Facebook, Link2, MessageCircle, Save, X, Youtube } from "lucide-react";
+import { apiFetch, sectionUrl, SECTION_LABELS, DEFAULT_SECTION_ORDER } from "@/lib/home-helpers";
+import { Check, Copy, Facebook, Link2, MessageCircle, Save, X, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+
+function SectionLinksPanel() {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  function copy(id: string) {
+    const url = sectionUrl(id);
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  }
+
+  if (!open) {
+    return (
+      <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setOpen(true)} data-testid="button-section-links">
+        <Link2 className="mr-1 h-4 w-4" />
+        Linki sekcji
+      </Button>
+    );
+  }
+
+  return (
+    <div className="relative" data-testid="panel-section-links">
+      <div className="absolute bottom-10 left-0 z-50 min-w-[220px] rounded-xl border border-border bg-card shadow-xl p-2 flex flex-col gap-0.5">
+        <div className="flex items-center justify-between px-2 pb-1 mb-1 border-b border-border">
+          <span className="text-xs font-semibold text-muted-foreground">Kopiuj link do sekcji</span>
+          <button type="button" onClick={() => setOpen(false)} className="rounded p-0.5 hover:bg-muted text-muted-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {DEFAULT_SECTION_ORDER.map((id) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => copy(id)}
+            className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-sm hover:bg-muted transition-colors text-left"
+            data-testid={`button-copy-link-${id}`}
+          >
+            <span>{SECTION_LABELS[id] ?? id}</span>
+            {copied === id ? (
+              <Check className="h-3.5 w-3.5 text-green-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+          </button>
+        ))}
+      </div>
+      <Button variant="default" size="sm" className="rounded-xl" onClick={() => setOpen(false)} data-testid="button-section-links-close">
+        <Link2 className="mr-1 h-4 w-4" />
+        Linki sekcji
+      </Button>
+    </div>
+  );
+}
 
 function SocialLinksEditor() {
   const qc = useQueryClient();
@@ -110,6 +165,8 @@ export function AdminFloatingBar() {
           <MessageCircle className="mr-1 h-4 w-4" />
           Czat: {chatWidgetEnabled ? "WŁ" : "WYŁ"}
         </Button>
+        <Separator orientation="vertical" className="h-5" />
+        <SectionLinksPanel />
         <Separator orientation="vertical" className="h-5" />
         <SocialLinksEditor />
         <Separator orientation="vertical" className="h-5" />
