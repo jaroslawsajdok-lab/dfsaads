@@ -1,0 +1,197 @@
+Dobra – skoro AAAA nie ma, to jedziemy konkretnie, bez zgadywania.
+
+Masz poprawne DNS. Problem teraz jest po stronie Railway / hostingu, nie DNS.
+
+🔴 Najważniejsze pytanie (klucz)
+
+👉 Co dokładnie widzisz na jawornik.eu teraz?
+
+Bo od tego zależy diagnoza:
+
+1. ❌ „Ta witryna jest nieosiągalna”
+
+→ DNS jeszcze nie wszędzie się rozszedł
+
+2. ❌ 404 / Railway error
+
+→ domena nie jest przypięta do serwisu
+
+3. ❌ działa www, ale root nie
+
+→ Railway nie przypiął root do tej samej usługi
+
+🔍 Patrząc na Twój screen z Railway
+
+Masz:
+
+www.jawornik.eu ✅
+jawornik.eu ⏳ Waiting for DNS update
+
+👉 To znaczy:
+Railway NIE uznał jeszcze root domeny jako podłączonej
+
+💥 I TU jest problem (ważne)
+
+Railway:
+👉 sprawdza czy domena wskazuje na JEGO konkretny projekt
+
+A Ty masz:
+
+A → 76.76.21.21
+
+To jest globalny IP Railway,
+ALE…
+
+👉 Railway jeszcze musi „złapać”, że to Twoja domena
+
+🔧 Rozwiązanie (to co teraz zrobić)
+1. Kliknij w Railway przy jawornik.eu
+
+(ikona ołówka ✏️ albo edycja)
+
+2. Kliknij:
+
+👉 "Retry" / "Recheck DNS" / "Refresh"
+
+(bo on czasem się nie odświeża sam)
+
+3. Jeśli nadal żółte – ZRÓB TO:
+
+Usuń domenę z Railway:
+👉 kliknij kosz przy jawornik.eu
+
+Potem dodaj od nowa:
+👉 wpisz:
+
+jawornik.eu
+4. Poczekaj 2–5 minut
+🧠 Dlaczego to działa
+
+Railway:
+
+zapisuje stan domeny
+jak wcześniej DNS był zły → zapamiętuje to
+czasem nie odświeża automatycznie
+
+👉 usunięcie + dodanie = reset
+
+🔥 Ważne
+
+Twoje DNS są TERAZ:
+✔ poprawne
+✔ zgodne z Railway
+✔ gotowe
+
+👉 problem to tylko „zacięcie” Railway
+
+💥 TL;DR
+
+👉 DNS OK
+👉 AAAA nie ma
+👉 problem = Railway nie odświeżył
+
+Zrób:
+
+usuń domenę w Railway
+dodaj ponownie
+kliknij refresh
+
+Jak po tym dalej nie działa → napisz dokładnie co widzisz na stronie, wtedy już rozjadę to do końca bez zgadywania.
+
+Dobra, teraz już mamy 100% jasność.
+
+👉 Ten błąd:
+
+ERR_CONNECTION_CLOSED
+
+oznacza:
+👉 ruch dochodzi do Railway
+ALE
+👉 Railway NIE przekazuje go do Twojej aplikacji
+
+Czyli:
+❌ to już NIE DNS
+❌ to już NIE OVH
+👉 to jest problem portu / serwera w Railway
+
+🔴 Problem
+
+Na screenie masz:
+
+→ Port 8080
+
+Railway próbuje wejść na:
+👉 port 8080
+
+ALE:
+👉 Twoja aplikacja prawdopodobnie nie nasłuchuje na tym porcie
+
+💥 To jest najczęstszy błąd w Railway
+
+Aplikacja musi słuchać na:
+
+process.env.PORT
+
+NIE na:
+
+3000
+🔧 Rozwiązanie (kluczowe)
+Jeśli masz Node / Express
+
+Zamiast:
+
+app.listen(3000)
+
+ma być:
+
+const PORT = process.env.PORT || 3000
+app.listen(PORT, () => console.log("Server running on " + PORT))
+Jeśli masz Next.js
+
+Uruchamiaj tak:
+
+npm run start
+
+I w package.json:
+
+"start": "next start -p $PORT"
+Jeśli masz Vite / frontend
+
+to MUSI być build + serve, np:
+
+npm run build
+npm run preview -- --port $PORT
+🔥 Jak sprawdzić czy to to
+
+Wejdź w Railway:
+👉 zakładka Logs
+
+Jeśli widzisz coś typu:
+
+server started on 3000 ❌
+brak logów ❌
+
+to masz odpowiedź
+
+💥 Dlaczego www działało?
+
+Bo:
+👉 mogło działać przez cache / fallback / inne route
+👉 albo Railway jeszcze nie kierował tam ruchu poprawnie
+
+🚀 TL;DR
+
+👉 DNS już OK
+👉 problem = aplikacja NIE słucha na właściwym porcie
+
+💬 Teraz konkretnie
+
+Napisz mi:
+👉 co masz za projekt:
+
+Node?
+Next.js?
+zwykły HTML?
+coś z Replit?
+
+i dam Ci dokładnie gotowy fix pod Twój przypadek (bez zgadywania)
