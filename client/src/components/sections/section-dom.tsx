@@ -10,11 +10,15 @@ import { Card } from "@/components/ui/card";
 import type { SiteTexts } from "@/lib/home-helpers";
 import type { ReactNode } from "react";
 
+function isSafeUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url.trim());
+}
+
 function renderWithLinks(text: string): ReactNode {
   const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
   return parts.map((part, idx) => {
     const m = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (m) {
+    if (m && isSafeUrl(m[2])) {
       return (
         <a
           key={idx}

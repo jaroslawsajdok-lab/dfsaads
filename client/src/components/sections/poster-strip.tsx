@@ -3,13 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { cx, apiFetch } from "@/lib/home-helpers";
-import { EditableStaticText } from "@/components/admin-tools";
 import { ChevronLeft, ChevronRight, ExternalLink, ImagePlus, Link, Pencil, Save, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 
 const isFilename = (t: string) => /\.\w{2,5}$/.test(t.trim());
+const isSafeUrl = (u: string) => /^https?:\/\//i.test(u.trim());
 
 function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
   poster: any; index: number; total: number; onClose: () => void; onPrev: () => void; onNext: () => void;
@@ -110,10 +109,10 @@ function PosterLightbox({ poster, index, total, onClose, onPrev, onNext }: {
                         placeholder="https://www.facebook.com/events/..."
                         className="h-7 text-sm"
                         autoFocus
-                        onKeyDown={(e) => { if (e.key === "Enter") saveField("link_url", linkInput); if (e.key === "Escape") setEditingLink(false); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" && (isSafeUrl(linkInput) || !linkInput.trim())) saveField("link_url", linkInput.trim()); if (e.key === "Escape") setEditingLink(false); }}
                         data-testid="input-poster-link"
                       />
-                      <button onClick={() => saveField("link_url", linkInput)} className="rounded p-1 text-green-600 hover:bg-green-100"><Save className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => { if (isSafeUrl(linkInput) || !linkInput.trim()) saveField("link_url", linkInput.trim()); }} className="rounded p-1 text-green-600 hover:bg-green-100"><Save className="h-3.5 w-3.5" /></button>
                       <button onClick={() => setEditingLink(false)} className="rounded p-1 text-red-500 hover:bg-red-100"><X className="h-3.5 w-3.5" /></button>
                     </div>
                     {poster.link_url && (
@@ -242,7 +241,7 @@ export function PosterBannerStrip() {
   };
 
   const handlePosterClick = (p: any, realIdx: number) => {
-    if (!isEditMode && p.link_url) {
+    if (!isEditMode && p.link_url && isSafeUrl(p.link_url)) {
       window.open(p.link_url, "_blank", "noopener,noreferrer");
     } else {
       setLightboxIdx(realIdx);
