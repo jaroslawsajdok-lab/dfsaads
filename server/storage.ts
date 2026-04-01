@@ -82,6 +82,7 @@ export async function initializeDatabase() {
       sort_order INTEGER NOT NULL DEFAULT 0
     );
     ALTER TABLE galleries ADD COLUMN IF NOT EXISTS album_id INTEGER;
+    ALTER TABLE posters ADD COLUMN IF NOT EXISTS link_url TEXT;
     CREATE TABLE IF NOT EXISTS admin_settings (
       id SERIAL PRIMARY KEY,
       key TEXT NOT NULL UNIQUE,
