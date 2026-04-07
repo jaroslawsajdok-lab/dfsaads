@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/home-helpers";
-import { apiRequest } from "@/lib/queryClient";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
-import { Banknote, Clock, ExternalLink, Facebook, Heart, Mail, MapPin, Pencil, Phone, Smartphone, Youtube } from "lucide-react";
+import { Banknote, Clock, Facebook, Heart, Mail, MapPin, Phone, Smartphone, X, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +12,6 @@ type ContactMap = { address?: string; phone?: string; email?: string; hours?: st
 
 export function SectionKontakt() {
   const { isEditMode } = useAuth();
-  const qc = useQueryClient();
   const { data: contactData = {} as ContactMap } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
   const { data: fbUrlData } = useQuery<{ value: string | null }>({
     queryKey: ["admin-setting", "facebook_url"],
@@ -23,22 +21,10 @@ export function SectionKontakt() {
     queryKey: ["admin-setting", "youtube_url"],
     queryFn: () => apiFetch("/api/admin/settings/youtube_url"),
   });
-  const { data: p24TermsData } = useQuery<{ value: string | null }>({
-    queryKey: ["admin-setting", "p24_terms_url"],
-    queryFn: () => apiFetch("/api/admin/settings/p24_terms_url"),
-  });
   const fbUrl = fbUrlData?.value || "https://www.facebook.com/wislajawornik";
   const ytUrl = ytUrlData?.value || "https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g";
-  const p24TermsUrl = p24TermsData?.value || null;
 
-  const [editingP24Terms, setEditingP24Terms] = useState(false);
-  const [p24TermsInput, setP24TermsInput] = useState("");
-
-  const handleSaveP24Terms = async () => {
-    await apiRequest("PUT", "/api/admin/settings/p24_terms_url", { value: p24TermsInput.trim() || null });
-    qc.invalidateQueries({ queryKey: ["admin-setting", "p24_terms_url"] });
-    setEditingP24Terms(false);
-  };
+  const [regulaminOpen, setRegulaminOpen] = useState(false);
 
   return (
     <section id="kontakt" className="relative" data-testid="section-kontakt" aria-label="Kontakt">
@@ -184,51 +170,13 @@ export function SectionKontakt() {
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-3 justify-between">
-                <div className="flex flex-wrap items-center gap-2">
-                  {p24TermsUrl ? (
-                    <a
-                      href={p24TermsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200"
-                      data-testid="link-p24-terms"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Regulamin
-                    </a>
-                  ) : isEditMode ? (
-                    <span className="text-xs text-amber-500 italic" data-testid="text-p24-no-terms">
-                      (brak linku do regulaminu)
-                    </span>
-                  ) : null}
-                  {isEditMode && (
-                    editingP24Terms ? (
-                      <div className="flex items-center gap-1" data-testid="p24-terms-edit">
-                        <input
-                          type="url"
-                          value={p24TermsInput}
-                          onChange={(e) => setP24TermsInput(e.target.value)}
-                          placeholder="https://..."
-                          className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 w-48"
-                          autoFocus
-                          onKeyDown={(e) => { if (e.key === "Enter") handleSaveP24Terms(); if (e.key === "Escape") setEditingP24Terms(false); }}
-                          data-testid="input-p24-terms"
-                        />
-                        <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setEditingP24Terms(false)}>Anuluj</Button>
-                        <Button size="sm" className="h-6 px-2 text-xs" onClick={handleSaveP24Terms}>OK</Button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { setP24TermsInput(p24TermsUrl || ""); setEditingP24Terms(true); }}
-                        className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800"
-                        data-testid="button-edit-p24-terms"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        {p24TermsUrl ? "Zmień regulamin" : "Dodaj regulamin"}
-                      </button>
-                    )
-                  )}
-                </div>
+                <button
+                  onClick={() => setRegulaminOpen(true)}
+                  className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+                  data-testid="button-p24-terms"
+                >
+                  Regulamin
+                </button>
                 <Button className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white" disabled data-testid="button-p24-pay">
                   Wpłać ofiarę
                 </Button>
@@ -259,6 +207,92 @@ export function SectionKontakt() {
         </div>
 
       </div>
+
+      {regulaminOpen && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setRegulaminOpen(false); }}
+          data-testid="modal-regulamin-backdrop"
+        >
+          <div className="flex min-h-full items-center justify-center">
+            <div className="relative w-full max-w-2xl rounded-2xl bg-card shadow-2xl" data-testid="modal-regulamin">
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <h2 className="text-lg font-semibold" data-testid="text-regulamin-title">Regulamin przyjmowania darowizn online</h2>
+                <button
+                  onClick={() => setRegulaminOpen(false)}
+                  className="rounded-full p-1 hover:bg-muted transition-colors"
+                  data-testid="button-close-regulamin"
+                  aria-label="Zamknij"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4 overflow-y-auto px-6 py-5 text-sm leading-relaxed text-foreground max-h-[70vh]" data-testid="content-regulamin">
+                <p className="font-semibold">Parafia Ewangelicko-Augsburska Wisła Jawornik</p>
+                <div>
+                  <p className="font-medium mb-1">§1. Postanowienia ogólne</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Niniejszy regulamin określa zasady przekazywania darowizn na rzecz Parafii Ewangelicko-Augsburskiej Wisła Jawornik.</li>
+                    <li>Parafia Ewangelicko-Augsburska Wisła Jawornik z siedzibą przy ul. Jodłowej 8A, 43-460 Wisła, jest odbiorcą darowizn.</li>
+                    <li>Darowizny przekazywane są dobrowolnie przez osoby fizyczne lub prawne.</li>
+                  </ol>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">§2. Cel darowizn</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Darowizny przeznaczane są na cele związane z działalnością statutową parafii, w szczególności:
+                      <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
+                        <li>utrzymanie kaplicy i obiektów parafialnych,</li>
+                        <li>działalność duszpasterską i religijną,</li>
+                        <li>działalność charytatywną.</li>
+                      </ul>
+                    </li>
+                  </ol>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">§3. Sposób dokonywania wpłat</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Darowizny mogą być przekazywane drogą elektroniczną za pośrednictwem systemu płatności Przelewy24.</li>
+                    <li>Dokonanie wpłaty oznacza akceptację niniejszego regulaminu.</li>
+                  </ol>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">§4. Charakter darowizny</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Wszystkie wpłaty mają charakter darowizny w rozumieniu przepisów prawa.</li>
+                    <li>Darowizny są dobrowolne i nie stanowią zapłaty za jakiekolwiek usługi lub towary.</li>
+                  </ol>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">§5. Zwroty i reklamacje</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Darowizny co do zasady nie podlegają zwrotowi.</li>
+                    <li>W wyjątkowych sytuacjach (np. błędna kwota) darczyńca może zgłosić prośbę o zwrot.</li>
+                    <li>Zgłoszenia należy kierować na adres e-mail parafii lub telefonicznie.</li>
+                  </ol>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">§6. Dane osobowe (RODO)</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Administratorem danych osobowych darczyńców jest Parafia Ewangelicko-Augsburska Wisła Jawornik.</li>
+                    <li>Dane osobowe przetwarzane są wyłącznie w celu realizacji płatności oraz prowadzenia dokumentacji księgowej.</li>
+                    <li>Podanie danych jest dobrowolne, ale niezbędne do dokonania wpłaty.</li>
+                    <li>Każda osoba ma prawo dostępu do swoich danych oraz ich poprawiania.</li>
+                  </ol>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">§7. Postanowienia końcowe</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Parafia zastrzega sobie prawo do wprowadzenia zmian w regulaminie.</li>
+                    <li>Aktualna wersja regulaminu jest dostępna na stronie internetowej parafii.</li>
+                  </ol>
+                </div>
+                <p className="text-xs text-muted-foreground pt-2 border-t">Data obowiązywania regulaminu: 25.03.2026</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

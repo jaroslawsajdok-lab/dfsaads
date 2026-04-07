@@ -194,27 +194,48 @@ export function PosterBannerStrip() {
     const speed = 0.5;
     let raf: number;
     let paused = false;
+    let touchStartX = 0;
+    let touchScrollStart = 0;
+    const half = () => el.scrollWidth / 2;
+    const wrap = (p: number) => {
+      const h = half();
+      if (p < 0) return p + h;
+      if (p >= h) return p - h;
+      return p;
+    };
     const step = () => {
-      if (!paused && window.innerWidth >= 768) {
-        pos += speed;
-        if (pos >= el.scrollWidth / 2) pos = 0;
+      if (!paused) {
+        pos = wrap(pos + speed);
         el.scrollLeft = pos;
       }
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    const pause = () => { paused = true; };
-    const resume = () => { paused = false; };
-    el.addEventListener("mouseenter", pause);
-    el.addEventListener("mouseleave", resume);
-    el.addEventListener("touchstart", pause, { passive: true });
-    el.addEventListener("touchend", resume);
+    const onMouseEnter = () => { paused = true; };
+    const onMouseLeave = () => { paused = false; };
+    const onTouchStart = (e: TouchEvent) => {
+      paused = true;
+      touchStartX = e.touches[0].clientX;
+      touchScrollStart = pos;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const dx = touchStartX - e.touches[0].clientX;
+      pos = wrap(touchScrollStart + dx);
+      el.scrollLeft = pos;
+    };
+    const onTouchEnd = () => { paused = false; };
+    el.addEventListener("mouseenter", onMouseEnter);
+    el.addEventListener("mouseleave", onMouseLeave);
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("touchend", onTouchEnd);
     return () => {
       cancelAnimationFrame(raf);
-      el.removeEventListener("mouseenter", pause);
-      el.removeEventListener("mouseleave", resume);
-      el.removeEventListener("touchstart", pause);
-      el.removeEventListener("touchend", resume);
+      el.removeEventListener("mouseenter", onMouseEnter);
+      el.removeEventListener("mouseleave", onMouseLeave);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
     };
   }, [postersData, needsCarousel]);
 
@@ -258,9 +279,9 @@ export function PosterBannerStrip() {
             ref={scrollRef}
             className={cx(
               "relative flex gap-4 px-4",
-              needsCarousel ? "overflow-x-auto md:overflow-hidden" : "justify-center overflow-visible"
+              needsCarousel ? "overflow-hidden" : "justify-center overflow-visible"
             )}
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             data-testid="poster-scroll-container"
           >
             {displayPosters.map((p: any, i: number) => {
