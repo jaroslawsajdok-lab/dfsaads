@@ -1,17 +1,54 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/home-helpers";
+import { apiRequest } from "@/lib/queryClient";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
-import { Banknote, Clock, Facebook, Heart, Mail, MapPin, Phone, Smartphone, X, Youtube } from "lucide-react";
+import { Banknote, Clock, Facebook, Heart, Mail, MapPin, Pencil, Phone, Smartphone, X, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 type ContactMap = { address?: string; phone?: string; email?: string; hours?: string };
 
+const DEFAULT_REGULAMIN = `Parafia Ewangelicko-Augsburska Wisła Jawornik
+
+§1. Postanowienia ogólne
+1. Niniejszy regulamin określa zasady przekazywania darowizn na rzecz Parafii Ewangelicko-Augsburskiej Wisła Jawornik.
+2. Parafia Ewangelicko-Augsburska Wisła Jawornik z siedzibą przy ul. Jodłowej 8A, 43-460 Wisła, jest odbiorcą darowizn.
+3. Darowizny przekazywane są dobrowolnie przez osoby fizyczne lub prawne.
+
+§2. Cel darowizn
+1. Darowizny przeznaczane są na cele związane z działalnością statutową parafii, w szczególności: utrzymanie kaplicy i obiektów parafialnych, działalność duszpasterską i religijną, działalność charytatywną.
+
+§3. Sposób dokonywania wpłat
+1. Darowizny mogą być przekazywane drogą elektroniczną za pośrednictwem systemu płatności Przelewy24.
+2. Dokonanie wpłaty oznacza akceptację niniejszego regulaminu.
+
+§4. Charakter darowizny
+1. Wszystkie wpłaty mają charakter darowizny w rozumieniu przepisów prawa.
+2. Darowizny są dobrowolne i nie stanowią zapłaty za jakiekolwiek usługi lub towary.
+
+§5. Zwroty i reklamacje
+1. Darowizny co do zasady nie podlegają zwrotowi.
+2. W wyjątkowych sytuacjach (np. błędna kwota) darczyńca może zgłosić prośbę o zwrot.
+3. Zgłoszenia należy kierować na adres e-mail parafii lub telefonicznie.
+
+§6. Dane osobowe (RODO)
+1. Administratorem danych osobowych darczyńców jest Parafia Ewangelicko-Augsburska Wisła Jawornik.
+2. Dane osobowe przetwarzane są wyłącznie w celu realizacji płatności oraz prowadzenia dokumentacji księgowej.
+3. Podanie danych jest dobrowolne, ale niezbędne do dokonania wpłaty.
+4. Każda osoba ma prawo dostępu do swoich danych oraz ich poprawiania.
+
+§7. Postanowienia końcowe
+1. Parafia zastrzega sobie prawo do wprowadzenia zmian w regulaminie.
+2. Aktualna wersja regulaminu jest dostępna na stronie internetowej parafii.
+
+Data obowiązywania regulaminu: 25.03.2026`;
+
 export function SectionKontakt() {
   const { isEditMode } = useAuth();
+  const queryClient = useQueryClient();
   const { data: contactData = {} as ContactMap } = useQuery<ContactMap>({ queryKey: ["contact"], queryFn: () => apiFetch("/api/contact") });
   const { data: fbUrlData } = useQuery<{ value: string | null }>({
     queryKey: ["admin-setting", "facebook_url"],
@@ -21,10 +58,36 @@ export function SectionKontakt() {
     queryKey: ["admin-setting", "youtube_url"],
     queryFn: () => apiFetch("/api/admin/settings/youtube_url"),
   });
+  const { data: regulaminData } = useQuery<{ value: string | null }>({
+    queryKey: ["admin-setting", "p24_regulamin"],
+    queryFn: () => apiFetch("/api/admin/settings/p24_regulamin"),
+  });
+
   const fbUrl = fbUrlData?.value || "https://www.facebook.com/wislajawornik";
   const ytUrl = ytUrlData?.value || "https://www.youtube.com/channel/UCYwTmxRhm2hZDWkeEZngc4g";
+  const regulaminText = regulaminData?.value || DEFAULT_REGULAMIN;
 
   const [regulaminOpen, setRegulaminOpen] = useState(false);
+  const [editingRegulamin, setEditingRegulamin] = useState(false);
+  const [regulaminDraft, setReguaminDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  function openModal() {
+    setReguaminDraft(regulaminText);
+    setEditingRegulamin(false);
+    setRegulaminOpen(true);
+  }
+
+  async function saveRegulamin() {
+    setSaving(true);
+    try {
+      await apiRequest("PUT", "/api/admin/settings/p24_regulamin", { value: regulaminDraft });
+      await queryClient.invalidateQueries({ queryKey: ["admin-setting", "p24_regulamin"] });
+      setEditingRegulamin(false);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <section id="kontakt" className="relative" data-testid="section-kontakt" aria-label="Kontakt">
@@ -171,7 +234,7 @@ export function SectionKontakt() {
 
               <div className="mt-4 flex flex-wrap items-center gap-3 justify-between">
                 <button
-                  onClick={() => setRegulaminOpen(true)}
+                  onClick={openModal}
                   className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
                   data-testid="button-p24-terms"
                 >
@@ -218,77 +281,54 @@ export function SectionKontakt() {
             <div className="relative w-full max-w-2xl rounded-2xl bg-card shadow-2xl" data-testid="modal-regulamin">
               <div className="flex items-center justify-between border-b px-6 py-4">
                 <h2 className="text-lg font-semibold" data-testid="text-regulamin-title">Regulamin przyjmowania darowizn online</h2>
-                <button
-                  onClick={() => setRegulaminOpen(false)}
-                  className="rounded-full p-1 hover:bg-muted transition-colors"
-                  data-testid="button-close-regulamin"
-                  aria-label="Zamknij"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {isEditMode && !editingRegulamin && (
+                    <button
+                      onClick={() => { setReguaminDraft(regulaminText); setEditingRegulamin(true); }}
+                      className="rounded-full p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      data-testid="button-edit-regulamin"
+                      aria-label="Edytuj regulamin"
+                      title="Edytuj regulamin"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setRegulaminOpen(false); setEditingRegulamin(false); }}
+                    className="rounded-full p-1 hover:bg-muted transition-colors"
+                    data-testid="button-close-regulamin"
+                    aria-label="Zamknij"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
-              <div className="space-y-4 overflow-y-auto px-6 py-5 text-sm leading-relaxed text-foreground max-h-[70vh]" data-testid="content-regulamin">
-                <p className="font-semibold">Parafia Ewangelicko-Augsburska Wisła Jawornik</p>
-                <div>
-                  <p className="font-medium mb-1">§1. Postanowienia ogólne</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Niniejszy regulamin określa zasady przekazywania darowizn na rzecz Parafii Ewangelicko-Augsburskiej Wisła Jawornik.</li>
-                    <li>Parafia Ewangelicko-Augsburska Wisła Jawornik z siedzibą przy ul. Jodłowej 8A, 43-460 Wisła, jest odbiorcą darowizn.</li>
-                    <li>Darowizny przekazywane są dobrowolnie przez osoby fizyczne lub prawne.</li>
-                  </ol>
+
+              {editingRegulamin ? (
+                <div className="px-6 py-5 flex flex-col gap-3">
+                  <textarea
+                    className="w-full rounded-xl border bg-muted/40 px-4 py-3 text-sm leading-relaxed font-mono resize-y focus:outline-none focus:ring-2 focus:ring-primary"
+                    style={{ minHeight: "400px" }}
+                    value={regulaminDraft}
+                    onChange={(e) => setReguaminDraft(e.target.value)}
+                    data-testid="textarea-regulamin"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setEditingRegulamin(false)} data-testid="button-cancel-regulamin">
+                      Anuluj
+                    </Button>
+                    <Button size="sm" onClick={saveRegulamin} disabled={saving} data-testid="button-save-regulamin">
+                      {saving ? "Zapisuję…" : "Zapisz"}
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium mb-1">§2. Cel darowizn</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Darowizny przeznaczane są na cele związane z działalnością statutową parafii, w szczególności:
-                      <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
-                        <li>utrzymanie kaplicy i obiektów parafialnych,</li>
-                        <li>działalność duszpasterską i religijną,</li>
-                        <li>działalność charytatywną.</li>
-                      </ul>
-                    </li>
-                  </ol>
+              ) : (
+                <div className="overflow-y-auto px-6 py-5 max-h-[70vh]" data-testid="content-regulamin">
+                  <pre className="whitespace-pre-wrap text-sm leading-relaxed text-foreground font-sans" data-testid="text-regulamin-content">
+                    {regulaminText}
+                  </pre>
                 </div>
-                <div>
-                  <p className="font-medium mb-1">§3. Sposób dokonywania wpłat</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Darowizny mogą być przekazywane drogą elektroniczną za pośrednictwem systemu płatności Przelewy24.</li>
-                    <li>Dokonanie wpłaty oznacza akceptację niniejszego regulaminu.</li>
-                  </ol>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">§4. Charakter darowizny</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Wszystkie wpłaty mają charakter darowizny w rozumieniu przepisów prawa.</li>
-                    <li>Darowizny są dobrowolne i nie stanowią zapłaty za jakiekolwiek usługi lub towary.</li>
-                  </ol>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">§5. Zwroty i reklamacje</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Darowizny co do zasady nie podlegają zwrotowi.</li>
-                    <li>W wyjątkowych sytuacjach (np. błędna kwota) darczyńca może zgłosić prośbę o zwrot.</li>
-                    <li>Zgłoszenia należy kierować na adres e-mail parafii lub telefonicznie.</li>
-                  </ol>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">§6. Dane osobowe (RODO)</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Administratorem danych osobowych darczyńców jest Parafia Ewangelicko-Augsburska Wisła Jawornik.</li>
-                    <li>Dane osobowe przetwarzane są wyłącznie w celu realizacji płatności oraz prowadzenia dokumentacji księgowej.</li>
-                    <li>Podanie danych jest dobrowolne, ale niezbędne do dokonania wpłaty.</li>
-                    <li>Każda osoba ma prawo dostępu do swoich danych oraz ich poprawiania.</li>
-                  </ol>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">§7. Postanowienia końcowe</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Parafia zastrzega sobie prawo do wprowadzenia zmian w regulaminie.</li>
-                    <li>Aktualna wersja regulaminu jest dostępna na stronie internetowej parafii.</li>
-                  </ol>
-                </div>
-                <p className="text-xs text-muted-foreground pt-2 border-t">Data obowiązywania regulaminu: 25.03.2026</p>
-              </div>
+              )}
             </div>
           </div>
         </div>
