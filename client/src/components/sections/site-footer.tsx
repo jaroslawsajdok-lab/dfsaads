@@ -156,6 +156,9 @@ export function SiteFooter() {
             <p className="font-mono text-xs leading-relaxed break-words [overflow-wrap:anywhere]" data-testid="text-footer-bank">
               <EditableStaticText textKey="contact_bank_account" defaultValue="(uzupełnij numer konta)" />
             </p>
+            <p className="mt-1 text-xs" data-testid="text-footer-nip">
+              NIP: <EditableStaticText textKey="contact_nip" defaultValue="548-20-16-604" />
+            </p>
             <div className="mt-4 flex items-center gap-3">
               <a href={fbUrl} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary" data-testid="link-footer-facebook" aria-label="Facebook">
                 <Facebook className="h-5 w-5" />

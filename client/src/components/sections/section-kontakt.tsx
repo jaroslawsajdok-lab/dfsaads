@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/home-helpers";
 import { apiRequest } from "@/lib/queryClient";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
-import { Banknote, Clock, Facebook, Heart, Mail, MapPin, Pencil, Phone, Smartphone, X, Youtube } from "lucide-react";
+import { Banknote, Clock, Facebook, Hash, Heart, Mail, MapPin, Pencil, Phone, Smartphone, X, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -169,6 +169,16 @@ export function SectionKontakt() {
                   <div className="text-sm font-medium" data-testid="text-contact-blik-title"><EditableStaticText textKey="contact_blik_label" defaultValue="Blik" /></div>
                   <div className="text-sm text-muted-foreground font-mono" data-testid="text-contact-blik">
                     <EditableStaticText textKey="contact_blik_phone" defaultValue="(uzupełnij numer telefonu na Blik)" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3" data-testid="row-contact-nip">
+                <Hash className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm font-medium" data-testid="text-contact-nip-title"><EditableStaticText textKey="contact_nip_label" defaultValue="NIP" /></div>
+                  <div className="text-sm text-muted-foreground font-mono" data-testid="text-contact-nip">
+                    <EditableStaticText textKey="contact_nip" defaultValue="548-20-16-604" />
                   </div>
                 </div>
               </div>
