@@ -1080,7 +1080,7 @@ export async function registerRoutes(
 
   function p24Sign(fields: Record<string, string | number>): string {
     const json = JSON.stringify(fields);
-    return crypto.createHmac("sha384", P24_CRC).update(json).digest("hex");
+    return crypto.createHash("sha384").update(json).digest("hex");
   }
 
   function p24BasicAuth(): string {
@@ -1106,14 +1106,17 @@ export async function registerRoutes(
     const sessionId = `jaw-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
     const desc = description || "Ofiara na parafię";
     const base = getSiteBase(req);
-    const signFields = {
-      sessionId,
-      merchantId: Number(P24_MERCHANT_ID),
-      amount,
-      currency: "PLN",
-      crc: P24_CRC,
-    };
+    const signFields: Record<string, string | number> = {};
+    signFields["sessionId"] = sessionId;
+    signFields["merchantId"] = Number(P24_MERCHANT_ID);
+    signFields["amount"] = amount;
+    signFields["currency"] = "PLN";
+    signFields["crc"] = P24_CRC;
+    const signJson = JSON.stringify(signFields);
     const sign = p24Sign(signFields);
+    console.log("[P24] signJson:", signJson);
+    console.log("[P24] sign:", sign);
+    console.log("[P24] merchantId:", P24_MERCHANT_ID, "CRC:", P24_CRC, "APIKEY:", P24_API_KEY ? "set" : "MISSING");
     const body = {
       merchantId: Number(P24_MERCHANT_ID),
       posId: Number(P24_MERCHANT_ID),
@@ -1150,13 +1153,30 @@ export async function registerRoutes(
 
   app.post("/api/p24/notify", async (req: Request, res: Response) => {
     const { merchantId, posId, sessionId, amount, originAmount, currency, orderId, methodId, statement, sign } = req.body;
-    const expected = p24Sign({ merchantId: Number(merchantId), posId: Number(posId), sessionId, amount, originAmount, currency, orderId, methodId, statement, crc: P24_CRC });
+    const notifySignFields: Record<string, string | number> = {};
+    notifySignFields["merchantId"] = Number(merchantId);
+    notifySignFields["posId"] = Number(posId);
+    notifySignFields["sessionId"] = sessionId;
+    notifySignFields["amount"] = amount;
+    notifySignFields["originAmount"] = originAmount;
+    notifySignFields["currency"] = currency;
+    notifySignFields["orderId"] = orderId;
+    notifySignFields["methodId"] = methodId;
+    notifySignFields["statement"] = statement;
+    notifySignFields["crc"] = P24_CRC;
+    const expected = p24Sign(notifySignFields);
     if (sign !== expected) {
       console.warn("[P24] notify signature mismatch");
       return res.status(400).json({ error: "signature mismatch" });
     }
     try {
-      const verifyBody = { merchantId: Number(merchantId), posId: Number(posId), sessionId, amount, currency, orderId, sign: p24Sign({ sessionId, orderId, amount, currency, crc: P24_CRC }) };
+      const verifySignFields: Record<string, string | number> = {};
+      verifySignFields["sessionId"] = sessionId;
+      verifySignFields["orderId"] = orderId;
+      verifySignFields["amount"] = amount;
+      verifySignFields["currency"] = currency;
+      verifySignFields["crc"] = P24_CRC;
+      const verifyBody = { merchantId: Number(merchantId), posId: Number(posId), sessionId, amount, currency, orderId, sign: p24Sign(verifySignFields) };
       const vResp = await fetch(`${P24_BASE}/api/v1/transaction/verify`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: p24BasicAuth() },
