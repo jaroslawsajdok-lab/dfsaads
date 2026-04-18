@@ -4,9 +4,10 @@ import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/home-helpers";
 import { apiRequest } from "@/lib/queryClient";
 import { EditableStaticText, SectionReorderControls } from "@/components/admin-tools";
-import { Banknote, Clock, Facebook, Hash, Heart, Mail, MapPin, Pencil, Phone, Smartphone, X, Youtube } from "lucide-react";
+import { Banknote, CheckCircle, Clock, Facebook, Hash, Heart, Loader2, Mail, MapPin, Pencil, Phone, Smartphone, X, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
 type ContactMap = { address?: string; phone?: string; email?: string; hours?: string };
@@ -72,6 +73,12 @@ export function SectionKontakt() {
   const [regulaminDraft, setReguaminDraft] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [p24Amount, setP24Amount] = useState("50");
+  const [p24Email, setP24Email] = useState("");
+  const [p24Loading, setP24Loading] = useState(false);
+  const [p24Error, setP24Error] = useState("");
+  const [p24Success, setP24Success] = useState(false);
+
   function openModal() {
     setReguaminDraft(regulaminText);
     setEditingRegulamin(false);
@@ -86,6 +93,37 @@ export function SectionKontakt() {
       setEditingRegulamin(false);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleP24Pay() {
+    setP24Error("");
+    const amountGr = Math.round(parseFloat(p24Amount) * 100);
+    if (!p24Amount || isNaN(amountGr) || amountGr < 100) {
+      setP24Error("Minimalna kwota to 1 zł.");
+      return;
+    }
+    if (!p24Email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p24Email)) {
+      setP24Error("Podaj prawidłowy adres e-mail.");
+      return;
+    }
+    setP24Loading(true);
+    try {
+      const resp = await fetch("/api/p24/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amountGr, email: p24Email, description: "Ofiara na parafię" }),
+      });
+      const data = await resp.json() as { redirectUrl?: string; error?: string };
+      if (!resp.ok || !data.redirectUrl) {
+        setP24Error(data.error || "Błąd połączenia z Przelewy24.");
+        return;
+      }
+      window.location.href = data.redirectUrl;
+    } catch {
+      setP24Error("Błąd połączenia z Przelewy24.");
+    } finally {
+      setP24Loading(false);
     }
   }
 
@@ -212,7 +250,7 @@ export function SectionKontakt() {
             </div>
           </Card>
 
-          <Card className="rounded-2xl border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/40 p-6 backdrop-blur lg:col-span-2" data-testid="card-p24-placeholder">
+          <Card className="rounded-2xl border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/40 p-6 backdrop-blur lg:col-span-2" data-testid="card-p24">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/50">
                   <Heart className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -227,36 +265,63 @@ export function SectionKontakt() {
 
               <Separator className="my-4 bg-amber-200 dark:bg-amber-800/40" />
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-white/70 dark:bg-amber-950/30 px-4 py-3" data-testid="field-p24-amount">
-                  <div className="text-xs text-muted-foreground">Kwota</div>
-                  <div className="mt-1 text-sm text-amber-700 dark:text-amber-300" data-testid="value-p24-amount">
-                    <EditableStaticText textKey="p24_amount_label" defaultValue="50 zł / dowolna kwota" />
-                  </div>
+              {p24Success ? (
+                <div className="flex flex-col items-center gap-3 py-6 text-center" data-testid="p24-success">
+                  <CheckCircle className="h-10 w-10 text-green-500" />
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">Dziękujemy! Zostaniesz przekierowany do płatności.</p>
                 </div>
-                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-white/70 dark:bg-amber-950/30 px-4 py-3" data-testid="field-p24-title">
-                  <div className="text-xs text-muted-foreground">Tytuł wpłaty</div>
-                  <div className="mt-1 text-sm text-amber-700 dark:text-amber-300" data-testid="value-p24-title">
-                    <EditableStaticText textKey="p24_payment_title" defaultValue="Ofiara na parafię" />
+              ) : (
+                <div className="space-y-3" data-testid="p24-form">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block" htmlFor="p24-amount">Kwota (zł)</label>
+                      <Input
+                        id="p24-amount"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={p24Amount}
+                        onChange={(e) => setP24Amount(e.target.value)}
+                        className="border-amber-200 dark:border-amber-700 bg-white/70 dark:bg-amber-950/30 focus-visible:ring-amber-400"
+                        placeholder="50"
+                        data-testid="input-p24-amount"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block" htmlFor="p24-email">Twój e-mail</label>
+                      <Input
+                        id="p24-email"
+                        type="email"
+                        value={p24Email}
+                        onChange={(e) => setP24Email(e.target.value)}
+                        className="border-amber-200 dark:border-amber-700 bg-white/70 dark:bg-amber-950/30 focus-visible:ring-amber-400"
+                        placeholder="adres@email.pl"
+                        data-testid="input-p24-email"
+                      />
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-3 justify-between">
-                <button
-                  onClick={openModal}
-                  className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
-                  data-testid="button-p24-terms"
-                >
-                  Regulamin
-                </button>
-                <Button className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white" disabled data-testid="button-p24-pay">
-                  Wpłać ofiarę
-                </Button>
-              </div>
-              {isEditMode && (
-                <div className="mt-3 text-xs text-amber-600 dark:text-amber-500" data-testid="text-p24-note">
-                  Wymaga: klucz P24_MERCHANT_ID + P24_CRC + P24_API_KEY
+                  {p24Error && (
+                    <p className="text-xs text-red-600 dark:text-red-400" data-testid="text-p24-error">{p24Error}</p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3 justify-between pt-1">
+                    <button
+                      onClick={openModal}
+                      className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+                      data-testid="button-p24-terms"
+                    >
+                      Regulamin
+                    </button>
+                    <Button
+                      className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
+                      onClick={handleP24Pay}
+                      disabled={p24Loading}
+                      data-testid="button-p24-pay"
+                    >
+                      {p24Loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Przekierowuję…</> : "Wpłać ofiarę"}
+                    </Button>
+                  </div>
                 </div>
               )}
             </Card>

@@ -1071,5 +1071,109 @@ export async function registerRoutes(
     res.status(404).json({ error: "Legacy /uploads/ path no longer exists. Files are stored in the database." });
   });
 
+  // ── Przelewy24 ──
+  const P24_MERCHANT_ID = process.env.P24_MERCHANT_ID || "";
+  const P24_CRC = process.env.P24_CRC || "";
+  const P24_API_KEY = process.env.P24_API_KEY || "";
+  const P24_SANDBOX = process.env.P24_SANDBOX === "true";
+  const P24_BASE = P24_SANDBOX ? "https://sandbox.przelewy24.pl" : "https://secure.przelewy24.pl";
+
+  function p24Sign(fields: Record<string, string | number>): string {
+    const json = JSON.stringify(fields);
+    return crypto.createHmac("sha384", P24_CRC).update(json).digest("hex");
+  }
+
+  function p24BasicAuth(): string {
+    return "Basic " + Buffer.from(`${P24_MERCHANT_ID}:${P24_API_KEY}`).toString("base64");
+  }
+
+  function getSiteBase(req: Request): string {
+    const domains = process.env.REPLIT_DOMAINS;
+    if (domains) return `https://${domains.split(",")[0]}`;
+    const host = req.headers.host;
+    const proto = req.headers["x-forwarded-proto"] || "http";
+    return `${proto}://${host}`;
+  }
+
+  app.post("/api/p24/register", async (req: Request, res: Response) => {
+    if (!P24_MERCHANT_ID || !P24_CRC || !P24_API_KEY) {
+      return res.status(503).json({ error: "Przelewy24 nie jest skonfigurowane." });
+    }
+    const { amount, email, description } = req.body as { amount: number; email: string; description?: string };
+    if (!amount || amount < 100 || !email) {
+      return res.status(400).json({ error: "Kwota (min. 1 zł) i e-mail są wymagane." });
+    }
+    const sessionId = `jaw-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+    const desc = description || "Ofiara na parafię";
+    const base = getSiteBase(req);
+    const signFields = {
+      sessionId,
+      merchantId: Number(P24_MERCHANT_ID),
+      amount,
+      currency: "PLN",
+      crc: P24_CRC,
+    };
+    const sign = p24Sign(signFields);
+    const body = {
+      merchantId: Number(P24_MERCHANT_ID),
+      posId: Number(P24_MERCHANT_ID),
+      sessionId,
+      amount,
+      currency: "PLN",
+      description: desc,
+      email,
+      country: "PL",
+      language: "pl",
+      urlReturn: `${base}/platnosc-wynik?status=ok&session=${sessionId}`,
+      urlStatus: `${base}/api/p24/notify`,
+      sign,
+    };
+    try {
+      const resp = await fetch(`${P24_BASE}/api/v1/transaction/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: p24BasicAuth() },
+        body: JSON.stringify(body),
+      });
+      const json = await resp.json() as { data?: { token?: string }; error?: string };
+      if (!resp.ok || !json.data?.token) {
+        console.error("[P24] register error:", JSON.stringify(json));
+        return res.status(502).json({ error: "Błąd rejestracji transakcji P24." });
+      }
+      const token = json.data.token;
+      const redirectUrl = `${P24_BASE}/trnRequest/${token}`;
+      res.json({ redirectUrl });
+    } catch (err) {
+      console.error("[P24] register exception:", err);
+      res.status(500).json({ error: "Błąd połączenia z Przelewy24." });
+    }
+  });
+
+  app.post("/api/p24/notify", async (req: Request, res: Response) => {
+    const { merchantId, posId, sessionId, amount, originAmount, currency, orderId, methodId, statement, sign } = req.body;
+    const expected = p24Sign({ merchantId: Number(merchantId), posId: Number(posId), sessionId, amount, originAmount, currency, orderId, methodId, statement, crc: P24_CRC });
+    if (sign !== expected) {
+      console.warn("[P24] notify signature mismatch");
+      return res.status(400).json({ error: "signature mismatch" });
+    }
+    try {
+      const verifyBody = { merchantId: Number(merchantId), posId: Number(posId), sessionId, amount, currency, orderId, sign: p24Sign({ sessionId, orderId, amount, currency, crc: P24_CRC }) };
+      const vResp = await fetch(`${P24_BASE}/api/v1/transaction/verify`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: p24BasicAuth() },
+        body: JSON.stringify(verifyBody),
+      });
+      const vJson = await vResp.json() as { data?: { status?: string } };
+      if (vJson.data?.status === "success") {
+        console.log(`[P24] payment verified: session=${sessionId} amount=${amount} orderId=${orderId}`);
+      } else {
+        console.warn("[P24] verify returned:", JSON.stringify(vJson));
+      }
+      res.json({ status: 200 });
+    } catch (err) {
+      console.error("[P24] notify/verify exception:", err);
+      res.status(500).json({ error: "verify failed" });
+    }
+  });
+
   return httpServer;
 }

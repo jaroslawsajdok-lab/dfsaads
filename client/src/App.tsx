@@ -11,6 +11,7 @@ import { ChatWidget } from "@/components/chat-widget";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
 import SecurityPage from "@/pages/security";
+import PlatnoscWynikPage from "@/pages/platnosc-wynik";
 
 const PARISH_LOGO_SRC = "/parish-cross.svg";
 
@@ -63,6 +64,7 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/bezpieczenstwo" component={SecurityPage} />
+      <Route path="/platnosc-wynik" component={PlatnoscWynikPage} />
       <Route component={NotFound} />
     </Switch>
   );
