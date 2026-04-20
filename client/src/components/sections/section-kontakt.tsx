@@ -268,28 +268,6 @@ export function SectionKontakt() {
                 </div>
               </div>
 
-              {/* Payment method badges */}
-              <div className="mt-4 flex flex-wrap gap-2" aria-label="Dostępne metody płatności">
-                <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm" title="BLIK">
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><text x="12" y="15.5" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white" fontFamily="sans-serif">BLIK</text></svg>
-                  BLIK
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm" title="Visa">
-                  <svg className="h-3.5 w-10" viewBox="0 0 50 16" fill="currentColor"><text x="2" y="13" fontSize="14" fontWeight="900" fontFamily="Arial, sans-serif" letterSpacing="-1" fill="white">VISA</text></svg>
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm" title="Mastercard">
-                  <svg className="h-4 w-6" viewBox="0 0 38 24"><circle cx="15" cy="12" r="10" fill="#eb001b" fillOpacity="0.9"/><circle cx="23" cy="12" r="10" fill="#f79e1b" fillOpacity="0.9"/><path d="M19 5.8a10 10 0 0 1 0 12.4A10 10 0 0 1 19 5.8z" fill="#ff5f00" fillOpacity="0.8"/></svg>
-                  Mastercard
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm" title="Przelew bankowy">
-                  <Banknote className="h-3.5 w-3.5" />
-                  Przelew
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm" title="Szybki przelew online">
-                  <Smartphone className="h-3.5 w-3.5" />
-                  Pay-by-link
-                </span>
-              </div>
             </div>
 
             {/* Form section */}
@@ -362,26 +340,72 @@ export function SectionKontakt() {
                   )}
 
                   <div className="flex flex-wrap items-center gap-3 justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <svg className="h-3.5 w-3.5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                      <span>Szyfrowanie SSL · Przelewy24</span>
+                    <button
+                      onClick={openModal}
+                      className="text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+                      data-testid="button-p24-terms"
+                    >
+                      Regulamin
+                    </button>
+                    <Button
+                      className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm px-6"
+                      onClick={handleP24Pay}
+                      disabled={p24Loading}
+                      data-testid="button-p24-pay"
+                    >
+                      {p24Loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Przekierowuję…</> : <><Heart className="mr-2 h-4 w-4" />Wpłać ofiarę</>}
+                    </Button>
+                  </div>
+
+                  {/* Payment method logos */}
+                  <div className="pt-3 border-t border-border/60">
+                    <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider font-medium">Dostępne metody płatności</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* BLIK */}
+                      <div className="h-7 rounded-md border border-border/60 bg-white dark:bg-white px-2 flex items-center justify-center" title="BLIK">
+                        <svg viewBox="0 0 52 20" className="h-4 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="52" height="20" rx="3" fill="white"/>
+                          <text x="4" y="15" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="13" fill="#E2000F" letterSpacing="1">BLIK</text>
+                        </svg>
+                      </div>
+                      {/* Visa */}
+                      <div className="h-7 rounded-md border border-border/60 bg-white dark:bg-white px-2 flex items-center justify-center" title="Visa">
+                        <svg viewBox="0 0 58 20" className="h-4 w-auto" xmlns="http://www.w3.org/2000/svg">
+                          <text x="2" y="16" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="16" fill="#1A1F71" fontStyle="italic" letterSpacing="-0.5">VISA</text>
+                        </svg>
+                      </div>
+                      {/* Mastercard */}
+                      <div className="h-7 rounded-md border border-border/60 bg-white dark:bg-white px-2 flex items-center justify-center gap-1" title="Mastercard">
+                        <svg viewBox="0 0 38 24" className="h-5 w-auto" xmlns="http://www.w3.org/2000/svg">
+                          <circle cx="14" cy="12" r="10" fill="#EB001B"/>
+                          <circle cx="24" cy="12" r="10" fill="#F79E1B"/>
+                          <path d="M19 4.8a10 10 0 0 1 0 14.4A10 10 0 0 1 19 4.8z" fill="#FF5F00"/>
+                        </svg>
+                        <span style={{fontFamily:"Arial, sans-serif", fontSize:"9px", fontWeight:"700", color:"#231F20", letterSpacing:"0.3px"}}>mastercard</span>
+                      </div>
+                      {/* Google Pay */}
+                      <div className="h-7 rounded-md border border-border/60 bg-white dark:bg-white px-2 flex items-center justify-center" title="Google Pay">
+                        <svg viewBox="0 0 60 24" className="h-4 w-auto" xmlns="http://www.w3.org/2000/svg">
+                          <text x="2" y="17" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="500" fill="#5F6368">G</text>
+                          <text x="13" y="17" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="500" fill="#5F6368">Pay</text>
+                        </svg>
+                      </div>
+                      {/* Apple Pay */}
+                      <div className="h-7 rounded-md border border-border/60 bg-white dark:bg-white px-2.5 flex items-center justify-center" title="Apple Pay">
+                        <svg viewBox="0 0 50 20" className="h-4 w-auto" xmlns="http://www.w3.org/2000/svg">
+                          <text x="2" y="15" fontFamily="-apple-system, BlinkMacSystemFont, sans-serif" fontSize="12" fontWeight="600" fill="#000000"> Pay</text>
+                        </svg>
+                      </div>
+                      {/* Bank transfer / Przelewy */}
+                      <div className="h-7 rounded-md border border-border/60 bg-[#D3121A] px-2 flex items-center justify-center" title="Przelewy24">
+                        <svg viewBox="0 0 70 20" className="h-3.5 w-auto" xmlns="http://www.w3.org/2000/svg">
+                          <text x="2" y="15" fontFamily="Arial, sans-serif" fontSize="11" fontWeight="800" fill="white" letterSpacing="-0.3">Przelewy24</text>
+                        </svg>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={openModal}
-                        className="text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
-                        data-testid="button-p24-terms"
-                      >
-                        Regulamin
-                      </button>
-                      <Button
-                        className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm px-6"
-                        onClick={handleP24Pay}
-                        disabled={p24Loading}
-                        data-testid="button-p24-pay"
-                      >
-                        {p24Loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Przekierowuję…</> : <><Heart className="mr-2 h-4 w-4" />Wpłać ofiarę</>}
-                      </Button>
+                    <div className="flex items-center gap-1 mt-2">
+                      <svg className="h-3 w-3 text-green-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      <span className="text-[10px] text-muted-foreground">Płatność szyfrowana SSL — bezpieczna i chroniona</span>
                     </div>
                   </div>
                 </div>
