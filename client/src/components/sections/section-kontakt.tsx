@@ -119,7 +119,7 @@ export function SectionKontakt() {
         setP24Error(data.error || "Błąd połączenia z Przelewy24.");
         return;
       }
-      window.location.href = data.redirectUrl;
+      window.open(data.redirectUrl, "_blank", "noopener,noreferrer");
     } catch {
       setP24Error("Błąd połączenia z Przelewy24.");
     } finally {
