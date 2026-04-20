@@ -1112,11 +1112,7 @@ export async function registerRoutes(
     signFields["amount"] = amount;
     signFields["currency"] = "PLN";
     signFields["crc"] = P24_CRC;
-    const signJson = JSON.stringify(signFields);
     const sign = p24Sign(signFields);
-    console.log("[P24] signJson:", signJson);
-    console.log("[P24] sign:", sign);
-    console.log("[P24] merchantId:", P24_MERCHANT_ID, "CRC:", P24_CRC, "APIKEY:", P24_API_KEY ? "set" : "MISSING");
     const body = {
       merchantId: Number(P24_MERCHANT_ID),
       posId: Number(P24_MERCHANT_ID),
