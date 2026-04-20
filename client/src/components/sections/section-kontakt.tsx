@@ -250,31 +250,87 @@ export function SectionKontakt() {
             </div>
           </Card>
 
-          <Card className="rounded-2xl border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/40 p-6 backdrop-blur lg:col-span-2" data-testid="card-p24">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/50">
-                  <Heart className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-amber-800 dark:text-amber-300" data-testid="text-p24-title">Przelewy24 — Ofiary online</div>
-                  <div className="text-xs text-amber-600 dark:text-amber-400">
-                    <EditableStaticText textKey="p24_description" defaultValue="Wspieraj parafię przez bezpieczne płatności online." />
+          <Card className="rounded-2xl overflow-hidden border-0 shadow-md lg:col-span-2" data-testid="card-p24">
+            {/* Gradient header */}
+            <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 px-6 py-5 text-white">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Heart className="h-5 w-5" />
+                    <span className="font-bold text-base" data-testid="text-p24-title">Wsparcie parafii online</span>
                   </div>
+                  <p className="text-sm text-amber-100 leading-relaxed">
+                    <EditableStaticText textKey="p24_description" defaultValue="Wspieraj parafię przez bezpieczne płatności online." />
+                  </p>
+                </div>
+                <div className="shrink-0 bg-white/20 rounded-xl px-2.5 py-1 text-xs font-semibold tracking-wide text-white">
+                  P24
                 </div>
               </div>
 
-              <Separator className="my-4 bg-amber-200 dark:bg-amber-800/40" />
+              {/* Payment method badges */}
+              <div className="mt-4 flex flex-wrap gap-2" aria-label="Dostępne metody płatności">
+                <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm" title="BLIK">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><text x="12" y="15.5" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white" fontFamily="sans-serif">BLIK</text></svg>
+                  BLIK
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm" title="Visa">
+                  <svg className="h-3.5 w-10" viewBox="0 0 50 16" fill="currentColor"><text x="2" y="13" fontSize="14" fontWeight="900" fontFamily="Arial, sans-serif" letterSpacing="-1" fill="white">VISA</text></svg>
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm" title="Mastercard">
+                  <svg className="h-4 w-6" viewBox="0 0 38 24"><circle cx="15" cy="12" r="10" fill="#eb001b" fillOpacity="0.9"/><circle cx="23" cy="12" r="10" fill="#f79e1b" fillOpacity="0.9"/><path d="M19 5.8a10 10 0 0 1 0 12.4A10 10 0 0 1 19 5.8z" fill="#ff5f00" fillOpacity="0.8"/></svg>
+                  Mastercard
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm" title="Przelew bankowy">
+                  <Banknote className="h-3.5 w-3.5" />
+                  Przelew
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm" title="Szybki przelew online">
+                  <Smartphone className="h-3.5 w-3.5" />
+                  Pay-by-link
+                </span>
+              </div>
+            </div>
 
+            {/* Form section */}
+            <div className="p-6 bg-card">
               {p24Success ? (
                 <div className="flex flex-col items-center gap-3 py-6 text-center" data-testid="p24-success">
-                  <CheckCircle className="h-10 w-10 text-green-500" />
-                  <p className="text-sm font-medium text-green-700 dark:text-green-400">Dziękujemy! Zostaniesz przekierowany do płatności.</p>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                    <CheckCircle className="h-8 w-8 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-green-700 dark:text-green-400">Dziękujemy!</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">Zostaniesz przekierowany do płatności.</p>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3" data-testid="p24-form">
+                <div className="space-y-4" data-testid="p24-form">
+                  {/* Quick amount buttons */}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 font-medium">Wybierz kwotę lub wpisz własną:</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {["20", "50", "100", "200"].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setP24Amount(v)}
+                          className={`rounded-xl border py-2 text-sm font-semibold transition-all ${
+                            p24Amount === v
+                              ? "border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-500"
+                              : "border-border bg-background text-foreground hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-900/20"
+                          }`}
+                          data-testid={`button-p24-preset-${v}`}
+                        >
+                          {v} zł
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block" htmlFor="p24-amount">Kwota (zł)</label>
+                      <label className="text-xs text-muted-foreground mb-1 block font-medium" htmlFor="p24-amount">Kwota (zł)</label>
                       <Input
                         id="p24-amount"
                         type="number"
@@ -283,12 +339,12 @@ export function SectionKontakt() {
                         value={p24Amount}
                         onChange={(e) => setP24Amount(e.target.value)}
                         className="border-amber-200 dark:border-amber-700 bg-white/70 dark:bg-amber-950/30 focus-visible:ring-amber-400"
-                        placeholder="50"
+                        placeholder="Inna kwota…"
                         data-testid="input-p24-amount"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block" htmlFor="p24-email">Twój e-mail</label>
+                      <label className="text-xs text-muted-foreground mb-1 block font-medium" htmlFor="p24-email">Twój e-mail</label>
                       <Input
                         id="p24-email"
                         type="email"
@@ -305,26 +361,33 @@ export function SectionKontakt() {
                     <p className="text-xs text-red-600 dark:text-red-400" data-testid="text-p24-error">{p24Error}</p>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-3 justify-between pt-1">
-                    <button
-                      onClick={openModal}
-                      className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
-                      data-testid="button-p24-terms"
-                    >
-                      Regulamin
-                    </button>
-                    <Button
-                      className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
-                      onClick={handleP24Pay}
-                      disabled={p24Loading}
-                      data-testid="button-p24-pay"
-                    >
-                      {p24Loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Przekierowuję…</> : "Wpłać ofiarę"}
-                    </Button>
+                  <div className="flex flex-wrap items-center gap-3 justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <svg className="h-3.5 w-3.5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      <span>Szyfrowanie SSL · Przelewy24</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={openModal}
+                        className="text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+                        data-testid="button-p24-terms"
+                      >
+                        Regulamin
+                      </button>
+                      <Button
+                        className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm px-6"
+                        onClick={handleP24Pay}
+                        disabled={p24Loading}
+                        data-testid="button-p24-pay"
+                      >
+                        {p24Loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Przekierowuję…</> : <><Heart className="mr-2 h-4 w-4" />Wpłać ofiarę</>}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
-            </Card>
+            </div>
+          </Card>
         </div>
 
         <div className="mt-8 overflow-hidden rounded-2xl border border-primary/10 shadow-sm" data-testid="map-wrap">
