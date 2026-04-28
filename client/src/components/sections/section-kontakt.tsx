@@ -75,6 +75,7 @@ export function SectionKontakt() {
 
   const [p24Amount, setP24Amount] = useState("50");
   const [p24Email, setP24Email] = useState("");
+  const [p24Purpose, setP24Purpose] = useState("");
   const [p24Loading, setP24Loading] = useState(false);
   const [p24Error, setP24Error] = useState("");
   const [p24Success, setP24Success] = useState(false);
@@ -112,7 +113,7 @@ export function SectionKontakt() {
       const resp = await fetch("/api/p24/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amountGr, email: p24Email, description: "Ofiara na parafię" }),
+        body: JSON.stringify({ amount: amountGr, email: p24Email, description: p24Purpose.trim() || "Ofiara na parafię" }),
       });
       const data = await resp.json() as { redirectUrl?: string; error?: string };
       if (!resp.ok || !data.redirectUrl) {
@@ -304,6 +305,20 @@ export function SectionKontakt() {
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block font-medium" htmlFor="p24-purpose">Cel wpłaty <span className="font-normal opacity-60">(opcjonalnie)</span></label>
+                    <Input
+                      id="p24-purpose"
+                      type="text"
+                      value={p24Purpose}
+                      onChange={(e) => setP24Purpose(e.target.value)}
+                      className="border-amber-200 dark:border-amber-700 bg-white/70 dark:bg-amber-950/30 focus-visible:ring-amber-400"
+                      placeholder="np. remont kaplicy, misje, działalność…"
+                      maxLength={100}
+                      data-testid="input-p24-purpose"
+                    />
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
